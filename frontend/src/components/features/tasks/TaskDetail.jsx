@@ -1,6 +1,9 @@
 import { useState } from 'react'
 import { Tabs, Button, Badge, StatusBadge, Avatar, Modal, Select, Textarea, FileUpload, EmptyState } from '@/components/ui'
 import TaskHistory from './TaskHistory'
+import TimeLogSection from '@/components/features/tasks/TimeLogSection'
+import ReviewSection from '@/components/features/tasks/ReviewSection'
+import AttachmentList from '@/components/features/tasks/AttachmentList'
 import { TASK_STATUSES, PRIORITIES, COMMENT_VISIBILITY, UPLOAD_TYPES } from '@/config/constants'
 import { formatDate, formatDateTime, formatFileSize } from '@/utils/formatters'
 import { colours, spacing } from '@/config/tokens'
@@ -19,9 +22,17 @@ export default function TaskDetail({
   comments = [],
   attachments = [],
   history = [],
+  timeEntries = [],
+  reviews = [],
+  totalTimeMinutes = 0,
   onStatusChange,
   onComment,
   onFileUpload,
+  onDeleteAttachment,
+  onAddTimeEntry,
+  onUpdateTimeEntry,
+  onDeleteTimeEntry,
+  onSubmitReview,
   brandProfile = null,
   loading = false,
 }) {
@@ -172,6 +183,8 @@ export default function TaskDetail({
     { id: 'overview', label: 'Overview' },
     { id: 'attachments', label: `Attachments (${attachments.length})` },
     { id: 'comments', label: `Comments (${comments.length})` },
+    { id: 'time-log', label: 'Time Log' },
+    { id: 'reviews', label: 'Reviews' },
     { id: 'history', label: 'History' },
   ]
 
@@ -244,48 +257,13 @@ export default function TaskDetail({
         )}
 
         {activeTab === 'attachments' && (
-          <div>
-            {attachments.length === 0 ? (
-              <EmptyState title="No attachments" description="No files have been uploaded yet." />
-            ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: spacing[4] }}>
-                {/* Submissions */}
-                {attachments.filter(a => a.upload_type === UPLOAD_TYPES.SUBMISSION).length > 0 && (
-                  <div>
-                    <h3 style={{ fontSize: '16px', fontWeight: 600, marginBottom: spacing[3] }}>Submission Files</h3>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: spacing[2] }}>
-                      {attachments.filter(a => a.upload_type === UPLOAD_TYPES.SUBMISSION).map(attachment => (
-                        <FileItem key={attachment.id} file={attachment} />
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* Deliverables */}
-                {attachments.filter(a => a.upload_type === UPLOAD_TYPES.DELIVERABLE).length > 0 && (
-                  <div>
-                    <h3 style={{ fontSize: '16px', fontWeight: 600, marginBottom: spacing[3] }}>Deliverables</h3>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: spacing[2] }}>
-                      {attachments.filter(a => a.upload_type === UPLOAD_TYPES.DELIVERABLE).map(attachment => (
-                        <FileItem key={attachment.id} file={attachment} />
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Upload button for allowed roles */}
-            {(isAssignedContractor || isAdmin) && task.status !== TASK_STATUSES.CLOSED && (
-              <div style={{ marginTop: spacing[6] }}>
-                <FileUpload
-                  onFilesChange={(files) => onFileUpload && onFileUpload(files)}
-                  multiple
-                  disabled={loading}
-                />
-              </div>
-            )}
-          </div>
+          <AttachmentList
+            attachments={attachments}
+            onDelete={onDeleteAttachment}
+            onUpload={onFileUpload}
+            taskStatus={task.status}
+            loading={loading}
+          />
         )}
 
         {activeTab === 'comments' && (
@@ -339,6 +317,35 @@ export default function TaskDetail({
               </div>
             )}
           </div>
+        )}
+
+        {activeTab === 'time-log' && (
+          <TimeLogSection
+            taskId={task.id}
+            timeEntries={timeEntries}
+            onAddEntry={onAddTimeEntry}
+            onUpdateEntry={onUpdateTimeEntry}
+            onDeleteEntry={onDeleteTimeEntry}
+            loading={loading}
+            taskCreatedAt={task.created_at}
+          />
+        )}
+
+        {activeTab === 'reviews' && (
+          task.status === 'closed' ? (
+            <ReviewSection
+              taskId={task.id}
+              reviews={reviews}
+              totalTimeMinutes={totalTimeMinutes}
+              onSubmitReview={onSubmitReview}
+              loading={loading}
+            />
+          ) : (
+            <EmptyState
+              title="Reviews available after task is closed"
+              description="Post-task reviews can be submitted once the task is closed."
+            />
+          )
         )}
 
         {activeTab === 'history' && (

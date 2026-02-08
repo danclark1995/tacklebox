@@ -20,7 +20,12 @@ export default function ContractorTaskDetail() {
   const [task, setTask] = useState(null)
   const [comments, setComments] = useState([])
   const [attachments, setAttachments] = useState([])
+  const [timeEntries, setTimeEntries] = useState([])
+  const [reviews, setReviews] = useState([])
+  const [totalTimeMinutes, setTotalTimeMinutes] = useState(0)
+  const [history, setHistory] = useState([])
   const [loading, setLoading] = useState(true)
+  const [submitting, setSubmitting] = useState(false)
   const [showBrandProfile, setShowBrandProfile] = useState(false)
   const [brandProfile, setBrandProfile] = useState(null)
   const [loadingBrandProfile, setLoadingBrandProfile] = useState(false)
@@ -29,19 +34,31 @@ export default function ContractorTaskDetail() {
   useEffect(() => {
     async function load() {
       try {
-        const [taskRes, commentsRes, attachmentsRes] = await Promise.all([
+        const [taskRes, commentsRes, attachmentsRes, timeEntriesRes, reviewsRes, totalTimeRes, historyRes] = await Promise.all([
           fetch(apiEndpoint(`/tasks/${id}`), { headers: { ...getAuthHeaders() } }),
           fetch(apiEndpoint(`/comments?task_id=${id}`), { headers: { ...getAuthHeaders() } }),
-          fetch(apiEndpoint(`/attachments?task_id=${id}`), { headers: { ...getAuthHeaders() } })
+          fetch(apiEndpoint(`/attachments?task_id=${id}`), { headers: { ...getAuthHeaders() } }),
+          fetch(apiEndpoint(`/time-entries?task_id=${id}`), { headers: { ...getAuthHeaders() } }),
+          fetch(apiEndpoint(`/reviews?task_id=${id}`), { headers: { ...getAuthHeaders() } }),
+          fetch(apiEndpoint(`/time-entries/total?task_id=${id}`), { headers: { ...getAuthHeaders() } }),
+          fetch(apiEndpoint(`/task-history?task_id=${id}`), { headers: { ...getAuthHeaders() } }),
         ])
 
         const taskJson = await taskRes.json()
         const commentsJson = await commentsRes.json()
         const attachmentsJson = await attachmentsRes.json()
+        const timeEntriesJson = await timeEntriesRes.json()
+        const reviewsJson = await reviewsRes.json()
+        const totalTimeJson = await totalTimeRes.json()
+        const historyJson = await historyRes.json()
 
         if (taskJson.success) setTask(taskJson.data)
         if (commentsJson.success) setComments(commentsJson.data)
         if (attachmentsJson.success) setAttachments(attachmentsJson.data)
+        if (timeEntriesJson.success) setTimeEntries(timeEntriesJson.data)
+        if (reviewsJson.success) setReviews(reviewsJson.data)
+        if (totalTimeJson.success) setTotalTimeMinutes(totalTimeJson.data.total_minutes)
+        if (historyJson.success) setHistory(historyJson.data)
       } catch (err) {
         addToast(err.message, 'error')
       } finally {
@@ -133,6 +150,142 @@ export default function ContractorTaskDetail() {
       addToast(err.message, 'error')
     } finally {
       setUploading(false)
+    }
+  }
+
+  const handleAddTimeEntry = async (data) => {
+    setSubmitting(true)
+    try {
+      const res = await fetch(apiEndpoint('/time-entries'), {
+        method: 'POST',
+        headers: {
+          ...getAuthHeaders(),
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ task_id: id, ...data }),
+      })
+
+      const json = await res.json()
+
+      if (json.success) {
+        setTimeEntries([...timeEntries, json.data])
+        setTotalTimeMinutes(totalTimeMinutes + (data.duration_minutes || 0))
+        addToast('Time entry added', 'success')
+      } else {
+        addToast(json.message || 'Failed to add time entry', 'error')
+      }
+    } catch (err) {
+      addToast(err.message, 'error')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  const handleUpdateTimeEntry = async (entryId, data) => {
+    setSubmitting(true)
+    try {
+      const res = await fetch(apiEndpoint(`/time-entries/${entryId}`), {
+        method: 'PUT',
+        headers: {
+          ...getAuthHeaders(),
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data),
+      })
+
+      const json = await res.json()
+
+      if (json.success) {
+        setTimeEntries(timeEntries.map((e) => (e.id === entryId ? json.data : e)))
+        // Recalculate total
+        const totalRes = await fetch(apiEndpoint(`/time-entries/total?task_id=${id}`), {
+          headers: { ...getAuthHeaders() },
+        })
+        const totalJson = await totalRes.json()
+        if (totalJson.success) setTotalTimeMinutes(totalJson.data.total_minutes)
+        addToast('Time entry updated', 'success')
+      } else {
+        addToast(json.message || 'Failed to update time entry', 'error')
+      }
+    } catch (err) {
+      addToast(err.message, 'error')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  const handleDeleteTimeEntry = async (entryId) => {
+    setSubmitting(true)
+    try {
+      const res = await fetch(apiEndpoint(`/time-entries/${entryId}`), {
+        method: 'DELETE',
+        headers: { ...getAuthHeaders() },
+      })
+
+      const json = await res.json()
+
+      if (json.success) {
+        const removed = timeEntries.find((e) => e.id === entryId)
+        setTimeEntries(timeEntries.filter((e) => e.id !== entryId))
+        if (removed) setTotalTimeMinutes(totalTimeMinutes - (removed.duration_minutes || 0))
+        addToast('Time entry deleted', 'success')
+      } else {
+        addToast(json.message || 'Failed to delete time entry', 'error')
+      }
+    } catch (err) {
+      addToast(err.message, 'error')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  const handleSubmitReview = async (reviewData) => {
+    setSubmitting(true)
+    try {
+      const res = await fetch(apiEndpoint('/reviews'), {
+        method: 'POST',
+        headers: {
+          ...getAuthHeaders(),
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ task_id: id, ...reviewData }),
+      })
+
+      const json = await res.json()
+
+      if (json.success) {
+        setReviews([...reviews, json.data])
+        addToast('Review submitted', 'success')
+      } else {
+        addToast(json.message || 'Failed to submit review', 'error')
+      }
+    } catch (err) {
+      addToast(err.message, 'error')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  const handleDeleteAttachment = async (attachmentId) => {
+    setSubmitting(true)
+    try {
+      const res = await fetch(apiEndpoint(`/attachments/${attachmentId}`), {
+        method: 'DELETE',
+        headers: { ...getAuthHeaders() },
+      })
+
+      const json = await res.json()
+
+      if (json.success) {
+        setAttachments(attachments.filter((a) => a.id !== attachmentId))
+        addToast('Attachment deleted', 'success')
+      } else {
+        addToast(json.message || 'Failed to delete attachment', 'error')
+      }
+    } catch (err) {
+      addToast(err.message, 'error')
+    } finally {
+      setSubmitting(false)
     }
   }
 
@@ -234,12 +387,19 @@ export default function ContractorTaskDetail() {
         task={task}
         comments={comments}
         attachments={attachments}
-        onAddComment={handleAddComment}
-        userRole="contractor"
-        commentVisibilityOptions={[
-          { value: 'all', label: 'Visible to All' },
-          { value: 'internal', label: 'Internal Only' }
-        ]}
+        timeEntries={timeEntries}
+        reviews={reviews}
+        totalTimeMinutes={totalTimeMinutes}
+        history={history}
+        onStatusChange={handleStatusChange}
+        onComment={handleAddComment}
+        onFileUpload={handleFileUpload}
+        onDeleteAttachment={handleDeleteAttachment}
+        onAddTimeEntry={handleAddTimeEntry}
+        onUpdateTimeEntry={handleUpdateTimeEntry}
+        onDeleteTimeEntry={handleDeleteTimeEntry}
+        onSubmitReview={handleSubmitReview}
+        loading={submitting}
       />
 
       {showBrandProfile && (

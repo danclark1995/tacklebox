@@ -1,20 +1,52 @@
-import React, { useState, useRef } from 'react'
+import React, { useState, useRef, useCallback } from 'react'
 import PropTypes from 'prop-types'
 import { colours, spacing, radii, typography, transitions } from '@/config/tokens'
+import ProgressBar from './ProgressBar'
+
+const CHUNK_SIZE = 10 * 1024 * 1024 // 10MB
+const CHUNKED_THRESHOLD = 100 * 1024 * 1024 // 100MB
+
+/**
+ * Format file size in human-readable MB.
+ */
+const formatFileSize = (size) => `${(size / 1024 / 1024).toFixed(2)} MB`
+
+/**
+ * Return a simple icon character based on MIME type.
+ */
+const getFileTypeIcon = (mimeType) => {
+  if (!mimeType) return '📄'
+  if (mimeType.startsWith('image/')) return '🖼'
+  if (mimeType.startsWith('video/')) return '🎬'
+  if (mimeType.startsWith('audio/')) return '🎵'
+  if (mimeType.includes('pdf')) return '📕'
+  if (mimeType.includes('zip') || mimeType.includes('compressed') || mimeType.includes('archive')) return '📦'
+  if (mimeType.includes('spreadsheet') || mimeType.includes('excel') || mimeType.includes('csv')) return '📊'
+  if (mimeType.includes('presentation') || mimeType.includes('powerpoint')) return '📽'
+  if (mimeType.includes('document') || mimeType.includes('word') || mimeType.includes('text')) return '📝'
+  return '📄'
+}
 
 const FileUpload = ({
   onFilesSelected,
+  onUpload,
+  onCancel,
   accept = '*',
   multiple = false,
   maxFiles = 10,
   maxSize = 5 * 1024 * 1024 * 1024, // 5GB
   disabled = false,
   className = '',
+  showUploadButton = false,
 }) => {
   const [isDragging, setIsDragging] = useState(false)
-  const [selectedFiles, setSelectedFiles] = useState([])
+  const [fileEntries, setFileEntries] = useState([])
   const [error, setError] = useState('')
   const inputRef = useRef(null)
+  const abortControllersRef = useRef({})
+
+  // Generate a unique ID for each file entry
+  const makeId = useCallback(() => `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`, [])
 
   const validateFiles = (files) => {
     const fileArray = Array.from(files)
@@ -41,15 +73,163 @@ const FileUpload = ({
     return validFiles
   }
 
+  /**
+   * Upload a single file. Handles chunked upload for large files.
+   * Calls onUpload(file, { onProgress, signal }).
+   */
+  const uploadFile = useCallback(
+    async (entry) => {
+      if (!onUpload) return
+
+      const controller = new AbortController()
+      abortControllersRef.current[entry.id] = controller
+
+      setFileEntries((prev) =>
+        prev.map((e) => (e.id === entry.id ? { ...e, status: 'uploading', progress: 0 } : e)),
+      )
+
+      const onProgress = (loaded, total) => {
+        const pct = total > 0 ? Math.round((loaded / total) * 100) : 0
+        setFileEntries((prev) =>
+          prev.map((e) => (e.id === entry.id ? { ...e, progress: pct } : e)),
+        )
+      }
+
+      try {
+        if (entry.file.size > CHUNKED_THRESHOLD) {
+          // Chunked upload
+          const totalSize = entry.file.size
+          const totalChunks = Math.ceil(totalSize / CHUNK_SIZE)
+          let uploadedBytes = 0
+
+          for (let i = 0; i < totalChunks; i++) {
+            if (controller.signal.aborted) {
+              throw new DOMException('Upload cancelled', 'AbortError')
+            }
+
+            const start = i * CHUNK_SIZE
+            const end = Math.min(start + CHUNK_SIZE, totalSize)
+            const chunk = entry.file.slice(start, end)
+
+            // Create a synthetic file-like object for the chunk
+            const chunkFile = new File([chunk], entry.file.name, { type: entry.file.type })
+            chunkFile._chunkIndex = i
+            chunkFile._totalChunks = totalChunks
+            chunkFile._originalSize = totalSize
+
+            await onUpload(chunkFile, {
+              onProgress: (chunkLoaded, chunkTotal) => {
+                const overall = uploadedBytes + chunkLoaded
+                onProgress(overall, totalSize)
+              },
+              signal: controller.signal,
+            })
+
+            uploadedBytes += (end - start)
+            onProgress(uploadedBytes, totalSize)
+          }
+        } else {
+          // Single upload
+          await onUpload(entry.file, { onProgress, signal: controller.signal })
+        }
+
+        // If we reach here, upload succeeded
+        if (!controller.signal.aborted) {
+          setFileEntries((prev) =>
+            prev.map((e) => (e.id === entry.id ? { ...e, status: 'complete', progress: 100 } : e)),
+          )
+        }
+      } catch (err) {
+        if (err.name === 'AbortError') {
+          setFileEntries((prev) =>
+            prev.map((e) => (e.id === entry.id ? { ...e, status: 'cancelled' } : e)),
+          )
+        } else {
+          setFileEntries((prev) =>
+            prev.map((e) => (e.id === entry.id ? { ...e, status: 'error', errorMessage: err.message } : e)),
+          )
+        }
+      } finally {
+        delete abortControllersRef.current[entry.id]
+      }
+    },
+    [onUpload],
+  )
+
+  /**
+   * Start uploads for all pending entries.
+   */
+  const startUploads = useCallback(
+    (entries) => {
+      entries.forEach((entry) => {
+        if (entry.status === 'pending') {
+          uploadFile(entry)
+        }
+      })
+    },
+    [uploadFile],
+  )
+
   const handleFiles = (files) => {
     const validFiles = validateFiles(files)
     if (validFiles.length > 0) {
-      setSelectedFiles(validFiles)
+      const newEntries = validFiles.map((file) => ({
+        id: makeId(),
+        file,
+        status: 'pending',
+        progress: 0,
+        errorMessage: null,
+      }))
+
+      setFileEntries((prev) => {
+        const updated = [...prev, ...newEntries]
+        return updated
+      })
+
       if (onFilesSelected) {
         onFilesSelected(validFiles)
       }
+
+      // Auto-upload if showUploadButton is false and onUpload is provided
+      if (!showUploadButton && onUpload) {
+        // Use setTimeout to allow state to update before starting uploads
+        setTimeout(() => startUploads(newEntries), 0)
+      }
     }
   }
+
+  /**
+   * Handle the explicit "Upload" button click.
+   */
+  const handleUploadClick = () => {
+    const pendingEntries = fileEntries.filter((e) => e.status === 'pending')
+    startUploads(pendingEntries)
+  }
+
+  /**
+   * Remove a file from the selection (only before upload starts).
+   */
+  const removeFile = (id) => {
+    setFileEntries((prev) => prev.filter((e) => e.id !== id))
+  }
+
+  /**
+   * Cancel an in-progress upload.
+   */
+  const cancelUpload = (entry) => {
+    const controller = abortControllersRef.current[entry.id]
+    if (controller) {
+      controller.abort()
+    }
+    setFileEntries((prev) =>
+      prev.map((e) => (e.id === entry.id ? { ...e, status: 'cancelled' } : e)),
+    )
+    if (onCancel) {
+      onCancel(entry.file)
+    }
+  }
+
+  // --- Drag and drop handlers ---
 
   const handleDragEnter = (e) => {
     e.preventDefault()
@@ -92,7 +272,46 @@ const FileUpload = ({
     if (files && files.length > 0) {
       handleFiles(files)
     }
+    // Reset input so the same file can be selected again
+    if (inputRef.current) {
+      inputRef.current.value = ''
+    }
   }
+
+  // --- Status colour helpers ---
+
+  const getStatusColour = (status) => {
+    switch (status) {
+      case 'uploading':
+        return colours.primary[500]
+      case 'complete':
+        return colours.success[500]
+      case 'error':
+      case 'cancelled':
+        return colours.error[500]
+      default:
+        return colours.neutral[400]
+    }
+  }
+
+  const getStatusLabel = (entry) => {
+    switch (entry.status) {
+      case 'pending':
+        return 'Pending'
+      case 'uploading':
+        return `${entry.progress}%`
+      case 'complete':
+        return 'Complete'
+      case 'error':
+        return entry.errorMessage || 'Error'
+      case 'cancelled':
+        return 'Cancelled'
+      default:
+        return ''
+    }
+  }
+
+  // --- Styles ---
 
   const dropZoneStyles = {
     fontFamily: typography.fontFamily.sans,
@@ -128,22 +347,132 @@ const FileUpload = ({
   }
 
   const fileItemStyles = {
+    fontFamily: typography.fontFamily.sans,
     fontSize: typography.fontSize.sm,
     color: colours.neutral[700],
-    padding: spacing[2],
+    padding: spacing[3],
     backgroundColor: colours.neutral[50],
-    borderRadius: radii.sm,
+    borderRadius: radii.md,
     marginBottom: spacing[2],
+    display: 'flex',
+    flexDirection: 'column',
+    gap: spacing[2],
+    transition: `all ${transitions.normal}`,
+  }
+
+  const fileItemRowStyles = {
+    display: 'flex',
+    alignItems: 'center',
+    gap: spacing[2],
+  }
+
+  const fileIconStyles = {
+    fontSize: typography.fontSize.lg,
+    flexShrink: 0,
+    lineHeight: 1,
+  }
+
+  const fileNameStyles = {
+    fontWeight: typography.fontWeight.medium,
+    flex: 1,
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
+  }
+
+  const fileSizeStyles = {
+    fontSize: typography.fontSize.xs,
+    color: colours.neutral[500],
+    flexShrink: 0,
+  }
+
+  const statusLabelStyles = (status) => ({
+    fontSize: typography.fontSize.xs,
+    fontWeight: typography.fontWeight.medium,
+    color: getStatusColour(status),
+    flexShrink: 0,
+  })
+
+  const actionButtonStyles = {
+    background: 'none',
+    border: 'none',
+    cursor: 'pointer',
+    padding: spacing[1],
+    borderRadius: radii.sm,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+    transition: `background-color ${transitions.fast}`,
+    color: colours.neutral[400],
+    lineHeight: 1,
+  }
+
+  const uploadButtonStyles = {
+    fontFamily: typography.fontFamily.sans,
+    fontSize: typography.fontSize.sm,
+    fontWeight: typography.fontWeight.medium,
+    color: colours.white,
+    backgroundColor: colours.primary[500],
+    border: 'none',
+    borderRadius: radii.md,
+    padding: `${spacing[2]} ${spacing[4]}`,
+    cursor: 'pointer',
+    marginTop: spacing[3],
+    transition: `background-color ${transitions.fast}`,
   }
 
   const errorStyles = {
+    fontFamily: typography.fontFamily.sans,
     fontSize: typography.fontSize.sm,
     color: colours.error[500],
     marginTop: spacing[2],
   }
 
+  // --- SVG icons ---
+
+  const CheckIcon = () => (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke={colours.success[500]}
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <polyline points="20 6 9 17 4 12" />
+    </svg>
+  )
+
+  const XIcon = ({ colour: iconColour = colours.neutral[400], size = 16 }) => (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke={iconColour}
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <line x1="18" y1="6" x2="6" y2="18" />
+      <line x1="6" y1="6" x2="18" y2="18" />
+    </svg>
+  )
+
+  XIcon.propTypes = {
+    colour: PropTypes.string,
+    size: PropTypes.number,
+  }
+
+  // --- Determine if there are pending files that can be uploaded ---
+  const hasPendingFiles = fileEntries.some((e) => e.status === 'pending')
+
   return (
     <div className={className}>
+      {/* Drop zone */}
       <div
         style={dropZoneStyles}
         onDragEnter={handleDragEnter}
@@ -184,29 +513,122 @@ const FileUpload = ({
         />
       </div>
 
-      {selectedFiles.length > 0 && (
+      {/* File list */}
+      {fileEntries.length > 0 && (
         <div style={fileListStyles}>
-          {selectedFiles.map((file, index) => (
-            <div key={index} style={fileItemStyles}>
-              {file.name} ({(file.size / 1024).toFixed(2)} KB)
+          {fileEntries.map((entry) => (
+            <div key={entry.id} style={fileItemStyles}>
+              {/* Top row: icon, name, size, status, action button */}
+              <div style={fileItemRowStyles}>
+                <span style={fileIconStyles}>{getFileTypeIcon(entry.file.type)}</span>
+                <span style={fileNameStyles} title={entry.file.name}>
+                  {entry.file.name}
+                </span>
+                <span style={fileSizeStyles}>{formatFileSize(entry.file.size)}</span>
+                <span style={statusLabelStyles(entry.status)}>{getStatusLabel(entry)}</span>
+
+                {/* Status icon or action button */}
+                {entry.status === 'complete' && <CheckIcon />}
+
+                {(entry.status === 'error' || entry.status === 'cancelled') && (
+                  <XIcon colour={colours.error[500]} />
+                )}
+
+                {entry.status === 'pending' && (
+                  <button
+                    type="button"
+                    style={actionButtonStyles}
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      removeFile(entry.id)
+                    }}
+                    title="Remove file"
+                    aria-label={`Remove ${entry.file.name}`}
+                  >
+                    <XIcon />
+                  </button>
+                )}
+
+                {entry.status === 'uploading' && (
+                  <button
+                    type="button"
+                    style={actionButtonStyles}
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      cancelUpload(entry)
+                    }}
+                    title="Cancel upload"
+                    aria-label={`Cancel upload of ${entry.file.name}`}
+                  >
+                    <XIcon colour={colours.error[500]} />
+                  </button>
+                )}
+              </div>
+
+              {/* Progress bar — shown during upload */}
+              {entry.status === 'uploading' && (
+                <ProgressBar
+                  value={entry.progress}
+                  size="sm"
+                  colour={colours.primary[500]}
+                  showLabel={false}
+                />
+              )}
+
+              {/* Completed progress bar — full, green */}
+              {entry.status === 'complete' && (
+                <ProgressBar
+                  value={100}
+                  size="sm"
+                  colour={colours.success[500]}
+                  showLabel={false}
+                />
+              )}
             </div>
           ))}
+
+          {/* Explicit upload button */}
+          {showUploadButton && hasPendingFiles && onUpload && (
+            <button
+              type="button"
+              style={uploadButtonStyles}
+              onClick={handleUploadClick}
+              disabled={disabled}
+            >
+              Upload {fileEntries.filter((e) => e.status === 'pending').length} file
+              {fileEntries.filter((e) => e.status === 'pending').length !== 1 ? 's' : ''}
+            </button>
+          )}
         </div>
       )}
 
+      {/* Error message */}
       {error && <div style={errorStyles}>{error}</div>}
     </div>
   )
 }
 
 FileUpload.propTypes = {
+  /** Called with array of selected File objects */
   onFilesSelected: PropTypes.func,
+  /** Called with (file, { onProgress, signal }) to perform the upload */
+  onUpload: PropTypes.func,
+  /** Called with the File when an upload is cancelled */
+  onCancel: PropTypes.func,
+  /** File type filter for the input element */
   accept: PropTypes.string,
+  /** Allow selecting multiple files */
   multiple: PropTypes.bool,
+  /** Maximum number of files allowed */
   maxFiles: PropTypes.number,
+  /** Maximum file size in bytes (default 5GB) */
   maxSize: PropTypes.number,
+  /** Disable the upload component */
   disabled: PropTypes.bool,
+  /** Additional CSS class name */
   className: PropTypes.string,
+  /** If true, show an explicit Upload button instead of auto-uploading on selection */
+  showUploadButton: PropTypes.bool,
 }
 
 export default FileUpload
