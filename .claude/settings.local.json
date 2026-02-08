@@ -10,7 +10,13 @@
       "Bash(npm run dev:*)",
       "Bash(npx wrangler dev)",
       "Bash(curl:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(git commit -m \"$\\(cat <<''EOF''\nPhase 1A: Infrastructure & Foundation complete\n\nCo-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>\nEOF\n\\)\")",
+      "Bash(git push:*)",
+      "Bash(find:*)",
+      "Bash(npx wrangler d1 execute:*)",
+      "Bash(python -m json.tool:*)",
+      "Bash(powershell:*)"
     ]
   }
 }
