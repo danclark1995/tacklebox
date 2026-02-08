@@ -1,0 +1,18 @@
+name = "tacklebox-api"
+main = "src/index.js"
+compatibility_date = "2025-01-01"
+
+[vars]
+ENVIRONMENT = "production"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "tacklebox-db"
+database_id = "e6e06ffe-3456-4954-89f1-30fbbbe2bbaf"
+
+[[r2_buckets]]
+binding = "tacklebox_storage"
+bucket_name = "tacklebox-storage"
+
+[ai]
+binding = "AI"

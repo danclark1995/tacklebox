@@ -1,0 +1,12 @@
+{
+  "name": "tacklebox-api",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "db:migrate:local": "wrangler d1 execute tacklebox-db --local --file=src/migrations/0001_initial_schema.sql",
+    "db:migrate:remote": "wrangler d1 execute tacklebox-db --remote --file=src/migrations/0001_initial_schema.sql"
+  }
+}
