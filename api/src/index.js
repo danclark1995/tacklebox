@@ -14,8 +14,9 @@ export default {
     // CORS headers
     const origin = request.headers.get('Origin') || ''
     const isLocalDev = origin.startsWith('http://localhost:') || origin.startsWith('http://127.0.0.1:')
+    const isAllowedProd = origin === 'https://app.tacklebox.app' || origin.endsWith('.tacklebox-3mu.pages.dev') || origin === 'https://tacklebox-3mu.pages.dev'
     const corsHeaders = {
-      'Access-Control-Allow-Origin': isLocalDev ? origin : 'https://app.tacklebox.app',
+      'Access-Control-Allow-Origin': (isLocalDev || isAllowedProd) ? origin : 'https://app.tacklebox.app',
       'Access-Control-Allow-Methods': 'GET, POST, PUT, PATCH, DELETE, OPTIONS',
       'Access-Control-Allow-Headers': 'Content-Type, Authorization',
       'Access-Control-Max-Age': '86400',
