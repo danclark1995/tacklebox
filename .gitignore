@@ -26,3 +26,14 @@ Thumbs.db
 
 # Logs
 *.log
+
+# Claude Code
+.claude/settings.local.json
+
+# Local test/cleanup scripts
+cleanup.ps1
+cleanup_all.ps1
+test_api.mjs
+test_api.ps1
+test_proxy.ps1
+nul
