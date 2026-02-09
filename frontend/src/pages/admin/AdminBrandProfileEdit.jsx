@@ -20,6 +20,7 @@ export default function AdminBrandProfileEdit() {
   const [logos, setLogos] = useState([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [extracting, setExtracting] = useState(false)
   const [uploading, setUploading] = useState(false)
 
   useEffect(() => {
@@ -120,6 +121,35 @@ export default function AdminBrandProfileEdit() {
       addToast(err.message, 'error')
     } finally {
       setSaving(false)
+    }
+  }
+
+  const handleExtract = async (file) => {
+    setExtracting(true)
+    try {
+      const formData = new FormData()
+      formData.append('file', file)
+
+      const res = await fetch(apiEndpoint(`/brand-profiles/${clientId}/extract`), {
+        method: 'POST',
+        headers: { ...getAuthHeaders() },
+        body: formData,
+      })
+
+      const json = await res.json()
+
+      if (json.success) {
+        addToast('Brand profile extracted from PDF', 'success')
+        return json.data
+      } else {
+        addToast(json.error || 'Extraction failed', 'error')
+        return null
+      }
+    } catch (err) {
+      addToast(err.message, 'error')
+      return null
+    } finally {
+      setExtracting(false)
     }
   }
 
@@ -232,6 +262,8 @@ export default function AdminBrandProfileEdit() {
           profile={brandProfile}
           clientId={clientId}
           onSaveSection={handleSaveSection}
+          onExtract={handleExtract}
+          extracting={extracting}
           logos={logos}
           onAddLogo={handleAddLogo}
           onDeleteLogo={handleDeleteLogo}

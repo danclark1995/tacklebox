@@ -17,10 +17,15 @@ const SECTIONS = [
   { id: 'guide', label: 'Brand Guide', icon: '▤' },
 ]
 
-export default function BrandProfileEditor({ profile, clientId, onSaveSection, logos = [], onAddLogo, onDeleteLogo, saving = false }) {
+export default function BrandProfileEditor({ profile, clientId, onSaveSection, onExtract, extracting = false, logos = [], onAddLogo, onDeleteLogo, saving = false }) {
   const [activeSection, setActiveSection] = useState('identity')
   const [form, setForm] = useState(getDefaultForm())
   const [savedSections, setSavedSections] = useState({})
+  const [populatedSections, setPopulatedSections] = useState({})
+  const [importExpanded, setImportExpanded] = useState(!profile)
+  const [selectedFile, setSelectedFile] = useState(null)
+  const [extractionDone, setExtractionDone] = useState(false)
+  const [dragOver, setDragOver] = useState(false)
 
   function getDefaultForm() {
     return {
@@ -71,6 +76,44 @@ export default function BrandProfileEditor({ profile, clientId, onSaveSection, l
     if (Array.isArray(val)) return val
     if (typeof val === 'string') { try { const p = JSON.parse(val); return Array.isArray(p) ? p : [] } catch { return [] } }
     return []
+  }
+
+  // Apply extracted data from PDF to the form
+  const applyExtractedData = (data) => {
+    const newForm = { ...form }
+    const populated = {}
+
+    // Map extracted fields to form fields and track which sections got data
+    const fieldToSection = {}
+    for (const section of SECTIONS) {
+      for (const field of getSectionFields(section.id)) {
+        fieldToSection[field] = section.id
+      }
+    }
+
+    for (const [key, value] of Object.entries(data)) {
+      if (key === '_company_name') continue
+      if (value === null || value === undefined) continue
+      if (typeof value === 'string' && !value.trim()) continue
+      if (Array.isArray(value) && value.length === 0) continue
+
+      if (key in newForm) {
+        newForm[key] = value
+        const section = fieldToSection[key]
+        if (section) populated[section] = true
+      }
+    }
+
+    setForm(newForm)
+    setPopulatedSections(populated)
+    setExtractionDone(true)
+    setImportExpanded(false)
+  }
+
+  const handleExtract = async () => {
+    if (!selectedFile || !onExtract) return
+    const result = await onExtract(selectedFile)
+    if (result) applyExtractedData(result)
   }
 
   const set = (field, value) => setForm(prev => ({ ...prev, [field]: value }))
@@ -439,44 +482,130 @@ export default function BrandProfileEditor({ profile, clientId, onSaveSection, l
   const isLogoSection = activeSection === 'logos'
 
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: '200px 1fr', gap: spacing[6], minHeight: '600px' }}>
-      {/* Left nav */}
-      <nav style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-        {SECTIONS.map(section => (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: spacing[6] }}>
+      {/* Import from Brand Guide panel */}
+      {onExtract && (
+        <div style={{ border: `1px solid ${colours.neutral[200]}`, borderRadius: radii.lg, overflow: 'hidden' }}>
           <button
-            key={section.id}
             type="button"
-            onClick={() => setActiveSection(section.id)}
+            onClick={() => setImportExpanded(!importExpanded)}
             style={{
-              display: 'flex', alignItems: 'center', gap: spacing[2],
-              padding: `${spacing[2]} ${spacing[3]}`,
-              backgroundColor: activeSection === section.id ? colours.neutral[200] : 'transparent',
-              color: activeSection === section.id ? colours.neutral[900] : colours.neutral[600],
-              border: 'none', borderRadius: radii.md, cursor: 'pointer',
-              fontSize: typography.fontSize.sm, fontWeight: activeSection === section.id ? typography.fontWeight.semibold : typography.fontWeight.medium,
-              fontFamily: typography.fontFamily.sans,
-              textAlign: 'left', transition: `all ${transitions.fast}`,
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%',
+              padding: `${spacing[3]} ${spacing[4]}`, backgroundColor: colours.neutral[100],
+              border: 'none', cursor: 'pointer', fontFamily: typography.fontFamily.sans,
             }}
           >
-            <span style={{ width: 20, textAlign: 'center', fontSize: typography.fontSize.xs }}>{section.icon}</span>
-            {section.label}
+            <span style={{ fontSize: typography.fontSize.base, fontWeight: typography.fontWeight.semibold, color: colours.neutral[900] }}>
+              Import from Brand Guide
+            </span>
+            <span style={{ color: colours.neutral[500], fontSize: typography.fontSize.lg }}>
+              {importExpanded ? '−' : '+'}
+            </span>
           </button>
-        ))}
-      </nav>
 
-      {/* Right content */}
-      <div>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing[6], paddingBottom: spacing[4], borderBottom: `1px solid ${colours.neutral[200]}` }}>
-          <h2 style={{ fontSize: typography.fontSize.xl, fontWeight: typography.fontWeight.bold, color: colours.neutral[900] }}>
-            {currentSection?.label}
-          </h2>
-          {!isLogoSection && (
-            <Button type="button" variant="primary" onClick={handleSave} disabled={saving}>
-              {saving ? 'Saving...' : savedSections[activeSection] ? 'Saved!' : 'Save Section'}
-            </Button>
+          {importExpanded && (
+            <div style={{ padding: spacing[5] }}>
+              {extracting ? (
+                <div style={{ textAlign: 'center', padding: spacing[8] }}>
+                  <div style={{ width: 32, height: 32, border: `3px solid ${colours.neutral[200]}`, borderTopColor: colours.primary[500], borderRadius: '50%', animation: 'spin 1s linear infinite', margin: '0 auto', marginBottom: spacing[3] }} />
+                  <p style={{ color: colours.neutral[700], fontSize: typography.fontSize.base, fontWeight: typography.fontWeight.medium }}>Analyzing brand guide...</p>
+                  <p style={{ color: colours.neutral[500], fontSize: typography.fontSize.sm, marginTop: spacing[1] }}>Extracting brand profile data with AI</p>
+                  <style>{`@keyframes spin { to { transform: rotate(360deg) } }`}</style>
+                </div>
+              ) : (
+                <>
+                  {/* Drop zone */}
+                  <div
+                    onDragOver={e => { e.preventDefault(); setDragOver(true) }}
+                    onDragLeave={() => setDragOver(false)}
+                    onDrop={e => { e.preventDefault(); setDragOver(false); const f = e.dataTransfer.files[0]; if (f && f.type === 'application/pdf') setSelectedFile(f) }}
+                    onClick={() => { const input = document.createElement('input'); input.type = 'file'; input.accept = '.pdf'; input.onchange = e => { if (e.target.files[0]) setSelectedFile(e.target.files[0]) }; input.click() }}
+                    style={{
+                      padding: spacing[6], border: `2px dashed ${dragOver ? colours.primary[500] : colours.neutral[300]}`,
+                      borderRadius: radii.lg, textAlign: 'center', cursor: 'pointer',
+                      backgroundColor: dragOver ? colours.neutral[200] : 'transparent',
+                      transition: `all ${transitions.fast}`, marginBottom: spacing[4],
+                    }}
+                  >
+                    {selectedFile ? (
+                      <div>
+                        <p style={{ fontSize: typography.fontSize.base, fontWeight: typography.fontWeight.medium, color: colours.neutral[900] }}>{selectedFile.name}</p>
+                        <p style={{ fontSize: typography.fontSize.sm, color: colours.neutral[500], marginTop: spacing[1] }}>{(selectedFile.size / 1024).toFixed(0)} KB — Click to change</p>
+                      </div>
+                    ) : (
+                      <div>
+                        <p style={{ fontSize: '28px', color: colours.neutral[400], marginBottom: spacing[2] }}>PDF</p>
+                        <p style={{ fontSize: typography.fontSize.base, color: colours.neutral[600] }}>Drop a brand guide PDF here, or click to browse</p>
+                        <p style={{ fontSize: typography.fontSize.sm, color: colours.neutral[500], marginTop: spacing[1] }}>Accepts .pdf files</p>
+                      </div>
+                    )}
+                  </div>
+
+                  {selectedFile && (
+                    <Button type="button" variant="primary" onClick={handleExtract} disabled={extracting}>
+                      Extract Brand Profile
+                    </Button>
+                  )}
+                </>
+              )}
+            </div>
           )}
         </div>
-        {sectionRenderers[activeSection]?.()}
+      )}
+
+      {/* Success banner */}
+      {extractionDone && (
+        <div style={{ padding: `${spacing[3]} ${spacing[4]}`, backgroundColor: colours.success[500] + '18', border: `1px solid ${colours.success[500]}40`, borderRadius: radii.lg, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <span style={{ fontSize: typography.fontSize.sm, fontWeight: typography.fontWeight.medium, color: colours.success[500] }}>
+            Brand profile extracted! Review each section and save.
+          </span>
+          <button type="button" onClick={() => setExtractionDone(false)} style={{ background: 'none', border: 'none', color: colours.success[500], cursor: 'pointer', fontSize: typography.fontSize.lg, fontFamily: typography.fontFamily.sans }}>x</button>
+        </div>
+      )}
+
+      {/* Editor grid */}
+      <div style={{ display: 'grid', gridTemplateColumns: '200px 1fr', gap: spacing[6], minHeight: '600px' }}>
+        {/* Left nav */}
+        <nav style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+          {SECTIONS.map(section => (
+            <button
+              key={section.id}
+              type="button"
+              onClick={() => setActiveSection(section.id)}
+              style={{
+                display: 'flex', alignItems: 'center', gap: spacing[2],
+                padding: `${spacing[2]} ${spacing[3]}`,
+                backgroundColor: activeSection === section.id ? colours.neutral[200] : 'transparent',
+                color: activeSection === section.id ? colours.neutral[900] : colours.neutral[600],
+                border: 'none', borderRadius: radii.md, cursor: 'pointer',
+                fontSize: typography.fontSize.sm, fontWeight: activeSection === section.id ? typography.fontWeight.semibold : typography.fontWeight.medium,
+                fontFamily: typography.fontFamily.sans,
+                textAlign: 'left', transition: `all ${transitions.fast}`,
+              }}
+            >
+              <span style={{ width: 20, textAlign: 'center', fontSize: typography.fontSize.xs }}>{section.icon}</span>
+              {section.label}
+              {populatedSections[section.id] && (
+                <span style={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: colours.success[500], marginLeft: 'auto', flexShrink: 0 }} />
+              )}
+            </button>
+          ))}
+        </nav>
+
+        {/* Right content */}
+        <div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing[6], paddingBottom: spacing[4], borderBottom: `1px solid ${colours.neutral[200]}` }}>
+            <h2 style={{ fontSize: typography.fontSize.xl, fontWeight: typography.fontWeight.bold, color: colours.neutral[900] }}>
+              {currentSection?.label}
+            </h2>
+            {!isLogoSection && (
+              <Button type="button" variant="primary" onClick={handleSave} disabled={saving}>
+                {saving ? 'Saving...' : savedSections[activeSection] ? 'Saved!' : 'Save Section'}
+              </Button>
+            )}
+          </div>
+          {sectionRenderers[activeSection]?.()}
+        </div>
       </div>
     </div>
   )
