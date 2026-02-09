@@ -67,7 +67,7 @@ const Avatar = ({ src, name, size = 'md', className = '' }) => {
     fontFamily: typography.fontFamily.sans,
     fontSize: fontSizes[size],
     fontWeight: typography.fontWeight.semibold,
-    color: colours.white,
+    color: '#ffffff',
     backgroundColor: getColourFromName(name),
     width: '100%',
     height: '100%',

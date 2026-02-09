@@ -1,19 +1,23 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import useToast from '@/hooks/useToast'
+import useAuth from '@/hooks/useAuth'
 import Card from '@/components/ui/Card'
 import Spinner from '@/components/ui/Spinner'
 import Select from '@/components/ui/Select'
 import TaskList from '@/components/features/tasks/TaskList'
+import Leaderboard from '@/components/features/gamification/Leaderboard'
 import { apiEndpoint } from '@/config/env'
 import { getAuthHeaders } from '@/services/auth'
 import { colours, spacing, typography } from '@/config/tokens'
 
 export default function AdminDashboard() {
   const { addToast } = useToast()
+  const { user } = useAuth()
   const navigate = useNavigate()
   const [tasks, setTasks] = useState([])
   const [users, setUsers] = useState([])
+  const [leaderboard, setLeaderboard] = useState([])
   const [loading, setLoading] = useState(true)
   const [statusFilter, setStatusFilter] = useState('')
   const [clientFilter, setClientFilter] = useState('')
@@ -32,6 +36,15 @@ export default function AdminDashboard() {
 
         if (tasksJson.success) setTasks(tasksJson.data)
         if (usersJson.success) setUsers(usersJson.data)
+
+        // Fetch leaderboard (non-critical)
+        try {
+          const lbRes = await fetch(apiEndpoint('/gamification/leaderboard'), { headers: { ...getAuthHeaders() } })
+          const lbJson = await lbRes.json()
+          if (lbJson.success !== false) {
+            setLeaderboard(lbJson.data || lbJson || [])
+          }
+        } catch { /* silently ignore */ }
       } catch (err) {
         addToast(err.message, 'error')
       } finally {
@@ -155,6 +168,16 @@ export default function AdminDashboard() {
           <div style={summaryValueStyle}>{activeContractors.length}</div>
         </Card>
       </div>
+
+      {/* Leaderboard Widget */}
+      {Array.isArray(leaderboard) && leaderboard.length > 0 && (
+        <div style={sectionStyle}>
+          <h2 style={sectionTitleStyle}>Top Performers</h2>
+          <Card padding="sm">
+            <Leaderboard entries={leaderboard} currentUserId={user?.id} compact />
+          </Card>
+        </div>
+      )}
 
       <div style={sectionStyle}>
         <h2 style={sectionTitleStyle}>All Tasks</h2>

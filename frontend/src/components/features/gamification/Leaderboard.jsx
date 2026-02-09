@@ -6,9 +6,9 @@ import { colours, spacing, typography, radii, transitions } from '@/config/token
  * Rank accent colours for the top three positions.
  */
 const RANK_COLOURS = {
-  1: '#000000', // Gold
-  2: '#737373', // Silver
-  3: '#a3a3a3', // Bronze
+  1: '#fbbf24', // Gold
+  2: '#d4d4d4', // Silver
+  3: '#d97706', // Bronze
 }
 
 /**

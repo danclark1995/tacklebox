@@ -56,7 +56,7 @@ export default function TaskHistory({ history = [] }) {
                 borderRadius: '50%',
                 backgroundColor: colours.white,
                 border: `3px solid ${colours.primary[500]}`,
-                boxShadow: '0 0 0 4px rgba(0, 0, 0, 0.08)',
+                boxShadow: '0 0 0 4px rgba(255, 255, 255, 0.08)',
                 zIndex: 1,
               }}
             />

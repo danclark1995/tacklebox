@@ -171,22 +171,32 @@ export default function ContractorDashboard() {
         </Card>
       </div>
 
-      {/* Gamification Summary Widget */}
+      {/* Gamification Section */}
       {xpData && (
         <div style={gamificationWidgetStyle}>
-          <Card padding="md">
-            <XPBar xpData={xpData} compact />
-            {badges.filter(b => b.earned).length > 0 && (
-              <div style={{ marginTop: spacing[4] }}>
-                <BadgeGrid badges={badges} compact />
+          <h2 style={sectionTitleStyle}>Your Progress</h2>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: spacing[4] }}>
+            <Card padding="md">
+              <XPBar xpData={xpData} />
+              <div style={{ marginTop: spacing[3] }}>
+                <Link to="/stats" style={viewStatsLinkStyle}>
+                  View All Stats &rarr;
+                </Link>
               </div>
-            )}
-            <div style={{ marginTop: spacing[3] }}>
-              <Link to="/stats" style={viewStatsLinkStyle}>
-                View All Stats &rarr;
-              </Link>
-            </div>
-          </Card>
+            </Card>
+            <Card padding="md">
+              <div style={{ fontSize: typography.fontSize.sm, fontWeight: typography.fontWeight.semibold, color: colours.neutral[900], marginBottom: spacing[3] }}>
+                Badges Earned
+              </div>
+              {badges.filter(b => b.earned).length > 0 ? (
+                <BadgeGrid badges={badges} compact />
+              ) : (
+                <div style={{ fontSize: typography.fontSize.sm, color: colours.neutral[500] }}>
+                  Complete tasks to earn badges
+                </div>
+              )}
+            </Card>
+          </div>
         </div>
       )}
 

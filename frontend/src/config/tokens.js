@@ -7,111 +7,111 @@
  */
 
 export const colours = {
-  // Primary — Black, clean and premium
+  // Primary — White accent on dark background (Linear / Vercel style)
   primary: {
-    50: '#fafafa',
-    100: '#f5f5f5',
-    200: '#e5e5e5',
-    300: '#d4d4d4',
+    50: '#0a0a0a',
+    100: '#141414',
+    200: '#1e1e1e',
+    300: '#2a2a2a',
     400: '#a3a3a3',
-    500: '#000000', // Main brand colour
-    600: '#000000',
-    700: '#000000',
-    800: '#000000',
-    900: '#000000',
+    500: '#ffffff', // Main brand accent
+    600: '#e5e5e5',
+    700: '#d4d4d4',
+    800: '#a3a3a3',
+    900: '#737373',
   },
 
-  // Secondary — Grey accent, subtle depth
+  // Secondary — Subtle dark tones
   secondary: {
-    50: '#fafafa',
-    100: '#f5f5f5',
-    200: '#e5e5e5',
-    300: '#d4d4d4',
-    400: '#a3a3a3',
-    500: '#737373', // Main accent
-    600: '#525252',
-    700: '#404040',
-    800: '#262626',
-    900: '#171717',
-  },
-
-  // Neutral — Pure greys
-  neutral: {
-    50: '#fafafa',
-    100: '#f5f5f5',
-    200: '#e5e5e5',
-    300: '#d4d4d4',
-    400: '#a3a3a3',
-    500: '#737373',
-    600: '#525252',
-    700: '#404040',
-    800: '#262626',
-    900: '#0a0a0a', // Main text
-  },
-
-  // Success
-  success: {
-    50: '#f0fdf4',
-    100: '#dcfce7',
-    200: '#bbf7d0',
-    300: '#86efac',
-    400: '#4ade80',
-    500: '#22c55e',
-    600: '#16a34a',
-    700: '#15803d',
-    800: '#166534',
-    900: '#14532d',
-  },
-
-  // Warning
-  warning: {
-    50: '#fffbeb',
-    100: '#fef3c7',
-    200: '#fde68a',
-    300: '#fcd34d',
-    400: '#fbbf24',
-    500: '#f59e0b',
-    600: '#d97706',
-    700: '#b45309',
-    800: '#92400e',
-    900: '#78350f',
-  },
-
-  // Error
-  error: {
-    50: '#fef2f2',
-    100: '#fee2e2',
-    200: '#fecaca',
-    300: '#fca5a5',
-    400: '#f87171',
-    500: '#ef4444',
-    600: '#dc2626',
-    700: '#b91c1c',
-    800: '#991b1b',
-    900: '#7f1d1d',
-  },
-
-  // Info
-  info: {
-    50: '#f5f5f5',
-    100: '#e5e5e5',
-    200: '#d4d4d4',
-    300: '#a3a3a3',
-    400: '#737373',
-    500: '#525252',
+    50: '#0a0a0a',
+    100: '#141414',
+    200: '#1e1e1e',
+    300: '#2a2a2a',
+    400: '#404040',
+    500: '#333333',
     600: '#404040',
-    700: '#262626',
-    800: '#171717',
-    900: '#0a0a0a',
+    700: '#a3a3a3',
+    800: '#d4d4d4',
+    900: '#e5e5e5',
   },
 
-  // Surfaces
-  white: '#ffffff',
-  black: '#000000',
-  background: '#ffffff',
-  surface: '#ffffff',
-  surfaceRaised: '#ffffff',
-  overlay: 'rgba(0, 0, 0, 0.5)',
+  // Neutral — Inverted for dark mode (50=darkest, 900=lightest)
+  neutral: {
+    50: '#0a0a0a',
+    100: '#141414',
+    200: '#1e1e1e',
+    300: '#2a2a2a',
+    400: '#525252',
+    500: '#737373',
+    600: '#a3a3a3',
+    700: '#d4d4d4',
+    800: '#e5e5e5',
+    900: '#ffffff', // Main text
+  },
+
+  // Success — Dark-mode optimised
+  success: {
+    50: '#052e16',
+    100: '#14532d',
+    200: '#166534',
+    300: '#15803d',
+    400: '#16a34a',
+    500: '#22c55e',
+    600: '#4ade80',
+    700: '#86efac',
+    800: '#bbf7d0',
+    900: '#f0fdf4',
+  },
+
+  // Warning — Dark-mode optimised
+  warning: {
+    50: '#451a03',
+    100: '#78350f',
+    200: '#92400e',
+    300: '#b45309',
+    400: '#d97706',
+    500: '#f59e0b',
+    600: '#fbbf24',
+    700: '#fcd34d',
+    800: '#fde68a',
+    900: '#fffbeb',
+  },
+
+  // Error — Dark-mode optimised
+  error: {
+    50: '#450a0a',
+    100: '#7f1d1d',
+    200: '#991b1b',
+    300: '#b91c1c',
+    400: '#dc2626',
+    500: '#ef4444',
+    600: '#f87171',
+    700: '#fca5a5',
+    800: '#fecaca',
+    900: '#fef2f2',
+  },
+
+  // Info — Blue tones for dark mode
+  info: {
+    50: '#0c1929',
+    100: '#172554',
+    200: '#1e3a5f',
+    300: '#1e40af',
+    400: '#2563eb',
+    500: '#3b82f6',
+    600: '#60a5fa',
+    700: '#93bbfd',
+    800: '#bfdbfe',
+    900: '#eff6ff',
+  },
+
+  // Surfaces — Dark mode
+  white: '#111111',
+  black: '#ffffff',
+  background: '#0a0a0a',
+  surface: '#111111',
+  surfaceRaised: '#1a1a1a',
+  overlay: 'rgba(0, 0, 0, 0.7)',
 }
 
 export const typography = {
@@ -170,10 +170,10 @@ export const radii = {
 
 export const shadows = {
   none: 'none',
-  sm: '0 1px 2px rgba(0, 0, 0, 0.05)',
-  md: '0 4px 6px -1px rgba(0, 0, 0, 0.07), 0 2px 4px -2px rgba(0, 0, 0, 0.05)',
-  lg: '0 10px 15px -3px rgba(0, 0, 0, 0.08), 0 4px 6px -4px rgba(0, 0, 0, 0.04)',
-  xl: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.05)',
+  sm: '0 1px 2px rgba(0, 0, 0, 0.4)',
+  md: '0 4px 6px -1px rgba(0, 0, 0, 0.5), 0 2px 4px -2px rgba(0, 0, 0, 0.4)',
+  lg: '0 10px 15px -3px rgba(0, 0, 0, 0.5), 0 4px 6px -4px rgba(0, 0, 0, 0.3)',
+  xl: '0 20px 25px -5px rgba(0, 0, 0, 0.6), 0 8px 10px -6px rgba(0, 0, 0, 0.4)',
 }
 
 export const breakpoints = {

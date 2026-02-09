@@ -152,7 +152,7 @@ const goldAccent = {
   left: 0,
   right: 0,
   height: '3px',
-  background: 'linear-gradient(90deg, #000000, #404040, #000000)',
+  background: 'linear-gradient(90deg, #ffffff, #a3a3a3, #ffffff)',
   borderRadius: `${radii.sm} ${radii.sm} 0 0`,
 }
 

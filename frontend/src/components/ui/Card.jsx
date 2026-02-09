@@ -20,7 +20,8 @@ const Card = ({
   const baseStyles = {
     backgroundColor: colours.white,
     borderRadius: radii.xl,
-    boxShadow: isHovered && hover ? shadows.md : shadows.sm,
+    border: `1px solid ${colours.neutral[200]}`,
+    boxShadow: isHovered && hover ? shadows.md : shadows.none,
     padding: paddingStyles[padding],
     transition: `all ${transitions.normal}`,
     cursor: onClick ? 'pointer' : 'default',

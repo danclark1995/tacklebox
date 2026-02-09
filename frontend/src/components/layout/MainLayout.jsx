@@ -113,7 +113,7 @@ export default function MainLayout({ children }) {
 
   const mainStyle = {
     flex: 1,
-    marginLeft: '260px',
+    marginLeft: '200px',
     display: 'flex',
     flexDirection: 'column',
     transition: 'margin-left 200ms ease',

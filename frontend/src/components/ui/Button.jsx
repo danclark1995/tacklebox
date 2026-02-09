@@ -52,16 +52,16 @@ const Button = ({
   const variantStyles = {
     primary: {
       backgroundColor: colours.primary[500],
-      color: colours.white,
+      color: colours.neutral[50],
     },
     secondary: {
       backgroundColor: colours.secondary[500],
-      color: colours.white,
+      color: colours.neutral[900],
     },
     outline: {
       backgroundColor: 'transparent',
-      color: colours.primary[500],
-      border: `1px solid ${colours.primary[500]}`,
+      color: colours.neutral[900],
+      border: `1px solid ${colours.neutral[300]}`,
     },
     ghost: {
       backgroundColor: 'transparent',
@@ -69,16 +69,16 @@ const Button = ({
     },
     danger: {
       backgroundColor: colours.error[500],
-      color: colours.white,
+      color: '#ffffff',
     },
   }
 
   const hoverStyles = {
-    primary: { backgroundColor: colours.primary[600] },
+    primary: { backgroundColor: colours.neutral[700] },
     secondary: { backgroundColor: colours.secondary[600] },
-    outline: { backgroundColor: colours.primary[50] },
-    ghost: { backgroundColor: colours.neutral[100] },
-    danger: { backgroundColor: colours.error[600] },
+    outline: { backgroundColor: colours.neutral[200] },
+    ghost: { backgroundColor: colours.neutral[200] },
+    danger: { backgroundColor: colours.error[400] },
   }
 
   const [isHovered, setIsHovered] = React.useState(false)
@@ -111,7 +111,7 @@ const Button = ({
       className={className}
     >
       {loading ? (
-        <Spinner size="sm" colour={variant === 'outline' || variant === 'ghost' ? colours.primary[500] : colours.white} />
+        <Spinner size="sm" colour={variant === 'primary' ? colours.neutral[50] : colours.neutral[900]} />
       ) : (
         icon && <span style={{ display: 'flex', alignItems: 'center' }}>{icon}</span>
       )}

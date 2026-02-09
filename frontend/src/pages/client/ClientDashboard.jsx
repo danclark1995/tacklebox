@@ -6,6 +6,7 @@ import Card from '@/components/ui/Card'
 import Button from '@/components/ui/Button'
 import Spinner from '@/components/ui/Spinner'
 import EmptyState from '@/components/ui/EmptyState'
+import TaskProgressTracker from '@/components/ui/TaskProgressTracker'
 import ProjectList from '@/components/features/projects/ProjectList'
 import TaskList from '@/components/features/tasks/TaskList'
 import { apiEndpoint } from '@/config/env'
@@ -151,6 +152,23 @@ export default function ClientDashboard() {
           <div style={summaryValueStyle}>{recentlyCompleted.length}</div>
         </Card>
       </div>
+
+      {/* Task Progress Trackers */}
+      {activeTasks.length > 0 && (
+        <div style={sectionStyle}>
+          <h2 style={sectionTitleStyle}>Task Progress</h2>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: spacing[3] }}>
+            {activeTasks.slice(0, 3).map(task => (
+              <Card key={task.id} padding="sm" onClick={() => navigate(`/tasks/${task.id}`)} style={{ cursor: 'pointer' }}>
+                <div style={{ fontSize: typography.fontSize.sm, fontWeight: typography.fontWeight.semibold, color: colours.neutral[900], marginBottom: spacing[2] }}>
+                  {task.title}
+                </div>
+                <TaskProgressTracker status={task.status} />
+              </Card>
+            ))}
+          </div>
+        </div>
+      )}
 
       {projects.length > 0 && (
         <div style={sectionStyle}>

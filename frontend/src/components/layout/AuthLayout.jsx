@@ -6,7 +6,7 @@ export default function AuthLayout({ children }) {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    background: `linear-gradient(135deg, ${colours.primary[500]} 0%, ${colours.primary[700]} 100%)`,
+    background: `linear-gradient(135deg, ${colours.neutral[50]} 0%, ${colours.neutral[100]} 100%)`,
     padding: spacing[4],
   }
 
@@ -16,6 +16,7 @@ export default function AuthLayout({ children }) {
     backgroundColor: colours.surface,
     borderRadius: radii.xl,
     boxShadow: shadows.xl,
+    border: `1px solid ${colours.neutral[200]}`,
     padding: spacing[8],
   }
 

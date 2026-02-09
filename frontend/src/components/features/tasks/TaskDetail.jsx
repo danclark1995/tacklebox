@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Tabs, Button, Badge, StatusBadge, Avatar, Modal, Select, Textarea, FileUpload, EmptyState } from '@/components/ui'
+import { Tabs, Button, Badge, StatusBadge, Avatar, Modal, Select, Textarea, FileUpload, EmptyState, TaskProgressTracker } from '@/components/ui'
 import TaskHistory from './TaskHistory'
 import TimeLogSection from '@/components/features/tasks/TimeLogSection'
 import ReviewSection from '@/components/features/tasks/ReviewSection'
@@ -215,6 +215,11 @@ export default function TaskDetail({
             {renderActionButtons()}
           </div>
         </div>
+      </div>
+
+      {/* Progress Tracker */}
+      <div style={{ padding: `0 ${spacing[6]}`, backgroundColor: colours.white, borderBottom: `1px solid ${colours.neutral[200]}` }}>
+        <TaskProgressTracker status={task.status} />
       </div>
 
       {/* Tabs */}

@@ -36,49 +36,49 @@ const navItemsByRole = {
 
 const icons = {
   home: (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
       <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
       <polyline points="9 22 9 12 15 12 15 22" />
     </svg>
   ),
   folder: (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
       <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
     </svg>
   ),
   'check-square': (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
       <polyline points="9 11 12 14 22 4" />
       <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
     </svg>
   ),
   book: (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
       <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
       <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
     </svg>
   ),
   user: (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
       <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
       <circle cx="12" cy="7" r="4" />
     </svg>
   ),
   image: (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
       <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
       <circle cx="8.5" cy="8.5" r="1.5" />
       <polyline points="21 15 16 10 5 21" />
     </svg>
   ),
   award: (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
       <circle cx="12" cy="8" r="7" />
       <polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88" />
     </svg>
   ),
   users: (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
       <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
       <circle cx="9" cy="7" r="4" />
       <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
@@ -86,7 +86,7 @@ const icons = {
     </svg>
   ),
   'file-text': (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
       <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
       <polyline points="14 2 14 8 20 8" />
       <line x1="16" y1="13" x2="8" y2="13" />
@@ -95,7 +95,7 @@ const icons = {
     </svg>
   ),
   grid: (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
       <rect x="3" y="3" width="7" height="7" />
       <rect x="14" y="3" width="7" height="7" />
       <rect x="14" y="14" width="7" height="7" />
@@ -103,14 +103,14 @@ const icons = {
     </svg>
   ),
   'bar-chart': (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
       <line x1="12" y1="20" x2="12" y2="10" />
       <line x1="18" y1="20" x2="18" y2="4" />
       <line x1="6" y1="20" x2="6" y2="16" />
     </svg>
   ),
   settings: (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
       <circle cx="12" cy="12" r="3" />
       <path d="M12 1v6m0 6v6m9-9h-6m-6 0H3m15.364 6.364l-4.243-4.243M9.879 9.879l-4.243-4.243m12.728 0l-4.243 4.243M9.879 14.121l-4.243 4.243" />
     </svg>
@@ -130,7 +130,7 @@ export default function Sidebar() {
     top: 0,
     left: 0,
     bottom: 0,
-    width: '260px',
+    width: '200px',
     backgroundColor: colours.surface,
     borderRight: `1px solid ${colours.neutral[200]}`,
     display: 'flex',
@@ -146,7 +146,7 @@ export default function Sidebar() {
   }
 
   const headerStyle = {
-    padding: spacing[6],
+    padding: `${spacing[4]} ${spacing[4]}`,
     borderBottom: `1px solid ${colours.neutral[200]}`,
   }
 
@@ -156,46 +156,46 @@ export default function Sidebar() {
   }
 
   const logoImgStyle = {
-    height: '32px',
+    height: '26px',
     width: 'auto',
   }
 
   const navStyle = {
     flex: 1,
     overflowY: 'auto',
-    padding: spacing[4],
+    padding: `${spacing[2]} ${spacing[3]}`,
   }
 
   const navItemStyle = {
     display: 'flex',
     alignItems: 'center',
-    gap: spacing[3],
-    padding: `${spacing[3]} ${spacing[4]}`,
-    color: colours.neutral[700],
+    gap: spacing[2],
+    padding: `${spacing[2]} ${spacing[3]}`,
+    color: colours.neutral[600],
     textDecoration: 'none',
-    borderRadius: radii.lg,
-    fontSize: typography.fontSize.base,
+    borderRadius: radii.md,
+    fontSize: typography.fontSize.sm,
     fontWeight: typography.fontWeight.medium,
     transition: `all ${transitions.fast}`,
-    marginBottom: spacing[1],
+    marginBottom: '2px',
   }
 
   const activeNavItemStyle = {
     ...navItemStyle,
-    backgroundColor: colours.primary[50],
-    color: colours.primary[600],
+    backgroundColor: colours.neutral[200],
+    color: colours.neutral[900],
   }
 
   const footerStyle = {
-    padding: spacing[4],
+    padding: spacing[3],
     borderTop: `1px solid ${colours.neutral[200]}`,
   }
 
   const userInfoStyle = {
     display: 'flex',
     alignItems: 'center',
-    gap: spacing[3],
-    marginBottom: spacing[3],
+    gap: spacing[2],
+    marginBottom: spacing[2],
   }
 
   const userDetailsStyle = {
