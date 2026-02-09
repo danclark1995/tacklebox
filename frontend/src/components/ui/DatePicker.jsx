@@ -60,7 +60,7 @@ const DatePicker = ({
       <input
         type="date"
         value={value}
-        onChange={onChange}
+        onChange={(e) => onChange && onChange(e.target.value)}
         min={min}
         max={max}
         disabled={disabled}
