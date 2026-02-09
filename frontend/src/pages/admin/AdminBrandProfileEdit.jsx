@@ -17,6 +17,7 @@ export default function AdminBrandProfileEdit() {
   const { addToast } = useToast()
   const [brandProfile, setBrandProfile] = useState(null)
   const [brandGuides, setBrandGuides] = useState([])
+  const [logos, setLogos] = useState([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [uploading, setUploading] = useState(false)
@@ -35,7 +36,15 @@ export default function AdminBrandProfileEdit() {
       const profileJson = await profileRes.json()
       const guidesJson = await guidesRes.json()
 
-      if (profileJson.success) setBrandProfile(profileJson.data)
+      if (profileJson.success) {
+        setBrandProfile(profileJson.data)
+        // Fetch logos once we know the profile exists
+        try {
+          const logosRes = await fetch(apiEndpoint(`/brand-profiles/${clientId}/logos`), { headers: { ...getAuthHeaders() } })
+          const logosJson = await logosRes.json()
+          if (logosJson.success) setLogos(logosJson.data || [])
+        } catch { /* logos table may not exist yet */ }
+      }
       if (guidesJson.success) setBrandGuides(guidesJson.data)
     } catch (err) {
       addToast(err.message, 'error')
@@ -44,26 +53,68 @@ export default function AdminBrandProfileEdit() {
     }
   }
 
-  const handleSaveProfile = async (profileData) => {
+  const handleSaveSection = async (sectionData) => {
     setSaving(true)
     try {
-      const method = brandProfile ? 'PUT' : 'POST'
       const res = await fetch(apiEndpoint(`/brand-profiles/${clientId}`), {
-        method,
+        method: 'PUT',
         headers: {
           ...getAuthHeaders(),
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify(profileData)
+        body: JSON.stringify(sectionData)
       })
 
       const json = await res.json()
 
       if (json.success) {
         setBrandProfile(json.data)
-        addToast('Brand profile saved successfully', 'success')
+        addToast('Section saved', 'success')
       } else {
-        addToast(json.message || 'Failed to save brand profile', 'error')
+        addToast(json.error || 'Failed to save', 'error')
+      }
+    } catch (err) {
+      addToast(err.message, 'error')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const handleAddLogo = async (logoData) => {
+    setSaving(true)
+    try {
+      const res = await fetch(apiEndpoint(`/brand-profiles/${clientId}/logos`), {
+        method: 'POST',
+        headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
+        body: JSON.stringify(logoData)
+      })
+      const json = await res.json()
+      if (json.success) {
+        setLogos(prev => [json.data, ...prev])
+        addToast('Logo added', 'success')
+      } else {
+        addToast(json.error || 'Failed to add logo', 'error')
+      }
+    } catch (err) {
+      addToast(err.message, 'error')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const handleDeleteLogo = async (logoId) => {
+    setSaving(true)
+    try {
+      const res = await fetch(apiEndpoint(`/brand-profiles/${clientId}/logos/${logoId}`), {
+        method: 'DELETE',
+        headers: { ...getAuthHeaders() }
+      })
+      const json = await res.json()
+      if (json.success) {
+        setLogos(prev => prev.filter(l => l.id !== logoId))
+        addToast('Logo deleted', 'success')
+      } else {
+        addToast(json.error || 'Failed to delete logo', 'error')
       }
     } catch (err) {
       addToast(err.message, 'error')
@@ -179,8 +230,12 @@ export default function AdminBrandProfileEdit() {
       <div style={sectionStyle}>
         <BrandProfileEditor
           profile={brandProfile}
-          onSave={handleSaveProfile}
-          isSaving={saving}
+          clientId={clientId}
+          onSaveSection={handleSaveSection}
+          logos={logos}
+          onAddLogo={handleAddLogo}
+          onDeleteLogo={handleDeleteLogo}
+          saving={saving}
         />
       </div>
 

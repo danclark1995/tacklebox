@@ -28,6 +28,7 @@ export default function ContractorTaskDetail() {
   const [submitting, setSubmitting] = useState(false)
   const [showBrandProfile, setShowBrandProfile] = useState(false)
   const [brandProfile, setBrandProfile] = useState(null)
+  const [brandLogos, setBrandLogos] = useState([])
   const [loadingBrandProfile, setLoadingBrandProfile] = useState(false)
   const [uploading, setUploading] = useState(false)
 
@@ -299,7 +300,14 @@ export default function ContractorTaskDetail() {
         headers: { ...getAuthHeaders() }
       })
       const json = await res.json()
-      if (json.success) setBrandProfile(json.data)
+      if (json.success) {
+        setBrandProfile(json.data)
+        try {
+          const logosRes = await fetch(apiEndpoint(`/brand-profiles/${task.client_id}/logos`), { headers: { ...getAuthHeaders() } })
+          const logosJson = await logosRes.json()
+          if (logosJson.success) setBrandLogos(logosJson.data || [])
+        } catch { /* logos may not exist yet */ }
+      }
     } catch (err) {
       addToast(err.message, 'error')
     } finally {
@@ -414,7 +422,7 @@ export default function ContractorTaskDetail() {
                 <Spinner size="md" />
               </div>
             ) : brandProfile ? (
-              <BrandProfileView profile={brandProfile} />
+              <BrandProfileView profile={brandProfile} logos={brandLogos} />
             ) : (
               <p style={{ color: colours.neutral[600], textAlign: 'center' }}>
                 No brand profile available

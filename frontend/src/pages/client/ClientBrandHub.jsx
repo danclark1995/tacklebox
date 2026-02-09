@@ -15,6 +15,7 @@ export default function ClientBrandHub() {
   const { addToast } = useToast()
   const [brandProfile, setBrandProfile] = useState(null)
   const [brandGuides, setBrandGuides] = useState([])
+  const [logos, setLogos] = useState([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -28,7 +29,14 @@ export default function ClientBrandHub() {
         const profileJson = await profileRes.json()
         const guidesJson = await guidesRes.json()
 
-        if (profileJson.success) setBrandProfile(profileJson.data)
+        if (profileJson.success) {
+          setBrandProfile(profileJson.data)
+          try {
+            const logosRes = await fetch(apiEndpoint(`/brand-profiles/${user.id}/logos`), { headers: { ...getAuthHeaders() } })
+            const logosJson = await logosRes.json()
+            if (logosJson.success) setLogos(logosJson.data || [])
+          } catch { /* logos may not exist yet */ }
+        }
         if (guidesJson.success) setBrandGuides(guidesJson.data)
       } catch (err) {
         addToast(err.message, 'error')
@@ -71,7 +79,7 @@ export default function ClientBrandHub() {
       <div style={sectionStyle}>
         <h2 style={sectionTitleStyle}>Brand Profile</h2>
         {brandProfile ? (
-          <BrandProfileView profile={brandProfile} />
+          <BrandProfileView profile={brandProfile} clientName={user.display_name} companyName={user.company} logos={logos} />
         ) : (
           <EmptyState
             title="Your brand profile hasn't been set up yet."
