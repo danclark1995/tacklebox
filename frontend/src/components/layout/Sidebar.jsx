@@ -9,6 +9,7 @@ import { ROLES, ROLE_LABELS } from '@/config/constants'
 const navItemsByRole = {
   [ROLES.CLIENT]: [
     { path: '/', label: 'Dashboard', icon: 'home' },
+    { path: '/create', label: 'Create', icon: 'sparkle' },
     { path: '/projects', label: 'Projects', icon: 'folder' },
     { path: '/tasks', label: 'My Tasks', icon: 'check-square' },
     { path: '/brand-hub', label: 'Brand Hub', icon: 'book' },
@@ -23,6 +24,7 @@ const navItemsByRole = {
   ],
   [ROLES.ADMIN]: [
     { path: '/', label: 'Dashboard', icon: 'home' },
+    { path: '/create', label: 'Create', icon: 'sparkle' },
     { path: '/tasks', label: 'All Tasks', icon: 'check-square' },
     { path: '/projects', label: 'Projects', icon: 'folder' },
     { path: '/users', label: 'Users', icon: 'users' },
@@ -113,6 +115,17 @@ const icons = {
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
       <circle cx="12" cy="12" r="3" />
       <path d="M12 1v6m0 6v6m9-9h-6m-6 0H3m15.364 6.364l-4.243-4.243M9.879 9.879l-4.243-4.243m12.728 0l-4.243 4.243M9.879 14.121l-4.243 4.243" />
+    </svg>
+  ),
+  sparkle: (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="M12 2l2.4 7.2L22 12l-7.6 2.8L12 22l-2.4-7.2L2 12l7.6-2.8L12 2z" />
+    </svg>
+  ),
+  clock: (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <circle cx="12" cy="12" r="10" />
+      <polyline points="12 6 12 12 16 14" />
     </svg>
   ),
 }

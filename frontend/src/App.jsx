@@ -33,6 +33,13 @@ import AdminBrandProfileEdit from '@/pages/admin/AdminBrandProfileEdit'
 import AdminAnalytics from '@/pages/admin/AdminAnalytics'
 import AdminTemplates from '@/pages/admin/AdminTemplates'
 
+import CreateHub from '@/pages/create/CreateHub'
+import CreateSocial from '@/pages/create/CreateSocial'
+import CreateDocument from '@/pages/create/CreateDocument'
+import CreatePresentation from '@/pages/create/CreatePresentation'
+import CreateAd from '@/pages/create/CreateAd'
+import MyCreations from '@/pages/create/MyCreations'
+
 import LoginPage from '@/pages/LoginPage'
 import NotFoundPage from '@/pages/NotFoundPage'
 import SearchResults from '@/pages/SearchResults'
@@ -184,6 +191,37 @@ function App() {
               <Route path="/brand-profiles/:clientId/edit" element={
                 <ProtectedRoute roles={['admin']}>
                   <AdminBrandProfileEdit />
+                </ProtectedRoute>
+              } />
+
+              <Route path="/create" element={
+                <ProtectedRoute roles={['client', 'admin']}>
+                  <CreateHub />
+                </ProtectedRoute>
+              } />
+              <Route path="/create/social" element={
+                <ProtectedRoute roles={['client', 'admin']}>
+                  <CreateSocial />
+                </ProtectedRoute>
+              } />
+              <Route path="/create/document" element={
+                <ProtectedRoute roles={['client', 'admin']}>
+                  <CreateDocument />
+                </ProtectedRoute>
+              } />
+              <Route path="/create/presentation" element={
+                <ProtectedRoute roles={['client', 'admin']}>
+                  <CreatePresentation />
+                </ProtectedRoute>
+              } />
+              <Route path="/create/ad" element={
+                <ProtectedRoute roles={['client', 'admin']}>
+                  <CreateAd />
+                </ProtectedRoute>
+              } />
+              <Route path="/creations" element={
+                <ProtectedRoute roles={['client', 'admin']}>
+                  <MyCreations />
                 </ProtectedRoute>
               } />
 
