@@ -17,6 +17,10 @@ import { handleBrandGuides } from './brand-guides.js'
 import { handleStorage } from './storage.js'
 import { handleTimeEntries } from './time-entries.js'
 import { handleReviews } from './reviews.js'
+import { handleGamification } from './gamification.js'
+import { handleAnalytics } from './analytics.js'
+import { handleSearch } from './search.js'
+import { handleAI } from './ai.js'
 
 export async function handleApiRequest(request, env, ctx) {
   const url = new URL(request.url)
@@ -55,6 +59,10 @@ export async function handleApiRequest(request, env, ctx) {
   if (path.startsWith('/storage')) return handleStorage(request, env, auth, path, method)
   if (path.startsWith('/time-entries')) return handleTimeEntries(request, env, auth, path, method)
   if (path.startsWith('/reviews')) return handleReviews(request, env, auth, path, method)
+  if (path.startsWith('/gamification')) return handleGamification(request, env, auth, path, method)
+  if (path.startsWith('/analytics')) return handleAnalytics(request, env, auth, path, method)
+  if (path.startsWith('/search')) return handleSearch(request, env, auth, path, method)
+  if (path.startsWith('/ai')) return handleAI(request, env, auth, path, method)
 
   return jsonResponse({ success: false, error: 'Route not found' }, 404)
 }

@@ -1,14 +1,16 @@
 import { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, Link } from 'react-router-dom'
 import useAuth from '@/hooks/useAuth'
 import useToast from '@/hooks/useToast'
 import Card from '@/components/ui/Card'
 import Spinner from '@/components/ui/Spinner'
 import EmptyState from '@/components/ui/EmptyState'
 import TaskList from '@/components/features/tasks/TaskList'
+import XPBar from '@/components/features/gamification/XPBar'
+import BadgeGrid from '@/components/features/gamification/BadgeGrid'
 import { apiEndpoint } from '@/config/env'
 import { getAuthHeaders } from '@/services/auth'
-import { colours, spacing, typography } from '@/config/tokens'
+import { colours, spacing, typography, radii, shadows } from '@/config/tokens'
 
 export default function ContractorDashboard() {
   const { user } = useAuth()
@@ -16,11 +18,14 @@ export default function ContractorDashboard() {
   const navigate = useNavigate()
   const [tasks, setTasks] = useState([])
   const [loading, setLoading] = useState(true)
+  const [xpData, setXpData] = useState(null)
+  const [badges, setBadges] = useState([])
 
   useEffect(() => {
     async function load() {
       try {
-        const res = await fetch(apiEndpoint('/tasks'), { headers: { ...getAuthHeaders() } })
+        const headers = { ...getAuthHeaders() }
+        const res = await fetch(apiEndpoint('/tasks'), { headers })
         const json = await res.json()
         if (json.success) setTasks(json.data)
       } catch (err) {
@@ -31,6 +36,31 @@ export default function ContractorDashboard() {
     }
     load()
   }, [addToast])
+
+  // Fetch gamification data in parallel
+  useEffect(() => {
+    if (!user?.id) return
+
+    async function loadGamification() {
+      try {
+        const headers = { ...getAuthHeaders() }
+        const [xpRes, badgesRes] = await Promise.all([
+          fetch(apiEndpoint(`/gamification/xp/${user.id}`), { headers }),
+          fetch(apiEndpoint(`/gamification/badges/${user.id}`), { headers }),
+        ])
+        const [xpJson, badgesJson] = await Promise.all([
+          xpRes.json(),
+          badgesRes.json(),
+        ])
+        if (xpJson.success !== false) setXpData(xpJson.data || xpJson)
+        const badgesArray = badgesJson.data || badgesJson
+        if (Array.isArray(badgesArray)) setBadges(badgesArray)
+      } catch {
+        // Gamification data is non-critical — silently ignore errors
+      }
+    }
+    loadGamification()
+  }, [user?.id])
 
   if (loading) {
     return (
@@ -105,6 +135,18 @@ export default function ContractorDashboard() {
     marginBottom: spacing[4],
   }
 
+  const gamificationWidgetStyle = {
+    marginBottom: spacing[8],
+  }
+
+  const viewStatsLinkStyle = {
+    fontFamily: typography.fontFamily.sans,
+    fontSize: typography.fontSize.sm,
+    fontWeight: typography.fontWeight.medium,
+    color: colours.primary[500],
+    textDecoration: 'none',
+  }
+
   return (
     <div>
       <div style={headerStyle}>
@@ -128,6 +170,25 @@ export default function ContractorDashboard() {
           <div style={summaryValueStyle}>{awaitingActionTasks.length}</div>
         </Card>
       </div>
+
+      {/* Gamification Summary Widget */}
+      {xpData && (
+        <div style={gamificationWidgetStyle}>
+          <Card padding="md">
+            <XPBar xpData={xpData} compact />
+            {badges.filter(b => b.earned).length > 0 && (
+              <div style={{ marginTop: spacing[4] }}>
+                <BadgeGrid badges={badges} compact />
+              </div>
+            )}
+            <div style={{ marginTop: spacing[3] }}>
+              <Link to="/stats" style={viewStatsLinkStyle}>
+                View All Stats &rarr;
+              </Link>
+            </div>
+          </Card>
+        </div>
+      )}
 
       <div style={sectionStyle}>
         <h2 style={sectionTitleStyle}>My Tasks</h2>

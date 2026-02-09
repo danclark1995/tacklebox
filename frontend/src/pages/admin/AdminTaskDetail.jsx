@@ -6,6 +6,7 @@ import Button from '@/components/ui/Button'
 import Modal from '@/components/ui/Modal'
 import Select from '@/components/ui/Select'
 import Textarea from '@/components/ui/Textarea'
+import Card from '@/components/ui/Card'
 import TaskDetail from '@/components/features/tasks/TaskDetail'
 import { apiEndpoint } from '@/config/env'
 import { getAuthHeaders } from '@/services/auth'
@@ -29,6 +30,8 @@ export default function AdminTaskDetail() {
   const [selectedContractor, setSelectedContractor] = useState('')
   const [revisionNote, setRevisionNote] = useState('')
   const [submitting, setSubmitting] = useState(false)
+  const [aiAnalysis, setAiAnalysis] = useState(null)
+  const [aiLoading, setAiLoading] = useState(false)
 
   useEffect(() => {
     async function load() {
@@ -53,7 +56,16 @@ export default function AdminTaskDetail() {
         const totalTimeJson = await totalTimeRes.json()
         const historyJson = await historyRes.json()
 
-        if (taskJson.success) setTask(taskJson.data)
+        if (taskJson.success) {
+          setTask(taskJson.data)
+          if (taskJson.data?.ai_metadata) {
+            try {
+              setAiAnalysis(JSON.parse(taskJson.data.ai_metadata))
+            } catch {
+              setAiAnalysis(taskJson.data.ai_metadata)
+            }
+          }
+        }
         if (commentsJson.success) setComments(commentsJson.data)
         if (attachmentsJson.success) setAttachments(attachmentsJson.data)
         if (usersJson.success) setContractors(usersJson.data)
@@ -342,6 +354,27 @@ export default function AdminTaskDetail() {
     }
   }
 
+  const handleAIAnalysis = async () => {
+    setAiLoading(true)
+    try {
+      const res = await fetch(apiEndpoint(`/ai/analyse-brief/${id}`), {
+        method: 'POST',
+        headers: { ...getAuthHeaders() }
+      })
+      const json = await res.json()
+      if (json.success) {
+        setAiAnalysis(json.data)
+        addToast('AI analysis complete', 'success')
+      } else {
+        addToast(json.error || 'AI analysis failed', 'error')
+      }
+    } catch (err) {
+      addToast(err.message, 'error')
+    } finally {
+      setAiLoading(false)
+    }
+  }
+
   if (loading) {
     return (
       <div style={{ display: 'flex', justifyContent: 'center', padding: spacing[8] }}>
@@ -379,9 +412,14 @@ export default function AdminTaskDetail() {
     return (
       <div style={actionsStyle}>
         {task.status === 'submitted' && (
-          <Button onClick={() => setShowAssignModal(true)}>
-            Assign to Contractor
-          </Button>
+          <>
+            <Button onClick={() => setShowAssignModal(true)}>
+              Assign to Contractor
+            </Button>
+            <Button variant="secondary" onClick={handleAIAnalysis} disabled={aiLoading}>
+              {aiLoading ? 'Analysing...' : 'AI Analysis'}
+            </Button>
+          </>
         )}
 
         {task.status === 'review' && (
@@ -417,6 +455,19 @@ export default function AdminTaskDetail() {
       </Link>
 
       {renderAdminActions()}
+
+      {(aiAnalysis || task.ai_metadata) && (
+        <Card style={{ marginBottom: spacing[4], padding: spacing[4], borderLeft: `4px solid ${colours.info[500]}` }}>
+          <h3 style={{ fontSize: '16px', fontWeight: 600, marginBottom: spacing[3], color: colours.info[700] }}>
+            AI Brief Analysis
+          </h3>
+          <div style={{ whiteSpace: 'pre-wrap', lineHeight: 1.6, color: colours.neutral[700] }}>
+            {typeof (aiAnalysis || task.ai_metadata) === 'string'
+              ? (aiAnalysis || task.ai_metadata)
+              : JSON.stringify(aiAnalysis || task.ai_metadata, null, 2)}
+          </div>
+        </Card>
+      )}
 
       <TaskDetail
         task={task}

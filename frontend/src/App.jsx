@@ -19,6 +19,7 @@ import ContractorTasks from '@/pages/contractor/ContractorTasks'
 import ContractorTaskDetail from '@/pages/contractor/ContractorTaskDetail'
 import ContractorBrandGuides from '@/pages/contractor/ContractorBrandGuides'
 import ContractorProfile from '@/pages/contractor/ContractorProfile'
+import ContractorStats from '@/pages/contractor/ContractorStats'
 
 import AdminDashboard from '@/pages/admin/AdminDashboard'
 import AdminTasks from '@/pages/admin/AdminTasks'
@@ -29,9 +30,13 @@ import AdminProjectDetail from '@/pages/admin/AdminProjectDetail'
 import AdminCategories from '@/pages/admin/AdminCategories'
 import AdminBrandProfiles from '@/pages/admin/AdminBrandProfiles'
 import AdminBrandProfileEdit from '@/pages/admin/AdminBrandProfileEdit'
+import AdminAnalytics from '@/pages/admin/AdminAnalytics'
+import AdminTemplates from '@/pages/admin/AdminTemplates'
 
 import LoginPage from '@/pages/LoginPage'
 import NotFoundPage from '@/pages/NotFoundPage'
+import SearchResults from '@/pages/SearchResults'
+import ForbiddenPage from '@/pages/ForbiddenPage'
 
 function DashboardRouter() {
   const { user } = useAuth()
@@ -194,7 +199,7 @@ function App() {
               } />
               <Route path="/templates" element={
                 <ProtectedRoute roles={['admin']}>
-                  <div>Templates - Phase 1C</div>
+                  <AdminTemplates />
                 </ProtectedRoute>
               } />
 
@@ -202,16 +207,19 @@ function App() {
 
               <Route path="/stats" element={
                 <ProtectedRoute roles={['contractor']}>
-                  <div>Stats - Phase 1D</div>
+                  <ContractorStats />
                 </ProtectedRoute>
               } />
               <Route path="/analytics" element={
                 <ProtectedRoute roles={['admin']}>
-                  <div>Analytics - Phase 1D</div>
+                  <AdminAnalytics />
                 </ProtectedRoute>
               } />
+
+              <Route path="/search" element={<SearchResults />} />
             </Route>
 
+            <Route path="/forbidden" element={<ForbiddenPage />} />
             <Route path="*" element={<NotFoundPage />} />
           </Routes>
         </ToastProvider>

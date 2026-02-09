@@ -1,13 +1,109 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
+import { useNavigate } from 'react-router-dom'
 import Sidebar from './Sidebar'
 import SearchBar from '@/components/ui/SearchBar'
 import Avatar from '@/components/ui/Avatar'
+import SearchDropdown from '@/components/features/search/SearchDropdown'
 import useAuth from '@/hooks/useAuth'
 import { colours, spacing, typography, shadows } from '@/config/tokens'
+import { SEARCH_DEBOUNCE_MS } from '@/config/constants'
+import { apiEndpoint } from '@/config/env'
+import { getAuthHeaders } from '@/services/auth'
 
 export default function MainLayout({ children }) {
   const { user } = useAuth()
+  const navigate = useNavigate()
   const [searchQuery, setSearchQuery] = useState('')
+  const [searchResults, setSearchResults] = useState(null)
+  const [searchLoading, setSearchLoading] = useState(false)
+  const [showSearchDropdown, setShowSearchDropdown] = useState(false)
+  const searchContainerRef = useRef(null)
+  const debounceTimerRef = useRef(null)
+
+  // Debounced search
+  const performSearch = useCallback(async (query) => {
+    if (query.length < 2) {
+      setSearchResults(null)
+      setShowSearchDropdown(false)
+      return
+    }
+
+    setSearchLoading(true)
+    setShowSearchDropdown(true)
+
+    try {
+      const res = await fetch(apiEndpoint(`/search?q=${encodeURIComponent(query)}`), {
+        headers: { ...getAuthHeaders() },
+      })
+      const json = await res.json()
+      if (json.success) {
+        setSearchResults(json.data)
+      }
+    } catch {
+      // silently fail
+    } finally {
+      setSearchLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current)
+    }
+
+    if (searchQuery.length >= 2) {
+      debounceTimerRef.current = setTimeout(() => {
+        performSearch(searchQuery)
+      }, SEARCH_DEBOUNCE_MS)
+    } else {
+      setSearchResults(null)
+      setShowSearchDropdown(false)
+    }
+
+    return () => {
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current)
+      }
+    }
+  }, [searchQuery, performSearch])
+
+  // Click outside handler for dropdown
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (searchContainerRef.current && !searchContainerRef.current.contains(e.target)) {
+        setShowSearchDropdown(false)
+      }
+    }
+
+    if (showSearchDropdown) {
+      document.addEventListener('mousedown', handleClickOutside)
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [showSearchDropdown])
+
+  const handleSearchChange = (e) => {
+    setSearchQuery(e.target.value)
+  }
+
+  const handleSearchSubmit = (value) => {
+    if (value && value.trim().length > 0) {
+      setShowSearchDropdown(false)
+      navigate(`/search?q=${encodeURIComponent(value.trim())}`)
+    }
+  }
+
+  const handleDropdownNavigate = (path) => {
+    setShowSearchDropdown(false)
+    setSearchQuery('')
+    navigate(path)
+  }
+
+  const handleDropdownClose = () => {
+    setShowSearchDropdown(false)
+  }
 
   const containerStyle = {
     display: 'flex',
@@ -40,6 +136,7 @@ export default function MainLayout({ children }) {
   const searchContainerStyle = {
     flex: 1,
     maxWidth: '600px',
+    position: 'relative',
   }
 
   const userInfoStyle = {
@@ -61,19 +158,26 @@ export default function MainLayout({ children }) {
     overflowY: 'auto',
   }
 
-  const handleSearch = (query) => {
-    setSearchQuery(query)
-  }
-
   return (
     <div style={containerStyle}>
       <Sidebar />
       <main style={mainStyle}>
         <header style={headerStyle}>
-          <div style={searchContainerStyle}>
+          <div style={searchContainerStyle} ref={searchContainerRef}>
             <SearchBar
+              value={searchQuery}
+              onChange={handleSearchChange}
+              onSubmit={handleSearchSubmit}
               placeholder="Search tasks, projects, users..."
-              onSearch={handleSearch}
+              loading={searchLoading}
+            />
+            <SearchDropdown
+              results={searchResults}
+              query={searchQuery}
+              loading={searchLoading}
+              isOpen={showSearchDropdown}
+              onClose={handleDropdownClose}
+              onNavigate={handleDropdownNavigate}
             />
           </div>
           <div style={userInfoStyle}>
