@@ -195,32 +195,32 @@ function App() {
               } />
 
               <Route path="/create" element={
-                <ProtectedRoute roles={['client', 'admin']}>
+                <ProtectedRoute roles={['admin']}>
                   <CreateHub />
                 </ProtectedRoute>
               } />
               <Route path="/create/social" element={
-                <ProtectedRoute roles={['client', 'admin']}>
+                <ProtectedRoute roles={['admin']}>
                   <CreateSocial />
                 </ProtectedRoute>
               } />
               <Route path="/create/document" element={
-                <ProtectedRoute roles={['client', 'admin']}>
+                <ProtectedRoute roles={['admin']}>
                   <CreateDocument />
                 </ProtectedRoute>
               } />
               <Route path="/create/presentation" element={
-                <ProtectedRoute roles={['client', 'admin']}>
+                <ProtectedRoute roles={['admin']}>
                   <CreatePresentation />
                 </ProtectedRoute>
               } />
               <Route path="/create/ad" element={
-                <ProtectedRoute roles={['client', 'admin']}>
+                <ProtectedRoute roles={['admin']}>
                   <CreateAd />
                 </ProtectedRoute>
               } />
               <Route path="/creations" element={
-                <ProtectedRoute roles={['client', 'admin']}>
+                <ProtectedRoute roles={['admin']}>
                   <MyCreations />
                 </ProtectedRoute>
               } />

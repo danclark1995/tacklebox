@@ -8,6 +8,7 @@ import Select from '@/components/ui/Select'
 import Textarea from '@/components/ui/Textarea'
 import Card from '@/components/ui/Card'
 import TaskDetail from '@/components/features/tasks/TaskDetail'
+import AIAssistantPanel from '@/components/features/tasks/AIAssistantPanel'
 import { apiEndpoint } from '@/config/env'
 import { getAuthHeaders } from '@/services/auth'
 import { spacing, colours, typography } from '@/config/tokens'
@@ -32,6 +33,7 @@ export default function AdminTaskDetail() {
   const [submitting, setSubmitting] = useState(false)
   const [aiAnalysis, setAiAnalysis] = useState(null)
   const [aiLoading, setAiLoading] = useState(false)
+  const [brandProfile, setBrandProfile] = useState(null)
 
   useEffect(() => {
     async function load() {
@@ -81,6 +83,27 @@ export default function AdminTaskDetail() {
     }
     load()
   }, [id, addToast])
+
+  // Auto-fetch brand profile for AI panel
+  useEffect(() => {
+    const activeStatuses = ['in_progress', 'review', 'revision']
+    if (task && task.client_id && activeStatuses.includes(task.status)) {
+      async function fetchBrand() {
+        try {
+          const res = await fetch(apiEndpoint(`/brand-profiles/${task.client_id}`), {
+            headers: { ...getAuthHeaders() }
+          })
+          const json = await res.json()
+          if (json.success) setBrandProfile(json.data)
+        } catch { /* brand profile may not exist */ }
+      }
+      fetchBrand()
+    }
+  }, [task?.id, task?.status, task?.client_id])
+
+  const handleAIAttachmentAdded = (newAttachment) => {
+    setAttachments(prev => [...prev, newAttachment])
+  }
 
   const handleAssign = async () => {
     if (!selectedContractor) {
@@ -468,6 +491,12 @@ export default function AdminTaskDetail() {
           </div>
         </Card>
       )}
+
+      <AIAssistantPanel
+        task={task}
+        brandProfile={brandProfile}
+        onAttachmentAdded={handleAIAttachmentAdded}
+      />
 
       <TaskDetail
         task={task}

@@ -10,7 +10,7 @@
  */
 
 import { jsonResponse } from '../index.js'
-import { requireAuth } from '../middleware/auth.js'
+import { requireRole } from '../middleware/auth.js'
 import { generateContent } from '../services/content-generator.js'
 
 const DIMENSIONS = {
@@ -62,13 +62,19 @@ async function getBrandProfile(env, profileId, auth) {
   // Check access
   if (auth.user.role === 'admin') { /* full access */ }
   else if (auth.user.role === 'client' && profile.client_id === auth.user.id) { /* own profile */ }
+  else if (auth.user.role === 'contractor') {
+    const assignedTask = await env.DB.prepare(
+      'SELECT id FROM tasks WHERE client_id = ? AND contractor_id = ? LIMIT 1'
+    ).bind(profile.client_id, auth.user.id).first()
+    if (!assignedTask) return null
+  }
   else return null
 
   return parseJsonFields(profile)
 }
 
 export async function handleGenerate(request, env, auth, path, method) {
-  const authCheck = requireAuth(auth)
+  const authCheck = requireRole(auth, 'admin', 'contractor')
   if (!authCheck.authorized) return jsonResponse({ success: false, error: authCheck.error }, authCheck.status)
 
   // --- POST /generate/social ---
@@ -286,6 +292,64 @@ export async function handleGenerate(request, env, auth, path, method) {
     } catch (err) {
       console.error('Delete generation error:', err)
       return jsonResponse({ success: false, error: 'Failed to delete generation' }, 500)
+    }
+  }
+
+  // --- POST /generate/attach-to-task ---
+  if (path === '/generate/attach-to-task' && method === 'POST') {
+    try {
+      const body = await request.json()
+      const { generation_id, task_id } = body
+      if (!generation_id || !task_id) {
+        return jsonResponse({ success: false, error: 'generation_id and task_id are required' }, 400)
+      }
+
+      const gen = await env.DB.prepare('SELECT * FROM generations WHERE id = ?').bind(generation_id).first()
+      if (!gen) return jsonResponse({ success: false, error: 'Generation not found' }, 404)
+      if (!gen.result_path) return jsonResponse({ success: false, error: 'Generation has no output file' }, 400)
+
+      const task = await env.DB.prepare(
+        'SELECT id, client_id, contractor_id FROM tasks WHERE id = ?'
+      ).bind(task_id).first()
+      if (!task) return jsonResponse({ success: false, error: 'Task not found' }, 404)
+
+      const hasAccess = auth.user.role === 'admin' ||
+        (auth.user.role === 'contractor' && task.contractor_id === auth.user.id)
+      if (!hasAccess) return jsonResponse({ success: false, error: 'Insufficient permissions' }, 403)
+
+      const sourceObject = await env.tacklebox_storage.get(gen.result_path)
+      if (!sourceObject) return jsonResponse({ success: false, error: 'Generated file not found in storage' }, 404)
+
+      const ext = gen.result_type === 'image/png' ? 'png' : 'html'
+      const fileName = `ai_generated_${gen.content_type}_${gen.id.substring(0, 8)}.${ext}`
+      const attachmentFileId = crypto.randomUUID()
+      const r2Key = `attachments/${task_id}/${attachmentFileId}_${fileName}`
+
+      await env.tacklebox_storage.put(r2Key, sourceObject.body, {
+        httpMetadata: { contentType: gen.result_type },
+      })
+
+      const attachmentId = crypto.randomUUID()
+      const fileSize = sourceObject.size || 0
+      await env.DB.prepare(`
+        INSERT INTO task_attachments (id, task_id, uploaded_by, file_name, file_path, file_type, file_size, upload_type)
+        VALUES (?, ?, ?, ?, ?, ?, ?, 'deliverable')
+      `).bind(attachmentId, task_id, auth.user.id, fileName, r2Key, gen.result_type, fileSize).run()
+
+      await env.DB.prepare(
+        'UPDATE users SET storage_used_bytes = storage_used_bytes + ? WHERE id = ?'
+      ).bind(fileSize, auth.user.id).run()
+
+      const newAttachment = await env.DB.prepare(`
+        SELECT a.*, u.display_name as uploader_name
+        FROM task_attachments a LEFT JOIN users u ON a.uploaded_by = u.id
+        WHERE a.id = ?
+      `).bind(attachmentId).first()
+
+      return jsonResponse({ success: true, data: newAttachment }, 201)
+    } catch (err) {
+      console.error('Attach generation to task error:', err)
+      return jsonResponse({ success: false, error: 'Failed to attach generation to task' }, 500)
     }
   }
 

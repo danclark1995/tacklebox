@@ -8,6 +8,7 @@ import FileUpload from '@/components/ui/FileUpload'
 import Select from '@/components/ui/Select'
 import TaskDetail from '@/components/features/tasks/TaskDetail'
 import BrandProfileView from '@/components/features/brand/BrandProfileView'
+import AIAssistantPanel from '@/components/features/tasks/AIAssistantPanel'
 import { apiEndpoint } from '@/config/env'
 import { getAuthHeaders } from '@/services/auth'
 import { spacing, colours, typography } from '@/config/tokens'
@@ -31,6 +32,23 @@ export default function ContractorTaskDetail() {
   const [brandLogos, setBrandLogos] = useState([])
   const [loadingBrandProfile, setLoadingBrandProfile] = useState(false)
   const [uploading, setUploading] = useState(false)
+
+  // Auto-fetch brand profile for AI panel
+  useEffect(() => {
+    const activeStatuses = ['in_progress', 'review', 'revision']
+    if (task && task.client_id && activeStatuses.includes(task.status)) {
+      async function fetchBrand() {
+        try {
+          const res = await fetch(apiEndpoint(`/brand-profiles/${task.client_id}`), {
+            headers: { ...getAuthHeaders() }
+          })
+          const json = await res.json()
+          if (json.success) setBrandProfile(json.data)
+        } catch { /* brand profile may not exist */ }
+      }
+      fetchBrand()
+    }
+  }, [task?.id, task?.status, task?.client_id])
 
   useEffect(() => {
     async function load() {
@@ -290,6 +308,10 @@ export default function ContractorTaskDetail() {
     }
   }
 
+  const handleAIAttachmentAdded = (newAttachment) => {
+    setAttachments(prev => [...prev, newAttachment])
+  }
+
   const handleViewBrandProfile = async () => {
     if (!task?.client_id) return
 
@@ -390,6 +412,12 @@ export default function ContractorTaskDetail() {
       </Link>
 
       {renderContractorActions()}
+
+      <AIAssistantPanel
+        task={task}
+        brandProfile={brandProfile}
+        onAttachmentAdded={handleAIAttachmentAdded}
+      />
 
       <TaskDetail
         task={task}

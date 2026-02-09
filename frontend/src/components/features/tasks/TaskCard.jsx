@@ -1,4 +1,4 @@
-import { Card, Badge, StatusBadge, Avatar } from '@/components/ui'
+import { Card, Badge, StatusBadge, Avatar, TaskProgressTracker } from '@/components/ui'
 import { PRIORITIES, TASK_STATUS_LABELS } from '@/config/constants'
 import { formatDate, getInitials } from '@/utils/formatters'
 import { colours } from '@/config/tokens'
@@ -135,6 +135,17 @@ export default function TaskCard({ task, onClick }) {
             </span>
           </div>
         )}
+
+        {/* Progress Tracker */}
+        <div style={{
+          marginTop: '12px',
+          paddingTop: '12px',
+          borderTop: `1px solid ${colours.neutral[200]}`,
+          transform: 'scale(0.85)',
+          transformOrigin: 'left center',
+        }}>
+          <TaskProgressTracker status={task.status} />
+        </div>
       </div>
     </Card>
   )

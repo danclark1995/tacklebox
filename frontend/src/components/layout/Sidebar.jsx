@@ -9,7 +9,6 @@ import { ROLES, ROLE_LABELS } from '@/config/constants'
 const navItemsByRole = {
   [ROLES.CLIENT]: [
     { path: '/', label: 'Dashboard', icon: 'home' },
-    { path: '/create', label: 'Create', icon: 'sparkle' },
     { path: '/projects', label: 'Projects', icon: 'folder' },
     { path: '/tasks', label: 'My Tasks', icon: 'check-square' },
     { path: '/brand-hub', label: 'Brand Hub', icon: 'book' },
@@ -24,7 +23,8 @@ const navItemsByRole = {
   ],
   [ROLES.ADMIN]: [
     { path: '/', label: 'Dashboard', icon: 'home' },
-    { path: '/create', label: 'Create', icon: 'sparkle' },
+    { path: '/create', label: 'AI Tools', icon: 'sparkle' },
+    { path: '/creations', label: 'AI Generations', icon: 'clock' },
     { path: '/tasks', label: 'All Tasks', icon: 'check-square' },
     { path: '/projects', label: 'Projects', icon: 'folder' },
     { path: '/users', label: 'Users', icon: 'users' },

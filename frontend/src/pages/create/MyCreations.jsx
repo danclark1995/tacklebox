@@ -183,7 +183,7 @@ export default function MyCreations() {
       </div>
 
       <div style={headerStyle}>
-        <h1 style={titleStyle}>My Creations</h1>
+        <h1 style={titleStyle}>AI Generations</h1>
         <div style={{ fontSize: typography.fontSize.sm, color: colours.neutral[500] }}>
           {pagination.total} generation{pagination.total !== 1 ? 's' : ''}
         </div>
