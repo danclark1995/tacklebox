@@ -179,7 +179,7 @@ export default function ContractorDashboard() {
             <Card padding="md">
               <XPBar xpData={xpData} />
               <div style={{ marginTop: spacing[3] }}>
-                <Link to="/stats" style={viewStatsLinkStyle}>
+                <Link to="/camper/journey" style={viewStatsLinkStyle}>
                   View All Stats &rarr;
                 </Link>
               </div>
@@ -205,7 +205,7 @@ export default function ContractorDashboard() {
         {sortedTasks.length > 0 ? (
           <TaskList
             tasks={sortedTasks}
-            onTaskClick={(task) => navigate(`/tasks/${task.id}`)}
+            onTaskClick={(task) => navigate(`/camper/tasks/${task.id}`)}
           />
         ) : (
           <EmptyState

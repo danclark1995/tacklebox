@@ -107,7 +107,7 @@ export default function AdminTaskDetail() {
 
   const handleAssign = async () => {
     if (!selectedContractor) {
-      addToast('Please select a contractor', 'error')
+      addToast('Please select a camper', 'error')
       return
     }
 
@@ -437,7 +437,7 @@ export default function AdminTaskDetail() {
         {task.status === 'submitted' && (
           <>
             <Button onClick={() => setShowAssignModal(true)}>
-              Assign to Contractor
+              Assign to Camper
             </Button>
             <Button variant="secondary" onClick={handleAIAnalysis} disabled={aiLoading}>
               {aiLoading ? 'Analysing...' : 'AI Analysis'}
@@ -463,7 +463,7 @@ export default function AdminTaskDetail() {
         )}
 
         {task.status !== 'closed' && (
-          <Button variant="secondary" onClick={() => navigate(`/tasks/${id}/edit`)}>
+          <Button variant="secondary" onClick={() => navigate(`/admin/tasks/${id}/edit`)}>
             Edit Task
           </Button>
         )}
@@ -473,7 +473,7 @@ export default function AdminTaskDetail() {
 
   return (
     <div>
-      <Link to="/tasks" style={backLinkStyle}>
+      <Link to="/admin/tasks" style={backLinkStyle}>
         ← Back to Tasks
       </Link>
 
@@ -521,15 +521,15 @@ export default function AdminTaskDetail() {
         <Modal
           isOpen={showAssignModal}
           onClose={() => setShowAssignModal(false)}
-          title="Assign Task to Contractor"
+          title="Assign Task to Camper"
         >
           <div style={{ padding: spacing[4] }}>
             <Select
-              label="Select Contractor"
+              label="Select Camper"
               value={selectedContractor}
               onChange={(e) => setSelectedContractor(e.target.value)}
               options={[
-                { value: '', label: 'Select a contractor...' },
+                { value: '', label: 'Select a camper...' },
                 ...contractors.map(c => ({
                   value: c.id,
                   label: c.display_name || c.name
@@ -557,7 +557,7 @@ export default function AdminTaskDetail() {
         >
           <div style={{ padding: spacing[4] }}>
             <Textarea
-              label="Feedback for Contractor"
+              label="Feedback for Camper"
               value={revisionNote}
               onChange={(e) => setRevisionNote(e.target.value)}
               placeholder="Explain what needs to be revised..."

@@ -251,7 +251,7 @@ export default function AdminBrandProfileEdit() {
 
   return (
     <div>
-      <Link to="/brand-profiles" style={backLinkStyle}>
+      <Link to="/admin/brands" style={backLinkStyle}>
         ← Back to Brand Profiles
       </Link>
 
@@ -298,7 +298,7 @@ export default function AdminBrandProfileEdit() {
         ) : (
           <EmptyState
             title="No brand guides yet"
-            message="Upload brand guides to help contractors understand the client's brand."
+            message="Upload brand guides to help campers understand the client's brand."
           />
         )}
       </div>

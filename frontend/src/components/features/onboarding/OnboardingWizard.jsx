@@ -22,7 +22,7 @@ const STEPS = [
     key: 'brand',
     heading: () => 'Your Brand Profile',
     description:
-      'Your brand profile contains your colours, voice, values, and guidelines. Contractors use this to ensure every deliverable matches your brand.',
+      'Your brand profile contains your colours, voice, values, and guidelines. Campers use this to ensure every deliverable matches your brand.',
     icon: () => (
       <svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke={colours.secondary[500]} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
         <circle cx="13.5" cy="6.5" r="2.5" />

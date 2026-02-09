@@ -145,7 +145,7 @@ export default function CreateSocial() {
 
   return (
     <div style={containerStyle}>
-      <div style={backStyle} onClick={() => navigate('/create')}>
+      <div style={backStyle} onClick={() => navigate('/admin/tools')}>
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
           <polyline points="15 18 9 12 15 6" />
         </svg>

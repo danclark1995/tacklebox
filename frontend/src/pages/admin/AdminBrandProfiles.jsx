@@ -83,7 +83,7 @@ export default function AdminBrandProfiles() {
               <div style={clientEmailStyle}>{client.email}</div>
               <Button
                 size="sm"
-                onClick={() => navigate(`/brand-profiles/${client.id}/edit`)}
+                onClick={() => navigate(`/admin/brands/${client.id}/edit`)}
               >
                 View/Edit Profile
               </Button>

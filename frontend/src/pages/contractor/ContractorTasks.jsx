@@ -42,7 +42,7 @@ export default function ContractorTasks() {
       <PageHeader title="My Tasks" />
       <TaskList
         tasks={tasks}
-        onTaskClick={(task) => navigate(`/tasks/${task.id}`)}
+        onTaskClick={(task) => navigate(`/camper/tasks/${task.id}`)}
       />
     </div>
   )

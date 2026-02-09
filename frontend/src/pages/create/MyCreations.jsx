@@ -175,7 +175,7 @@ export default function MyCreations() {
 
   return (
     <div style={containerStyle}>
-      <div style={backStyle} onClick={() => navigate('/create')}>
+      <div style={backStyle} onClick={() => navigate('/admin/tools')}>
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
           <polyline points="15 18 9 12 15 6" />
         </svg>
@@ -206,7 +206,7 @@ export default function MyCreations() {
       ) : generations.length === 0 ? (
         <div style={emptyStyle}>
           <div style={{ marginBottom: spacing[3] }}>No creations yet</div>
-          <Button size="sm" onClick={() => navigate('/create')}>Create Something</Button>
+          <Button size="sm" onClick={() => navigate('/admin/tools')}>Create Something</Button>
         </div>
       ) : (
         <>

@@ -159,7 +159,7 @@ export default function ClientDashboard() {
           <h2 style={sectionTitleStyle}>Task Progress</h2>
           <div style={{ display: 'flex', flexDirection: 'column', gap: spacing[3] }}>
             {activeTasks.slice(0, 3).map(task => (
-              <Card key={task.id} padding="sm" onClick={() => navigate(`/tasks/${task.id}`)} style={{ cursor: 'pointer' }}>
+              <Card key={task.id} padding="sm" onClick={() => navigate(`/client/tasks/${task.id}`)} style={{ cursor: 'pointer' }}>
                 <div style={{ fontSize: typography.fontSize.sm, fontWeight: typography.fontWeight.semibold, color: colours.neutral[900], marginBottom: spacing[2] }}>
                   {task.title}
                 </div>
@@ -190,13 +190,13 @@ export default function ClientDashboard() {
              taskFilter === 'completed' ? 'Recently Completed' :
              'Recent Tasks'}
           </h2>
-          <Button onClick={() => navigate('/tasks/new')}>New Task</Button>
+          <Button onClick={() => navigate('/client/tasks/new')}>New Task</Button>
         </div>
 
         {filteredTasks.length > 0 ? (
           <TaskList
             tasks={filteredTasks}
-            onTaskClick={(task) => navigate(`/tasks/${task.id}`)}
+            onTaskClick={(task) => navigate(`/client/tasks/${task.id}`)}
           />
         ) : (
           <EmptyState
@@ -204,7 +204,7 @@ export default function ClientDashboard() {
             message="Submit your first task to get started."
             action={{
               label: 'Create Task',
-              onClick: () => navigate('/tasks/new')
+              onClick: () => navigate('/client/tasks/new')
             }}
           />
         )}

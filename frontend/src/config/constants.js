@@ -85,7 +85,7 @@ export const ROLES = {
 
 export const ROLE_LABELS = {
   [ROLES.CLIENT]: 'Client',
-  [ROLES.CONTRACTOR]: 'Contractor',
+  [ROLES.CONTRACTOR]: 'Camper',
   [ROLES.ADMIN]: 'Admin',
 }
 

@@ -110,7 +110,7 @@ export default function ClientTaskDetail() {
 
   return (
     <div>
-      <Link to="/tasks" style={backLinkStyle}>
+      <Link to="/client/tasks" style={backLinkStyle}>
         ← Back to Tasks
       </Link>
       <TaskDetail

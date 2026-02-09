@@ -310,7 +310,7 @@ export default function AdminAnalytics() {
       <div style={pageStyles}>
         <PageHeader
           title="Analytics Dashboard"
-          subtitle="Comprehensive overview of task, project, and contractor performance"
+          subtitle="Comprehensive overview of task, project, and camper performance"
         />
         <div style={{ display: 'flex', justifyContent: 'center', padding: spacing[16] }}>
           <Spinner size="lg" />
@@ -378,7 +378,7 @@ export default function AdminAnalytics() {
 
   // ── Contractor table columns ──────────────────────────────────
   const contractorColumns = [
-    { key: 'display_name', label: 'Contractor' },
+    { key: 'display_name', label: 'Camper' },
     {
       key: 'tasks_completed',
       label: sortableHeader('Tasks', 'tasks_completed'),
@@ -433,7 +433,7 @@ export default function AdminAnalytics() {
 
       <PageHeader
         title="Analytics Dashboard"
-        subtitle="Comprehensive overview of task, project, and contractor performance"
+        subtitle="Comprehensive overview of task, project, and camper performance"
       />
 
       {/* ── Filters Bar ──────────────────────────────────────── */}
@@ -463,12 +463,12 @@ export default function AdminAnalytics() {
             ]}
           />
           <Select
-            label="Contractor"
+            label="Camper"
             value={contractorId}
             onChange={(e) => setContractorId(e.target.value)}
-            placeholder="All Contractors"
+            placeholder="All Campers"
             options={[
-              { value: '', label: 'All Contractors' },
+              { value: '', label: 'All Campers' },
               ...contractors.map(c => ({
                 value: c.id,
                 label: c.display_name || c.name,
@@ -768,11 +768,11 @@ export default function AdminAnalytics() {
         </Section>
 
         {/* Section 5: Contractor Performance */}
-        <Section title="Contractor Performance">
+        <Section title="Camper Performance">
           <DataTable
             columns={contractorColumns}
             data={sortedContractorData}
-            emptyMessage="No contractor data available"
+            emptyMessage="No camper data available"
           />
         </Section>
 
@@ -799,7 +799,7 @@ export default function AdminAnalytics() {
               color: colours.neutral[700],
               marginBottom: spacing[2],
             }}>
-              Hours by Contractor (Top 10)
+              Hours by Camper (Top 10)
             </h4>
             <ResponsiveContainer width="100%" height={300}>
               <BarChart data={timeByContractor}>

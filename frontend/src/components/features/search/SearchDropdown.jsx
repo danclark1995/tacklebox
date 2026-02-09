@@ -4,6 +4,7 @@ import { colours, spacing, typography, radii, shadows, transitions } from '@/con
 import Spinner from '@/components/ui/Spinner'
 import StatusBadge from '@/components/ui/StatusBadge'
 import Badge from '@/components/ui/Badge'
+import useAuth from '@/hooks/useAuth'
 
 const ROLE_VARIANTS = {
   admin: 'error',
@@ -14,6 +15,8 @@ const ROLE_VARIANTS = {
 const SearchDropdown = ({ results, query, loading, isOpen, onClose, onNavigate }) => {
   const dropdownRef = useRef(null)
   const [hoveredItem, setHoveredItem] = useState(null)
+  const { user } = useAuth()
+  const rolePrefix = user?.role === 'admin' ? '/admin' : user?.role === 'client' ? '/client' : '/camper'
 
   useEffect(() => {
     const handleClickOutside = (e) => {
@@ -193,7 +196,7 @@ const SearchDropdown = ({ results, query, loading, isOpen, onClose, onNavigate }
             <div
               key={`task-${task.id}`}
               style={getRowStyle(`task-${task.id}`)}
-              onClick={() => handleNavigate(`/tasks/${task.id}`)}
+              onClick={() => handleNavigate(`${rolePrefix}/tasks/${task.id}`)}
               onMouseEnter={() => setHoveredItem(`task-${task.id}`)}
               onMouseLeave={() => setHoveredItem(null)}
             >
@@ -218,7 +221,7 @@ const SearchDropdown = ({ results, query, loading, isOpen, onClose, onNavigate }
             <div
               key={`project-${project.id}`}
               style={getRowStyle(`project-${project.id}`)}
-              onClick={() => handleNavigate(`/projects/${project.id}`)}
+              onClick={() => handleNavigate(`${rolePrefix}/projects/${project.id}`)}
               onMouseEnter={() => setHoveredItem(`project-${project.id}`)}
               onMouseLeave={() => setHoveredItem(null)}
             >
@@ -242,7 +245,7 @@ const SearchDropdown = ({ results, query, loading, isOpen, onClose, onNavigate }
             <div
               key={`user-${user.id}`}
               style={getRowStyle(`user-${user.id}`)}
-              onClick={() => handleNavigate('/users')}
+              onClick={() => handleNavigate('/admin/campers')}
               onMouseEnter={() => setHoveredItem(`user-${user.id}`)}
               onMouseLeave={() => setHoveredItem(null)}
             >
@@ -271,7 +274,7 @@ const SearchDropdown = ({ results, query, loading, isOpen, onClose, onNavigate }
             <div
               key={`guide-${guide.id}`}
               style={getRowStyle(`guide-${guide.id}`)}
-              onClick={() => handleNavigate('/brand-hub')}
+              onClick={() => handleNavigate(`${rolePrefix}/brands`)}
               onMouseEnter={() => setHoveredItem(`guide-${guide.id}`)}
               onMouseLeave={() => setHoveredItem(null)}
             >

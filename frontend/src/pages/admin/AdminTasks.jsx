@@ -71,7 +71,7 @@ export default function AdminTasks() {
       <PageHeader
         title="All Tasks"
         actions={
-          <Button onClick={() => navigate('/tasks/new')}>Create Task</Button>
+          <Button onClick={() => navigate('/client/tasks/new')}>Create Task</Button>
         }
       />
 
@@ -118,11 +118,11 @@ export default function AdminTasks() {
         />
 
         <Select
-          label="Contractor"
+          label="Camper"
           value={contractorFilter}
           onChange={(e) => setContractorFilter(e.target.value)}
           options={[
-            { value: '', label: 'All Contractors' },
+            { value: '', label: 'All Campers' },
             ...users.filter(u => u.role === 'contractor').map(u => ({
               value: u.id,
               label: u.display_name || u.name
@@ -133,7 +133,7 @@ export default function AdminTasks() {
 
       <TaskList
         tasks={filteredTasks}
-        onTaskClick={(task) => navigate(`/tasks/${task.id}`)}
+        onTaskClick={(task) => navigate(`/admin/tasks/${task.id}`)}
       />
     </div>
   )

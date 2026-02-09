@@ -540,7 +540,7 @@ export default function ReviewSection({
           {/* Left column: contractor review */}
           <ReviewCard
             review={contractorReview}
-            title="Contractor Review"
+            title="Camper Review"
           />
 
           {/* Right column: admin review form or read-only */}

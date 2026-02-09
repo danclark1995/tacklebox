@@ -72,7 +72,7 @@ export default function ClientProjectDetail() {
       <ProjectDetail
         project={project}
         tasks={tasks}
-        onTaskClick={(task) => navigate(`/tasks/${task.id}`)}
+        onTaskClick={(task) => navigate(`/client/tasks/${task.id}`)}
         userRole="client"
       />
     </div>

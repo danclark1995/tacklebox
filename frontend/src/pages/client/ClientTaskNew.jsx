@@ -58,7 +58,7 @@ export default function ClientTaskNew() {
 
       if (json.success) {
         addToast('Task created successfully', 'success')
-        navigate(`/tasks/${json.data.id}`)
+        navigate(`/client/tasks/${json.data.id}`)
       } else {
         addToast(json.message || 'Failed to create task', 'error')
       }
@@ -90,7 +90,7 @@ export default function ClientTaskNew() {
 
   return (
     <div>
-      <Link to="/tasks" style={backLinkStyle}>
+      <Link to="/client/tasks" style={backLinkStyle}>
         ← Back to Tasks
       </Link>
       <PageHeader title="Submit New Task" />

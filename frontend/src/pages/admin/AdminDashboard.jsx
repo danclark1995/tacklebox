@@ -164,7 +164,7 @@ export default function AdminDashboard() {
         </Card>
 
         <Card style={summaryCardStyle}>
-          <div style={summaryLabelStyle}>Active Contractors</div>
+          <div style={summaryLabelStyle}>Active Campers</div>
           <div style={summaryValueStyle}>{activeContractors.length}</div>
         </Card>
       </div>
@@ -213,11 +213,11 @@ export default function AdminDashboard() {
           />
 
           <Select
-            label="Contractor"
+            label="Camper"
             value={contractorFilter}
             onChange={(e) => setContractorFilter(e.target.value)}
             options={[
-              { value: '', label: 'All Contractors' },
+              { value: '', label: 'All Campers' },
               ...users.filter(u => u.role === 'contractor').map(u => ({
                 value: u.id,
                 label: u.display_name || u.name

@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
+import useAuth from '@/hooks/useAuth'
 import PageHeader from '@/components/ui/PageHeader'
 import Tabs from '@/components/ui/Tabs'
 import Spinner from '@/components/ui/Spinner'
@@ -28,7 +29,10 @@ const TAB_KEYS = {
 export default function SearchResults() {
   const [searchParams] = useSearchParams()
   const navigate = useNavigate()
+  const { user } = useAuth()
   const query = searchParams.get('q') || ''
+
+  const rolePrefix = user?.role === 'admin' ? '/admin' : user?.role === 'client' ? '/client' : '/camper'
 
   const [results, setResults] = useState(null)
   const [loading, setLoading] = useState(false)
@@ -139,7 +143,7 @@ export default function SearchResults() {
     <div
       key={`task-${task.id}`}
       style={getResultCardStyle(`task-${task.id}`)}
-      onClick={() => navigate(`/tasks/${task.id}`)}
+      onClick={() => navigate(`${rolePrefix}/tasks/${task.id}`)}
       onMouseEnter={() => setHoveredItem(`task-${task.id}`)}
       onMouseLeave={() => setHoveredItem(null)}
     >
@@ -153,7 +157,7 @@ export default function SearchResults() {
     <div
       key={`project-${project.id}`}
       style={getResultCardStyle(`project-${project.id}`)}
-      onClick={() => navigate(`/projects/${project.id}`)}
+      onClick={() => navigate(`${rolePrefix}/projects/${project.id}`)}
       onMouseEnter={() => setHoveredItem(`project-${project.id}`)}
       onMouseLeave={() => setHoveredItem(null)}
     >
@@ -166,7 +170,7 @@ export default function SearchResults() {
     <div
       key={`user-${user.id}`}
       style={getResultCardStyle(`user-${user.id}`)}
-      onClick={() => navigate('/users')}
+      onClick={() => navigate('/admin/campers')}
       onMouseEnter={() => setHoveredItem(`user-${user.id}`)}
       onMouseLeave={() => setHoveredItem(null)}
     >
@@ -184,7 +188,7 @@ export default function SearchResults() {
     <div
       key={`guide-${guide.id}`}
       style={getResultCardStyle(`guide-${guide.id}`)}
-      onClick={() => navigate('/brand-hub')}
+      onClick={() => navigate(`${rolePrefix}/brands`)}
       onMouseEnter={() => setHoveredItem(`guide-${guide.id}`)}
       onMouseLeave={() => setHoveredItem(null)}
     >

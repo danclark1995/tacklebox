@@ -43,12 +43,12 @@ export default function ClientTasks() {
       <PageHeader
         title="My Tasks"
         actions={
-          <Button onClick={() => navigate('/tasks/new')}>New Task</Button>
+          <Button onClick={() => navigate('/client/tasks/new')}>New Task</Button>
         }
       />
       <TaskList
         tasks={tasks}
-        onTaskClick={(task) => navigate(`/tasks/${task.id}`)}
+        onTaskClick={(task) => navigate(`/client/tasks/${task.id}`)}
       />
     </div>
   )

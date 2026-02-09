@@ -155,7 +155,7 @@ export default function CreateHub() {
           <Card
             key={ct.key}
             ct={ct}
-            onClick={() => navigate(`/create/${ct.key}`)}
+            onClick={() => navigate(`/admin/tools/${ct.key}`)}
             cardStyle={cardStyle}
             cardHoverStyle={cardHoverStyle}
             iconWrapperStyle={iconWrapperStyle}
@@ -167,7 +167,7 @@ export default function CreateHub() {
 
       <div
         style={historyLinkStyle}
-        onClick={() => navigate('/creations')}
+        onClick={() => navigate('/admin/tools')}
         onMouseEnter={e => { e.currentTarget.style.borderColor = colours.neutral[400] }}
         onMouseLeave={e => { e.currentTarget.style.borderColor = colours.neutral[200] }}
       >

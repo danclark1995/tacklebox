@@ -72,7 +72,7 @@ export default function AdminProjectDetail() {
       <ProjectDetail
         project={project}
         tasks={tasks}
-        onTaskClick={(task) => navigate(`/tasks/${task.id}`)}
+        onTaskClick={(task) => navigate(`/admin/tasks/${task.id}`)}
         userRole="admin"
       />
     </div>

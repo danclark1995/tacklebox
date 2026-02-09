@@ -407,7 +407,7 @@ export default function ContractorTaskDetail() {
 
   return (
     <div>
-      <Link to="/tasks" style={backLinkStyle}>
+      <Link to="/camper/tasks" style={backLinkStyle}>
         ← Back to Tasks
       </Link>
 

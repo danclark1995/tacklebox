@@ -254,7 +254,7 @@ export default function TaskDetail({
             <div style={{ display: 'flex', flexDirection: 'column', gap: spacing[4] }}>
               <InfoCard label="Project" value={task.project_name} />
               <InfoCard label="Client" value={task.client_name} />
-              {task.contractor_name && <InfoCard label="Contractor" value={task.contractor_name} />}
+              {task.contractor_name && <InfoCard label="Camper" value={task.contractor_name} />}
               {task.deadline && <InfoCard label="Deadline" value={formatDate(task.deadline)} />}
               <InfoCard label="Created" value={formatDateTime(task.created_at)} />
             </div>
@@ -370,7 +370,7 @@ export default function TaskDetail({
               value={selectedContractor}
               onChange={(e) => setSelectedContractor(e.target.value)}
               options={[
-                { value: '', label: 'Select contractor...' },
+                { value: '', label: 'Select camper...' },
                 // Contractor options would be passed as prop
               ]}
             />
