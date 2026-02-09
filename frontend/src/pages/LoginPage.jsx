@@ -130,9 +130,8 @@ export default function LoginPage() {
           type="submit"
           variant="primary"
           size="lg"
-          isLoading={isLoading}
+          loading={isLoading}
           disabled={isLoading}
-          style={{ marginTop: spacing[2] }}
         >
           {isLoading ? 'Signing in...' : 'Sign In'}
         </Button>

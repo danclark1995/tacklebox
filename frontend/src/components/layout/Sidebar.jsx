@@ -151,11 +151,13 @@ export default function Sidebar() {
   }
 
   const logoStyle = {
-    fontSize: typography.fontSize['2xl'],
-    fontWeight: typography.fontWeight.bold,
-    color: colours.primary[500],
     textDecoration: 'none',
     display: 'block',
+  }
+
+  const logoImgStyle = {
+    height: '32px',
+    width: 'auto',
   }
 
   const navStyle = {
@@ -276,7 +278,7 @@ export default function Sidebar() {
       <aside className="sidebar-desktop" style={sidebarStyleDesktop}>
         <div style={headerStyle}>
           <a href="/" style={logoStyle}>
-            TackleBox
+            <img src="/tacklebox_logo.png" alt="TackleBox" style={logoImgStyle} />
           </a>
         </div>
 

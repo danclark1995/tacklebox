@@ -17,11 +17,25 @@ const USER_KEY = 'tacklebox_user'
  * Phase 1: Returns user data from API, stores user ID as token
  */
 export async function login(email, password) {
-  const res = await fetch(apiEndpoint('/auth/login'), {
+  const url = apiEndpoint('/auth/login')
+  const res = await fetch(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ email, password }),
   })
+
+  if (!res.ok) {
+    const text = await res.text()
+    let message = 'Login failed'
+    try {
+      const json = JSON.parse(text)
+      message = json.error || message
+    } catch {
+      // response was not JSON
+    }
+    throw new Error(message)
+  }
+
   const data = await res.json()
   if (!data.success) throw new Error(data.error || 'Login failed')
 

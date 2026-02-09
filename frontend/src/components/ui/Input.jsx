@@ -14,6 +14,7 @@ const Input = ({
   size = 'md',
   icon = null,
   className = '',
+  ...rest
 }) => {
   const [isFocused, setIsFocused] = React.useState(false)
 
@@ -102,6 +103,7 @@ const Input = ({
           onFocus={() => setIsFocused(true)}
           onBlur={() => setIsFocused(false)}
           style={inputStyles}
+          {...rest}
         />
       </div>
       {error && <span style={errorStyles}>{error}</span>}

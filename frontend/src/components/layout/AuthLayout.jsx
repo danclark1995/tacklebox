@@ -24,10 +24,9 @@ export default function AuthLayout({ children }) {
     marginBottom: spacing[8],
   }
 
-  const logoStyle = {
-    fontSize: typography.fontSize['4xl'],
-    fontWeight: typography.fontWeight.bold,
-    color: colours.primary[500],
+  const logoImgStyle = {
+    height: '48px',
+    width: 'auto',
     marginBottom: spacing[2],
   }
 
@@ -40,7 +39,7 @@ export default function AuthLayout({ children }) {
     <div style={containerStyle}>
       <div style={cardStyle}>
         <div style={logoContainerStyle}>
-          <div style={logoStyle}>TackleBox</div>
+          <img src="/tacklebox_logo.png" alt="TackleBox" style={logoImgStyle} />
           <div style={taglineStyle}>Creative project management</div>
         </div>
         {children}

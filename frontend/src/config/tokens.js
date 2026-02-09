@@ -7,60 +7,60 @@
  */
 
 export const colours = {
-  // Primary — Deep teal, confident and creative
+  // Primary — Black, clean and premium
   primary: {
-    50: '#e6f5f5',
-    100: '#b3e0e0',
-    200: '#80cccc',
-    300: '#4db8b8',
-    400: '#26a8a8',
-    500: '#0F7173', // Main brand colour
-    600: '#0d6163',
-    700: '#0a4f51',
-    800: '#073d3f',
-    900: '#042b2d',
+    50: '#fafafa',
+    100: '#f5f5f5',
+    200: '#e5e5e5',
+    300: '#d4d4d4',
+    400: '#a3a3a3',
+    500: '#000000', // Main brand colour
+    600: '#000000',
+    700: '#000000',
+    800: '#000000',
+    900: '#000000',
   },
 
-  // Secondary — Warm coral, energetic accent
+  // Secondary — Grey accent, subtle depth
   secondary: {
-    50: '#fff0ec',
-    100: '#ffd4c9',
-    200: '#ffb8a6',
-    300: '#ff9c83',
-    400: '#ff8569',
-    500: '#E85D46', // Main accent
-    600: '#d04a35',
-    700: '#b03828',
-    800: '#8e2b1e',
-    900: '#6c1f14',
+    50: '#fafafa',
+    100: '#f5f5f5',
+    200: '#e5e5e5',
+    300: '#d4d4d4',
+    400: '#a3a3a3',
+    500: '#737373', // Main accent
+    600: '#525252',
+    700: '#404040',
+    800: '#262626',
+    900: '#171717',
   },
 
-  // Neutral — Slate greys with slight warmth
+  // Neutral — Pure greys
   neutral: {
-    50: '#f8f9fc',
-    100: '#f1f3f8',
-    200: '#e2e6ef',
-    300: '#cbd1de',
-    400: '#9ba5b9',
-    500: '#6b7894',
-    600: '#515e78',
-    700: '#3d475c',
-    800: '#2a3142',
-    900: '#1a1a2e', // Main text
+    50: '#fafafa',
+    100: '#f5f5f5',
+    200: '#e5e5e5',
+    300: '#d4d4d4',
+    400: '#a3a3a3',
+    500: '#737373',
+    600: '#525252',
+    700: '#404040',
+    800: '#262626',
+    900: '#0a0a0a', // Main text
   },
 
   // Success
   success: {
-    50: '#ecfdf5',
-    100: '#d1fae5',
-    200: '#a7f3d0',
-    300: '#6ee7b7',
-    400: '#34d399',
-    500: '#10b981',
-    600: '#059669',
-    700: '#047857',
-    800: '#065f46',
-    900: '#064e3b',
+    50: '#f0fdf4',
+    100: '#dcfce7',
+    200: '#bbf7d0',
+    300: '#86efac',
+    400: '#4ade80',
+    500: '#22c55e',
+    600: '#16a34a',
+    700: '#15803d',
+    800: '#166534',
+    900: '#14532d',
   },
 
   // Warning
@@ -93,25 +93,25 @@ export const colours = {
 
   // Info
   info: {
-    50: '#eff6ff',
-    100: '#dbeafe',
-    200: '#bfdbfe',
-    300: '#93c5fd',
-    400: '#60a5fa',
-    500: '#3b82f6',
-    600: '#2563eb',
-    700: '#1d4ed8',
-    800: '#1e40af',
-    900: '#1e3a8a',
+    50: '#f5f5f5',
+    100: '#e5e5e5',
+    200: '#d4d4d4',
+    300: '#a3a3a3',
+    400: '#737373',
+    500: '#525252',
+    600: '#404040',
+    700: '#262626',
+    800: '#171717',
+    900: '#0a0a0a',
   },
 
   // Surfaces
   white: '#ffffff',
   black: '#000000',
-  background: '#f8f9fc',
+  background: '#ffffff',
   surface: '#ffffff',
   surfaceRaised: '#ffffff',
-  overlay: 'rgba(26, 26, 46, 0.5)',
+  overlay: 'rgba(0, 0, 0, 0.5)',
 }
 
 export const typography = {
@@ -170,10 +170,10 @@ export const radii = {
 
 export const shadows = {
   none: 'none',
-  sm: '0 1px 2px rgba(26, 26, 46, 0.05)',
-  md: '0 4px 6px -1px rgba(26, 26, 46, 0.07), 0 2px 4px -2px rgba(26, 26, 46, 0.05)',
-  lg: '0 10px 15px -3px rgba(26, 26, 46, 0.08), 0 4px 6px -4px rgba(26, 26, 46, 0.04)',
-  xl: '0 20px 25px -5px rgba(26, 26, 46, 0.1), 0 8px 10px -6px rgba(26, 26, 46, 0.05)',
+  sm: '0 1px 2px rgba(0, 0, 0, 0.05)',
+  md: '0 4px 6px -1px rgba(0, 0, 0, 0.07), 0 2px 4px -2px rgba(0, 0, 0, 0.05)',
+  lg: '0 10px 15px -3px rgba(0, 0, 0, 0.08), 0 4px 6px -4px rgba(0, 0, 0, 0.04)',
+  xl: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.05)',
 }
 
 export const breakpoints = {

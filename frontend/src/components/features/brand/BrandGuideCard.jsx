@@ -69,7 +69,7 @@ export default function BrandGuideCard({ guide, onView, onDelete }) {
         transition: 'all 150ms ease',
       }}
       onMouseEnter={(e) => {
-        e.currentTarget.style.boxShadow = '0 4px 12px rgba(15, 113, 115, 0.15)'
+        e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.1)'
         e.currentTarget.style.transform = 'translateY(-2px)'
       }}
       onMouseLeave={(e) => {

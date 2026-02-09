@@ -9,14 +9,14 @@ import { colours, spacing, typography, radii, shadows, transitions } from '@/con
  * Each entry has an emoji, a fallback SVG-safe label, and an accent colour.
  */
 const ICON_MAP = {
-  award:           { emoji: '\uD83C\uDFC6', colour: '#D4A017' },   // gold trophy
+  award:           { emoji: '\uD83C\uDFC6', colour: colours.neutral[800] },
   clock:           { emoji: '\u23F0',       colour: colours.info[500] },
-  star:            { emoji: '\u2B50',       colour: '#D4A017' },
+  star:            { emoji: '\u2B50',       colour: colours.neutral[700] },
   zap:             { emoji: '\u26A1',       colour: colours.warning[500] },
   'trending-up':   { emoji: '\uD83D\uDCC8', colour: colours.success[500] },
-  shield:          { emoji: '\uD83D\uDEE1\uFE0F', colour: '#8B5CF6' },
+  shield:          { emoji: '\uD83D\uDEE1\uFE0F', colour: colours.neutral[600] },
   'message-circle':{ emoji: '\uD83D\uDCAC', colour: colours.primary[400] },
-  trophy:          { emoji: '\uD83C\uDFC6', colour: '#D4A017' },
+  trophy:          { emoji: '\uD83C\uDFC6', colour: colours.neutral[800] },
   fire:            { emoji: '\uD83D\uDD25', colour: colours.secondary[500] },
   target:          { emoji: '\uD83C\uDFAF', colour: colours.error[500] },
   check:           { emoji: '\u2705',       colour: colours.success[500] },
@@ -152,7 +152,7 @@ const goldAccent = {
   left: 0,
   right: 0,
   height: '3px',
-  background: 'linear-gradient(90deg, #D4A017, #F5D060, #D4A017)',
+  background: 'linear-gradient(90deg, #000000, #404040, #000000)',
   borderRadius: `${radii.sm} ${radii.sm} 0 0`,
 }
 
