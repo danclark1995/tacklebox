@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import useToast from '@/hooks/useToast'
-import Spinner from '@/components/ui/Spinner'
+import EmberLoader from '@/components/ui/EmberLoader'
 import Button from '@/components/ui/Button'
 import Modal from '@/components/ui/Modal'
 import FileUpload from '@/components/ui/FileUpload'
@@ -340,7 +340,7 @@ export default function ContractorTaskDetail() {
   if (loading) {
     return (
       <div style={{ display: 'flex', justifyContent: 'center', padding: spacing[8] }}>
-        <Spinner size="lg" />
+        <EmberLoader size="lg" />
       </div>
     )
   }
@@ -447,7 +447,7 @@ export default function ContractorTaskDetail() {
           <div style={{ padding: spacing[4] }}>
             {loadingBrandProfile ? (
               <div style={{ display: 'flex', justifyContent: 'center', padding: spacing[8] }}>
-                <Spinner size="md" />
+                <EmberLoader size="md" />
               </div>
             ) : brandProfile ? (
               <BrandProfileView profile={brandProfile} logos={brandLogos} />

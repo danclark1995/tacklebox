@@ -2,9 +2,9 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import useAuth from '@/hooks/useAuth'
 import useToast from '@/hooks/useToast'
-import Card from '@/components/ui/Card'
+import GlowCard from '@/components/ui/GlowCard'
 import Button from '@/components/ui/Button'
-import Spinner from '@/components/ui/Spinner'
+import EmberLoader from '@/components/ui/EmberLoader'
 import EmptyState from '@/components/ui/EmptyState'
 import TaskProgressTracker from '@/components/ui/TaskProgressTracker'
 import ProjectList from '@/components/features/projects/ProjectList'
@@ -47,7 +47,7 @@ export default function ClientDashboard() {
   if (loading) {
     return (
       <div style={{ display: 'flex', justifyContent: 'center', padding: spacing[8] }}>
-        <Spinner size="lg" />
+        <EmberLoader size="lg" />
       </div>
     )
   }
@@ -128,29 +128,29 @@ export default function ClientDashboard() {
       </div>
 
       <div style={summaryGridStyle}>
-        <Card
+        <GlowCard
           style={summaryCardStyle(taskFilter === 'active')}
           onClick={() => setTaskFilter(taskFilter === 'active' ? null : 'active')}
         >
           <div style={summaryLabelStyle}>Active Tasks</div>
           <div style={summaryValueStyle}>{activeTasks.length}</div>
-        </Card>
+        </GlowCard>
 
-        <Card
+        <GlowCard
           style={summaryCardStyle(taskFilter === 'feedback')}
           onClick={() => setTaskFilter(taskFilter === 'feedback' ? null : 'feedback')}
         >
           <div style={summaryLabelStyle}>Awaiting Feedback</div>
           <div style={summaryValueStyle}>{awaitingFeedback.length}</div>
-        </Card>
+        </GlowCard>
 
-        <Card
+        <GlowCard
           style={summaryCardStyle(taskFilter === 'completed')}
           onClick={() => setTaskFilter(taskFilter === 'completed' ? null : 'completed')}
         >
           <div style={summaryLabelStyle}>Recently Completed</div>
           <div style={summaryValueStyle}>{recentlyCompleted.length}</div>
-        </Card>
+        </GlowCard>
       </div>
 
       {/* Task Progress Trackers */}
@@ -159,12 +159,12 @@ export default function ClientDashboard() {
           <h2 style={sectionTitleStyle}>Task Progress</h2>
           <div style={{ display: 'flex', flexDirection: 'column', gap: spacing[3] }}>
             {activeTasks.slice(0, 3).map(task => (
-              <Card key={task.id} padding="sm" onClick={() => navigate(`/client/tasks/${task.id}`)} style={{ cursor: 'pointer' }}>
+              <GlowCard key={task.id} padding="12px" onClick={() => navigate(`/client/tasks/${task.id}`)} style={{ cursor: 'pointer' }}>
                 <div style={{ fontSize: typography.fontSize.sm, fontWeight: typography.fontWeight.semibold, color: colours.neutral[900], marginBottom: spacing[2] }}>
                   {task.title}
                 </div>
                 <TaskProgressTracker status={task.status} />
-              </Card>
+              </GlowCard>
             ))}
           </div>
         </div>

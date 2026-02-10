@@ -1,7 +1,7 @@
 import React, { useState, useRef, useCallback } from 'react'
 import PropTypes from 'prop-types'
 import { colours, spacing, radii, typography, transitions } from '@/config/tokens'
-import ProgressBar from './ProgressBar'
+import WaveProgressBar from './WaveProgressBar'
 
 const CHUNK_SIZE = 10 * 1024 * 1024 // 10MB
 const CHUNKED_THRESHOLD = 100 * 1024 * 1024 // 100MB
@@ -567,22 +567,12 @@ const FileUpload = ({
 
               {/* Progress bar — shown during upload */}
               {entry.status === 'uploading' && (
-                <ProgressBar
-                  value={entry.progress}
-                  size="sm"
-                  colour={colours.neutral[900]}
-                  showLabel={false}
-                />
+                <WaveProgressBar progress={entry.progress} size="sm" />
               )}
 
               {/* Completed progress bar — full */}
               {entry.status === 'complete' && (
-                <ProgressBar
-                  value={100}
-                  size="sm"
-                  colour={colours.neutral[700]}
-                  showLabel={false}
-                />
+                <WaveProgressBar progress={100} size="sm" />
               )}
             </div>
           ))}

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import useToast from '@/hooks/useToast'
-import Spinner from '@/components/ui/Spinner'
+import EmberLoader from '@/components/ui/EmberLoader'
 import ProjectDetail from '@/components/features/projects/ProjectDetail'
 import { apiEndpoint } from '@/config/env'
 import { getAuthHeaders } from '@/services/auth'
@@ -40,7 +40,7 @@ export default function ClientProjectDetail() {
   if (loading) {
     return (
       <div style={{ display: 'flex', justifyContent: 'center', padding: spacing[8] }}>
-        <Spinner size="lg" />
+        <EmberLoader size="lg" />
       </div>
     )
   }

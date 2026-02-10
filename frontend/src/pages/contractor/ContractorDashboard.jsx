@@ -2,8 +2,8 @@ import { useState, useEffect } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import useAuth from '@/hooks/useAuth'
 import useToast from '@/hooks/useToast'
-import Card from '@/components/ui/Card'
-import Spinner from '@/components/ui/Spinner'
+import GlowCard from '@/components/ui/GlowCard'
+import EmberLoader from '@/components/ui/EmberLoader'
 import EmptyState from '@/components/ui/EmptyState'
 import TaskList from '@/components/features/tasks/TaskList'
 import XPBar from '@/components/features/gamification/XPBar'
@@ -65,7 +65,7 @@ export default function ContractorDashboard() {
   if (loading) {
     return (
       <div style={{ display: 'flex', justifyContent: 'center', padding: spacing[8] }}>
-        <Spinner size="lg" />
+        <EmberLoader size="lg" />
       </div>
     )
   }
@@ -155,20 +155,20 @@ export default function ContractorDashboard() {
       </div>
 
       <div style={summaryGridStyle}>
-        <Card style={summaryCardStyle}>
+        <GlowCard style={summaryCardStyle}>
           <div style={summaryLabelStyle}>Assigned Tasks</div>
           <div style={summaryValueStyle}>{assignedTasks.length}</div>
-        </Card>
+        </GlowCard>
 
-        <Card style={summaryCardStyle}>
+        <GlowCard style={summaryCardStyle}>
           <div style={summaryLabelStyle}>In Progress</div>
           <div style={summaryValueStyle}>{inProgressTasks.length}</div>
-        </Card>
+        </GlowCard>
 
-        <Card style={summaryCardStyle}>
+        <GlowCard style={summaryCardStyle}>
           <div style={summaryLabelStyle}>Awaiting Action</div>
           <div style={summaryValueStyle}>{awaitingActionTasks.length}</div>
-        </Card>
+        </GlowCard>
       </div>
 
       {/* Gamification Section */}
@@ -176,15 +176,15 @@ export default function ContractorDashboard() {
         <div style={gamificationWidgetStyle}>
           <h2 style={sectionTitleStyle}>Your Progress</h2>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: spacing[4] }}>
-            <Card padding="md">
+            <GlowCard>
               <XPBar xpData={xpData} />
               <div style={{ marginTop: spacing[3] }}>
                 <Link to="/camper/journey" style={viewStatsLinkStyle}>
                   View All Stats &rarr;
                 </Link>
               </div>
-            </Card>
-            <Card padding="md">
+            </GlowCard>
+            <GlowCard>
               <div style={{ fontSize: typography.fontSize.sm, fontWeight: typography.fontWeight.semibold, color: colours.neutral[900], marginBottom: spacing[3] }}>
                 Badges Earned
               </div>
@@ -195,7 +195,7 @@ export default function ContractorDashboard() {
                   Complete tasks to earn badges
                 </div>
               )}
-            </Card>
+            </GlowCard>
           </div>
         </div>
       )}

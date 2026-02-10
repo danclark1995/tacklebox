@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import useToast from '@/hooks/useToast'
 import Button from '@/components/ui/Button'
-import Spinner from '@/components/ui/Spinner'
+import EmberLoader from '@/components/ui/EmberLoader'
 import { apiEndpoint } from '@/config/env'
 import { getAuthHeaders } from '@/services/auth'
 import { colours, spacing, typography, radii, transitions } from '@/config/tokens'
@@ -469,10 +469,7 @@ export default function AIAssistantPanel({ task, brandProfile, onAttachmentAdded
     if (generating) {
       return (
         <div style={previewStyle}>
-          <Spinner size="lg" />
-          <div style={{ marginTop: spacing[3], fontSize: typography.fontSize.sm, color: colours.neutral[500] }}>
-            Generating draft...
-          </div>
+          <EmberLoader size="lg" text="Generating draft..." />
           <div style={{ fontSize: typography.fontSize.xs, color: colours.neutral[400], marginTop: spacing[1] }}>
             This may take 10-60 seconds
           </div>

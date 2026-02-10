@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react'
 import PropTypes from 'prop-types'
 import { colours, spacing, typography, radii, shadows, transitions } from '@/config/tokens'
-import Spinner from '@/components/ui/Spinner'
+import EmberLoader from '@/components/ui/EmberLoader'
 import StatusBadge from '@/components/ui/StatusBadge'
 import Badge from '@/components/ui/Badge'
 import useAuth from '@/hooks/useAuth'
@@ -121,7 +121,7 @@ const SearchDropdown = ({ results, query, loading, isOpen, onClose, onNavigate }
     return (
       <div ref={dropdownRef} style={containerStyle}>
         <div style={loadingContainerStyle}>
-          <Spinner size="sm" />
+          <EmberLoader size="sm" />
         </div>
       </div>
     )

@@ -1,6 +1,6 @@
 import React from 'react'
 import PropTypes from 'prop-types'
-import Card from '@/components/ui/Card'
+import GlowCard from '@/components/ui/GlowCard'
 import { colours, spacing, typography, radii } from '@/config/tokens'
 
 const StatCard = ({ label, value, sublabel, colour, icon }) => {
@@ -57,7 +57,7 @@ const StatCard = ({ label, value, sublabel, colour, icon }) => {
   }
 
   return (
-    <Card padding="md">
+    <GlowCard>
       <div style={containerStyles}>
         {icon && (
           <div style={iconContainerStyles}>
@@ -70,7 +70,7 @@ const StatCard = ({ label, value, sublabel, colour, icon }) => {
           {sublabel && <p style={sublabelStyles}>{sublabel}</p>}
         </div>
       </div>
-    </Card>
+    </GlowCard>
   )
 }
 

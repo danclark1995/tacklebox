@@ -4,7 +4,7 @@ import {
   Flame, Layers, Zap, Star, Compass, Sparkles, Fish, Lock,
   HeartHandshake, TreePine, Trees, Award, FireExtinguisher, Tent,
 } from 'lucide-react'
-import Card from '@/components/ui/Card'
+import GlowCard from '@/components/ui/GlowCard'
 import Badge from '@/components/ui/Badge'
 import { colours, spacing, typography, radii, shadows } from '@/config/tokens'
 
@@ -58,7 +58,7 @@ const BadgeGrid = ({ badges = [], compact = false }) => {
         const earned = badge.earned
 
         return (
-          <Card key={badge.id} padding="md">
+          <GlowCard key={badge.id}>
             <div style={cardInnerStyle}>
               {earned && <div style={accentBar} />}
 
@@ -99,7 +99,7 @@ const BadgeGrid = ({ badges = [], compact = false }) => {
                 <Badge variant="neutral" size="sm">Not yet earned</Badge>
               )}
             </div>
-          </Card>
+          </GlowCard>
         )
       })}
     </div>

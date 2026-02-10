@@ -2,7 +2,7 @@ import { useState } from 'react'
 import useAuth from '@/hooks/useAuth'
 import useToast from '@/hooks/useToast'
 import PageHeader from '@/components/ui/PageHeader'
-import Card from '@/components/ui/Card'
+import GlowCard from '@/components/ui/GlowCard'
 import Button from '@/components/ui/Button'
 import Modal from '@/components/ui/Modal'
 import Input from '@/components/ui/Input'
@@ -85,7 +85,7 @@ export default function ClientProfile() {
     <div>
       <PageHeader title="Profile" />
 
-      <Card style={cardStyle}>
+      <GlowCard style={cardStyle}>
         <div style={profileHeaderStyle}>
           <Avatar name={user?.name} size="lg" />
           <div>
@@ -121,7 +121,7 @@ export default function ClientProfile() {
         <div style={actionsStyle}>
           <Button onClick={() => setIsEditing(true)}>Edit Profile</Button>
         </div>
-      </Card>
+      </GlowCard>
 
       {isEditing && (
         <Modal

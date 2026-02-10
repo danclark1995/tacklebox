@@ -3,7 +3,7 @@ import { useParams, Link } from 'react-router-dom'
 import useToast from '@/hooks/useToast'
 import PageHeader from '@/components/ui/PageHeader'
 import Button from '@/components/ui/Button'
-import Spinner from '@/components/ui/Spinner'
+import EmberLoader from '@/components/ui/EmberLoader'
 import EmptyState from '@/components/ui/EmptyState'
 import BrandProfileEditor from '@/components/features/brand/BrandProfileEditor'
 import BrandGuideCard from '@/components/features/brand/BrandGuideCard'
@@ -210,7 +210,7 @@ export default function AdminBrandProfileEdit() {
   if (loading) {
     return (
       <div style={{ display: 'flex', justifyContent: 'center', padding: spacing[8] }}>
-        <Spinner size="lg" />
+        <EmberLoader size="lg" />
       </div>
     )
   }

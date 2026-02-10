@@ -3,7 +3,7 @@ import useToast from '@/hooks/useToast'
 import PageHeader from '@/components/ui/PageHeader'
 import Button from '@/components/ui/Button'
 import Modal from '@/components/ui/Modal'
-import Spinner from '@/components/ui/Spinner'
+import EmberLoader from '@/components/ui/EmberLoader'
 import UserTable from '@/components/features/users/UserTable'
 import UserForm from '@/components/features/users/UserForm'
 import { apiEndpoint } from '@/config/env'
@@ -103,7 +103,7 @@ export default function AdminUsers() {
   if (loading) {
     return (
       <div style={{ display: 'flex', justifyContent: 'center', padding: spacing[8] }}>
-        <Spinner size="lg" />
+        <EmberLoader size="lg" />
       </div>
     )
   }

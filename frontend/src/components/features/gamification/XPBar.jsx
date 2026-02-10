@@ -1,16 +1,9 @@
 import React from 'react'
 import PropTypes from 'prop-types'
-import { Flame } from 'lucide-react'
-import ProgressBar from '@/components/ui/ProgressBar'
+import FlameIcon from '@/components/ui/FlameIcon'
+import WaveProgressBar from '@/components/ui/WaveProgressBar'
 import { colours, spacing, typography } from '@/config/tokens'
 
-/**
- * XP progress bar widget showing current level, fire stage, and rate range.
- *
- * Props:
- *   xpData   — from API: { total_xp, current_level, current_level_details, next_level, xp_to_next_level }
- *   compact  — if true, renders a smaller version suitable for dashboard widgets
- */
 const XPBar = ({ xpData, compact = false }) => {
   if (!xpData) return null
 
@@ -50,16 +43,12 @@ const XPBar = ({ xpData, compact = false }) => {
       <div style={compactContainerStyle}>
         <div style={compactHeaderStyle}>
           <span style={compactLevelStyle}>
-            <Flame size={14} style={{ marginRight: '4px', verticalAlign: 'middle' }} />
-            {levelName}
+            <FlameIcon level={current_level} size="sm" />
+            <span style={{ marginLeft: '4px' }}>{levelName}</span>
           </span>
           <span style={compactXPStyle}>{formattedXP} XP</span>
         </div>
-        <ProgressBar
-          value={progressPercent}
-          size="sm"
-          colour={colours.neutral[900]}
-        />
+        <WaveProgressBar progress={progressPercent} size="sm" />
       </div>
     )
   }
@@ -68,7 +57,7 @@ const XPBar = ({ xpData, compact = false }) => {
     <div style={containerStyle}>
       <div style={headerStyle}>
         <div style={levelInfoStyle}>
-          <Flame size={20} color={colours.neutral[900]} />
+          <FlameIcon level={current_level} size="md" />
           <span style={levelNameStyle}>
             Level {current_level} &mdash; {levelName}
           </span>
@@ -80,17 +69,14 @@ const XPBar = ({ xpData, compact = false }) => {
         <div style={fireStageStyle}>{fireStage}</div>
       )}
 
-      <ProgressBar
-        value={progressPercent}
+      <WaveProgressBar
+        progress={progressPercent}
         size="md"
-        colour={colours.neutral[900]}
+        sublabel={nextLevelName ? `${formattedRemaining} XP to ${nextLevelName}` : undefined}
       />
 
       <div style={footerStyle}>
         <span>{rateLabel}</span>
-        {nextLevelName && (
-          <span>{formattedRemaining} XP to {nextLevelName}</span>
-        )}
       </div>
     </div>
   )
@@ -139,8 +125,6 @@ const footerStyle = {
   fontFamily: typography.fontFamily.sans,
   fontSize: typography.fontSize.sm,
   color: colours.neutral[500],
-  display: 'flex',
-  justifyContent: 'space-between',
 }
 
 const compactContainerStyle = {

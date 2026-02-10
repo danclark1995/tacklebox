@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import useAuth from '@/hooks/useAuth'
 import useToast from '@/hooks/useToast'
 import PageHeader from '@/components/ui/PageHeader'
-import Spinner from '@/components/ui/Spinner'
+import EmberLoader from '@/components/ui/EmberLoader'
 import EmptyState from '@/components/ui/EmptyState'
 import BrandGuideCard from '@/components/features/brand/BrandGuideCard'
 import { apiEndpoint } from '@/config/env'
@@ -33,7 +33,7 @@ export default function ContractorBrandGuides() {
   if (loading) {
     return (
       <div style={{ display: 'flex', justifyContent: 'center', padding: spacing[8] }}>
-        <Spinner size="lg" />
+        <EmberLoader size="lg" />
       </div>
     )
   }

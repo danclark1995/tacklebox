@@ -2,8 +2,8 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import useToast from '@/hooks/useToast'
 import useAuth from '@/hooks/useAuth'
-import Card from '@/components/ui/Card'
-import Spinner from '@/components/ui/Spinner'
+import GlowCard from '@/components/ui/GlowCard'
+import EmberLoader from '@/components/ui/EmberLoader'
 import Select from '@/components/ui/Select'
 import TaskList from '@/components/features/tasks/TaskList'
 import Leaderboard from '@/components/features/gamification/Leaderboard'
@@ -57,7 +57,7 @@ export default function AdminDashboard() {
   if (loading) {
     return (
       <div style={{ display: 'flex', justifyContent: 'center', padding: spacing[8] }}>
-        <Spinner size="lg" />
+        <EmberLoader size="lg" />
       </div>
     )
   }
@@ -133,44 +133,44 @@ export default function AdminDashboard() {
       </div>
 
       <div style={summaryGridStyle}>
-        <Card style={summaryCardStyle}>
+        <GlowCard style={summaryCardStyle}>
           <div style={summaryLabelStyle}>Total Tasks</div>
           <div style={summaryValueStyle}>{tasks.length}</div>
-        </Card>
+        </GlowCard>
 
-        <Card style={summaryCardStyle}>
+        <GlowCard style={summaryCardStyle}>
           <div style={summaryLabelStyle}>Submitted</div>
           <div style={summaryValueStyle}>{submittedTasks.length}</div>
-        </Card>
+        </GlowCard>
 
-        <Card style={summaryCardStyle}>
+        <GlowCard style={summaryCardStyle}>
           <div style={summaryLabelStyle}>In Progress</div>
           <div style={summaryValueStyle}>{inProgressTasks.length}</div>
-        </Card>
+        </GlowCard>
 
-        <Card style={summaryCardStyle}>
+        <GlowCard style={summaryCardStyle}>
           <div style={summaryLabelStyle}>In Review</div>
           <div style={summaryValueStyle}>{reviewTasks.length}</div>
-        </Card>
+        </GlowCard>
 
-        <Card style={summaryCardStyle}>
+        <GlowCard style={summaryCardStyle}>
           <div style={summaryLabelStyle}>Active Clients</div>
           <div style={summaryValueStyle}>{activeClients.length}</div>
-        </Card>
+        </GlowCard>
 
-        <Card style={summaryCardStyle}>
+        <GlowCard style={summaryCardStyle}>
           <div style={summaryLabelStyle}>Active Campers</div>
           <div style={summaryValueStyle}>{activeContractors.length}</div>
-        </Card>
+        </GlowCard>
       </div>
 
       {/* Leaderboard Widget */}
       {Array.isArray(leaderboard) && leaderboard.length > 0 && (
         <div style={sectionStyle}>
           <h2 style={sectionTitleStyle}>Top Performers</h2>
-          <Card padding="sm">
+          <GlowCard padding="12px">
             <Leaderboard entries={leaderboard} currentUserId={user?.id} compact />
-          </Card>
+          </GlowCard>
         </div>
       )}
 

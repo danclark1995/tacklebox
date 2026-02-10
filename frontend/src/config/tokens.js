@@ -7,34 +7,6 @@
  */
 
 export const colours = {
-  // Primary — White accent on dark background (Linear / Vercel style)
-  primary: {
-    50: '#0a0a0a',
-    100: '#141414',
-    200: '#1e1e1e',
-    300: '#2a2a2a',
-    400: '#a3a3a3',
-    500: '#ffffff', // Main brand accent
-    600: '#e5e5e5',
-    700: '#d4d4d4',
-    800: '#a3a3a3',
-    900: '#737373',
-  },
-
-  // Secondary — Subtle dark tones
-  secondary: {
-    50: '#0a0a0a',
-    100: '#141414',
-    200: '#1e1e1e',
-    300: '#2a2a2a',
-    400: '#404040',
-    500: '#333333',
-    600: '#404040',
-    700: '#a3a3a3',
-    800: '#d4d4d4',
-    900: '#e5e5e5',
-  },
-
   // Neutral — Inverted for dark mode (50=darkest, 900=lightest)
   neutral: {
     50: '#0a0a0a',
@@ -46,72 +18,24 @@ export const colours = {
     600: '#a3a3a3',
     700: '#d4d4d4',
     800: '#e5e5e5',
-    900: '#ffffff', // Main text
+    900: '#ffffff',
   },
 
-  // Success — Dark-mode optimised
-  success: {
-    50: '#052e16',
-    100: '#14532d',
-    200: '#166534',
-    300: '#15803d',
-    400: '#16a34a',
-    500: '#22c55e',
-    600: '#4ade80',
-    700: '#86efac',
-    800: '#bbf7d0',
-    900: '#f0fdf4',
-  },
-
-  // Warning — Dark-mode optimised
-  warning: {
-    50: '#451a03',
-    100: '#78350f',
-    200: '#92400e',
-    300: '#b45309',
-    400: '#d97706',
-    500: '#f59e0b',
-    600: '#fbbf24',
-    700: '#fcd34d',
-    800: '#fde68a',
-    900: '#fffbeb',
-  },
-
-  // Error — Dark-mode optimised
-  error: {
-    50: '#450a0a',
-    100: '#7f1d1d',
-    200: '#991b1b',
-    300: '#b91c1c',
-    400: '#dc2626',
-    500: '#ef4444',
-    600: '#f87171',
-    700: '#fca5a5',
-    800: '#fecaca',
-    900: '#fef2f2',
-  },
-
-  // Info — Blue tones for dark mode
-  info: {
-    50: '#0c1929',
-    100: '#172554',
-    200: '#1e3a5f',
-    300: '#1e40af',
-    400: '#2563eb',
-    500: '#3b82f6',
-    600: '#60a5fa',
-    700: '#93bbfd',
-    800: '#bfdbfe',
-    900: '#eff6ff',
-  },
-
-  // Surfaces — Dark mode
+  // Surfaces
   white: '#111111',
   black: '#ffffff',
   background: '#0a0a0a',
   surface: '#111111',
   surfaceRaised: '#1a1a1a',
   overlay: 'rgba(0, 0, 0, 0.7)',
+}
+
+export const glow = {
+  none: 'none',
+  soft: '0 0 8px rgba(255, 255, 255, 0.06)',
+  medium: '0 0 16px rgba(255, 255, 255, 0.10)',
+  bright: '0 0 24px rgba(255, 255, 255, 0.16)',
+  intense: '0 0 32px rgba(255, 255, 255, 0.22)',
 }
 
 export const typography = {
@@ -201,6 +125,7 @@ export const zIndex = {
 
 const tokens = {
   colours,
+  glow,
   typography,
   spacing,
   radii,

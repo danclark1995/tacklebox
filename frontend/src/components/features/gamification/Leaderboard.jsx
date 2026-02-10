@@ -1,5 +1,6 @@
 import React from 'react'
 import PropTypes from 'prop-types'
+import FlameIcon from '@/components/ui/FlameIcon'
 import { colours, spacing, typography, radii, transitions } from '@/config/tokens'
 
 const Leaderboard = ({ entries = [], currentUserId, compact = false }) => {
@@ -55,7 +56,10 @@ const Leaderboard = ({ entries = [], currentUserId, compact = false }) => {
                     fontWeight: typography.fontWeight.bold,
                     color: colours.neutral[900],
                   }}>
-                    #{entry.rank}
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                      <FlameIcon level={entry.current_level || 1} size="sm" animated={false} />
+                      #{entry.rank}
+                    </span>
                   </td>
 
                   <td style={{

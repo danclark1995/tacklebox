@@ -1,6 +1,6 @@
 import { Navigate } from 'react-router-dom'
 import useAuth from '@/hooks/useAuth'
-import Spinner from '@/components/ui/Spinner'
+import EmberLoader from '@/components/ui/EmberLoader'
 import { colours, spacing, typography } from '@/config/tokens'
 
 export default function ProtectedRoute({ roles, children }) {
@@ -17,7 +17,7 @@ export default function ProtectedRoute({ roles, children }) {
 
     return (
       <div style={loadingContainerStyle}>
-        <Spinner size="lg" />
+        <EmberLoader size="lg" />
       </div>
     )
   }

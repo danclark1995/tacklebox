@@ -4,6 +4,7 @@ import { Home, CheckSquare, Users, Palette, Wrench, Settings, BookOpen, User, Co
 import useAuth from '@/hooks/useAuth'
 import Avatar from '@/components/ui/Avatar'
 import Button from '@/components/ui/Button'
+import FlameIcon from '@/components/ui/FlameIcon'
 import { colours, spacing, typography, radii, transitions } from '@/config/tokens'
 import { ROLES } from '@/config/constants'
 
@@ -17,7 +18,7 @@ const navItemsByRole = {
     { path: '/client/profile', label: 'Profile', icon: <User size={ICON_SIZE} /> },
   ],
   [ROLES.CONTRACTOR]: [
-    { path: '/camper', label: 'Home', icon: <Home size={ICON_SIZE} /> },
+    { path: '/camper', label: 'Home', icon: <FlameIcon level={1} size="sm" animated /> },
     { path: '/camper/tasks', label: 'Tasks', icon: <CheckSquare size={ICON_SIZE} /> },
     { path: '/camper/brands', label: 'Brands', icon: <Palette size={ICON_SIZE} /> },
     { path: '/camper/journey', label: 'Journey', icon: <Compass size={ICON_SIZE} /> },

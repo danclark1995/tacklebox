@@ -1,12 +1,12 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import useToast from '@/hooks/useToast'
-import Spinner from '@/components/ui/Spinner'
+import EmberLoader from '@/components/ui/EmberLoader'
 import Button from '@/components/ui/Button'
 import Modal from '@/components/ui/Modal'
 import Select from '@/components/ui/Select'
 import Textarea from '@/components/ui/Textarea'
-import Card from '@/components/ui/Card'
+import GlowCard from '@/components/ui/GlowCard'
 import TaskDetail from '@/components/features/tasks/TaskDetail'
 import AIAssistantPanel from '@/components/features/tasks/AIAssistantPanel'
 import { apiEndpoint } from '@/config/env'
@@ -401,7 +401,7 @@ export default function AdminTaskDetail() {
   if (loading) {
     return (
       <div style={{ display: 'flex', justifyContent: 'center', padding: spacing[8] }}>
-        <Spinner size="lg" />
+        <EmberLoader size="lg" />
       </div>
     )
   }
@@ -480,7 +480,7 @@ export default function AdminTaskDetail() {
       {renderAdminActions()}
 
       {(aiAnalysis || task.ai_metadata) && (
-        <Card style={{ marginBottom: spacing[4], padding: spacing[4], borderLeft: `4px solid ${colours.neutral[700]}` }}>
+        <GlowCard style={{ marginBottom: spacing[4], padding: spacing[4], borderLeft: `4px solid ${colours.neutral[700]}` }}>
           <h3 style={{ fontSize: '16px', fontWeight: 600, marginBottom: spacing[3], color: colours.neutral[800] }}>
             AI Brief Analysis
           </h3>
@@ -489,7 +489,7 @@ export default function AdminTaskDetail() {
               ? (aiAnalysis || task.ai_metadata)
               : JSON.stringify(aiAnalysis || task.ai_metadata, null, 2)}
           </div>
-        </Card>
+        </GlowCard>
       )}
 
       <AIAssistantPanel

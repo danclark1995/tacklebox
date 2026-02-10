@@ -1,4 +1,6 @@
-import { Card, StatusBadge, ProgressBar } from '@/components/ui'
+import { StatusBadge } from '@/components/ui'
+import GlowCard from '@/components/ui/GlowCard'
+import WaveProgressBar from '@/components/ui/WaveProgressBar'
 import { PROJECT_STATUS_LABELS } from '@/config/constants'
 import { colours, spacing } from '@/config/tokens'
 import { truncate } from '@/utils/formatters'
@@ -17,7 +19,7 @@ export default function ProjectCard({ project, onClick }) {
   const progressPercentage = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0
 
   return (
-    <Card
+    <GlowCard
       className="project-card"
       onClick={onClick}
       style={{
@@ -107,11 +109,7 @@ export default function ProjectCard({ project, onClick }) {
               {completedCount} of {totalCount} tasks
             </span>
           </div>
-          <ProgressBar
-            value={progressPercentage}
-            max={100}
-            variant={progressPercentage === 100 ? 'success' : 'primary'}
-          />
+          <WaveProgressBar progress={progressPercentage} size="sm" />
           <div style={{
             marginTop: spacing[2],
             fontSize: '12px',
@@ -122,6 +120,6 @@ export default function ProjectCard({ project, onClick }) {
           </div>
         </div>
       </div>
-    </Card>
+    </GlowCard>
   )
 }

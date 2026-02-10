@@ -1,4 +1,5 @@
-import { Button, ProgressBar, StatusBadge } from '@/components/ui'
+import { Button, StatusBadge } from '@/components/ui'
+import WaveProgressBar from '@/components/ui/WaveProgressBar'
 import TaskList from '../tasks/TaskList'
 import { colours, spacing } from '@/config/tokens'
 import { formatDateTime } from '@/utils/formatters'
@@ -114,11 +115,7 @@ export default function ProjectDetail({
               {completedCount} of {totalCount} tasks complete
             </span>
           </div>
-          <ProgressBar
-            value={progressPercentage}
-            max={100}
-            variant={progressPercentage === 100 ? 'success' : 'primary'}
-          />
+          <WaveProgressBar progress={progressPercentage} size="sm" />
           <div style={{
             marginTop: spacing[2],
             fontSize: '13px',

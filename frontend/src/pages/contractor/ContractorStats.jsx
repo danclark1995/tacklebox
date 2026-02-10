@@ -2,8 +2,8 @@ import { useState, useEffect } from 'react'
 import useAuth from '@/hooks/useAuth'
 import useToast from '@/hooks/useToast'
 import PageHeader from '@/components/ui/PageHeader'
-import Card from '@/components/ui/Card'
-import Spinner from '@/components/ui/Spinner'
+import GlowCard from '@/components/ui/GlowCard'
+import EmberLoader from '@/components/ui/EmberLoader'
 import XPBar from '@/components/features/gamification/XPBar'
 import BadgeGrid from '@/components/features/gamification/BadgeGrid'
 import Leaderboard from '@/components/features/gamification/Leaderboard'
@@ -59,7 +59,7 @@ export default function ContractorStats() {
   if (loading) {
     return (
       <div style={{ display: 'flex', justifyContent: 'center', padding: spacing[8] }}>
-        <Spinner size="lg" />
+        <EmberLoader size="lg" />
       </div>
     )
   }
@@ -80,38 +80,38 @@ export default function ContractorStats() {
 
       {/* XP Section */}
       <div style={sectionStyle}>
-        <Card padding="lg">
+        <GlowCard padding="32px">
           <XPBar xpData={xpData} levels={levels} />
-        </Card>
+        </GlowCard>
       </div>
 
       {/* Stats Grid */}
       <div style={statsGridStyle}>
-        <Card padding="md">
+        <GlowCard>
           <div style={statLabelStyle}>Tasks Completed</div>
           <div style={statValueStyle}>{tasksCompleted}</div>
-        </Card>
+        </GlowCard>
 
-        <Card padding="md">
+        <GlowCard>
           <div style={statLabelStyle}>On-Time Rate</div>
           <div style={statValueStyle}>
             {onTimeRate}
             <span style={statUnitStyle}>%</span>
           </div>
-        </Card>
+        </GlowCard>
 
-        <Card padding="md">
+        <GlowCard>
           <div style={statLabelStyle}>Avg Quality Rating</div>
           <div style={statValueStyle}>
             {avgQuality > 0 ? avgQuality.toFixed(1) : '-'}
             {avgQuality > 0 && <span style={starStyle}> {'\u2B50'}</span>}
           </div>
-        </Card>
+        </GlowCard>
 
-        <Card padding="md">
+        <GlowCard>
           <div style={statLabelStyle}>Total XP</div>
           <div style={statValueStyle}>{totalXP.toLocaleString()}</div>
-        </Card>
+        </GlowCard>
       </div>
 
       {/* Badges Section */}
@@ -120,11 +120,11 @@ export default function ContractorStats() {
         {badges.length > 0 ? (
           <BadgeGrid badges={badges} />
         ) : (
-          <Card padding="md">
+          <GlowCard>
             <div style={emptyTextStyle}>
               Complete tasks to start earning badges!
             </div>
-          </Card>
+          </GlowCard>
         )}
       </div>
 
@@ -132,19 +132,19 @@ export default function ContractorStats() {
       <div style={sectionStyle}>
         <h2 style={sectionTitleStyle}>Leaderboard</h2>
         {leaderboard.length > 0 ? (
-          <Card padding="sm">
+          <GlowCard padding="12px">
             <Leaderboard
               entries={leaderboard}
               currentUserId={user?.id}
               compact
             />
-          </Card>
+          </GlowCard>
         ) : (
-          <Card padding="md">
+          <GlowCard>
             <div style={emptyTextStyle}>
               Leaderboard data is not available yet.
             </div>
-          </Card>
+          </GlowCard>
         )}
       </div>
     </div>

@@ -1,0 +1,33 @@
+/* Flame flicker — subtle opacity and scale pulse */
+@keyframes flicker {
+  0%, 100% { opacity: 1; transform: scaleY(1) scaleX(1); }
+  20% { opacity: 0.88; transform: scaleY(0.97) scaleX(0.99); }
+  40% { opacity: 0.95; transform: scaleY(1.01) scaleX(1.01); }
+  60% { opacity: 0.85; transform: scaleY(0.98) scaleX(0.98); }
+  80% { opacity: 0.92; transform: scaleY(1.02) scaleX(1.0); }
+}
+
+/* Ember pulse — gentle breathing glow for loading states */
+@keyframes emberPulse {
+  0%, 100% { opacity: 0.3; }
+  50% { opacity: 1; }
+}
+
+/* Wave — subtle horizontal oscillation for progress bar edge */
+@keyframes waveShift {
+  0% { transform: translateX(0); }
+  50% { transform: translateX(-4px); }
+  100% { transform: translateX(0); }
+}
+
+/* Glow pulse — for active/current elements */
+@keyframes glowPulse {
+  0%, 100% { box-shadow: 0 0 12px rgba(255,255,255,0.06); }
+  50% { box-shadow: 0 0 20px rgba(255,255,255,0.14); }
+}
+
+/* Fade in */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}

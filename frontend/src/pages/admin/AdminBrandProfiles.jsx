@@ -3,8 +3,8 @@ import { useNavigate } from 'react-router-dom'
 import useToast from '@/hooks/useToast'
 import PageHeader from '@/components/ui/PageHeader'
 import Button from '@/components/ui/Button'
-import Card from '@/components/ui/Card'
-import Spinner from '@/components/ui/Spinner'
+import GlowCard from '@/components/ui/GlowCard'
+import EmberLoader from '@/components/ui/EmberLoader'
 import EmptyState from '@/components/ui/EmptyState'
 import { apiEndpoint } from '@/config/env'
 import { getAuthHeaders } from '@/services/auth'
@@ -36,7 +36,7 @@ export default function AdminBrandProfiles() {
   if (loading) {
     return (
       <div style={{ display: 'flex', justifyContent: 'center', padding: spacing[8] }}>
-        <Spinner size="lg" />
+        <EmberLoader size="lg" />
       </div>
     )
   }
@@ -77,7 +77,7 @@ export default function AdminBrandProfiles() {
       {clients.length > 0 ? (
         <div style={clientsGridStyle}>
           {clients.map(client => (
-            <Card key={client.id} style={cardStyle}>
+            <GlowCard key={client.id} style={cardStyle}>
               <div style={clientNameStyle}>{client.display_name || client.name}</div>
               {client.company && <div style={clientCompanyStyle}>{client.company}</div>}
               <div style={clientEmailStyle}>{client.email}</div>
@@ -87,7 +87,7 @@ export default function AdminBrandProfiles() {
               >
                 View/Edit Profile
               </Button>
-            </Card>
+            </GlowCard>
           ))}
         </div>
       ) : (

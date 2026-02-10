@@ -3,7 +3,7 @@ import { useSearchParams, useNavigate } from 'react-router-dom'
 import useAuth from '@/hooks/useAuth'
 import PageHeader from '@/components/ui/PageHeader'
 import Tabs from '@/components/ui/Tabs'
-import Spinner from '@/components/ui/Spinner'
+import EmberLoader from '@/components/ui/EmberLoader'
 import Badge from '@/components/ui/Badge'
 import StatusBadge from '@/components/ui/StatusBadge'
 import EmptyState from '@/components/ui/EmptyState'
@@ -219,7 +219,7 @@ export default function SearchResults() {
 
       {loading ? (
         <div style={loadingContainerStyle}>
-          <Spinner size="lg" />
+          <EmberLoader size="lg" />
         </div>
       ) : !results || totalCount === 0 ? (
         <EmptyState
