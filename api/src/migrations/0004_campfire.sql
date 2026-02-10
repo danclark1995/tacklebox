@@ -1,0 +1,1 @@
+ALTER TABLE tasks ADD COLUMN campfire_eligible INTEGER DEFAULT 0;

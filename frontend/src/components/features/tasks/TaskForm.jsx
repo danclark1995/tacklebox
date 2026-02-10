@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Input, Textarea, Select, DatePicker, FileUpload, Button } from '@/components/ui'
+import { Input, Textarea, Select, DatePicker, FileUpload, Button, Toggle } from '@/components/ui'
 import { PRIORITIES, PRIORITY_LABELS, VALIDATION } from '@/config/constants'
 import { colours, spacing } from '@/config/tokens'
 
@@ -29,6 +29,7 @@ export default function TaskForm({
     priority: PRIORITIES.MEDIUM,
     deadline: '',
     attachments: [],
+    campfire_eligible: false,
   })
 
   const [errors, setErrors] = useState({})
@@ -46,6 +47,7 @@ export default function TaskForm({
         priority: initialData.priority || PRIORITIES.MEDIUM,
         deadline: initialData.deadline || '',
         attachments: [],
+        campfire_eligible: !!initialData.campfire_eligible,
       })
     }
   }, [initialData])
@@ -288,6 +290,17 @@ export default function TaskForm({
         <DatePicker
           value={formData.deadline}
           onChange={(value) => handleChange('deadline', value)}
+          disabled={loading}
+        />
+      </div>
+
+      {/* Campfire */}
+      <div>
+        <Toggle
+          checked={formData.campfire_eligible}
+          onChange={(val) => handleChange('campfire_eligible', val)}
+          label="Send to Campfire"
+          helperText="Available tasks appear at the campfire for campers to pick up"
           disabled={loading}
         />
       </div>

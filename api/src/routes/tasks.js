@@ -114,6 +114,80 @@ async function validateTransition(env, task, newStatus, transitionData, auth) {
 }
 
 export async function handleTasks(request, env, auth, path, method) {
+  // GET /tasks/campfire - list claimable campfire tasks
+  if (path === '/tasks/campfire' && method === 'GET') {
+    const authCheck = requireAuth(auth)
+    if (!authCheck.authorized) {
+      return jsonResponse({ success: false, error: authCheck.error }, authCheck.status)
+    }
+    if (!['contractor', 'admin'].includes(auth.user.role)) {
+      return jsonResponse({ success: false, error: 'Insufficient permissions' }, 403)
+    }
+    try {
+      const result = await env.DB.prepare(`
+        SELECT t.id, t.title, t.description, t.priority, t.complexity_level, t.created_at,
+          cat.name as category_name,
+          c.display_name as client_name
+        FROM tasks t
+        LEFT JOIN task_categories cat ON t.category_id = cat.id
+        LEFT JOIN users c ON t.client_id = c.id
+        WHERE t.status = 'submitted'
+          AND t.contractor_id IS NULL
+          AND t.campfire_eligible = 1
+        ORDER BY t.created_at DESC
+      `).all()
+      return jsonResponse({ success: true, data: result.results || [] })
+    } catch (err) {
+      console.error('Campfire list error:', err)
+      return jsonResponse({ success: false, error: 'Failed to fetch campfire tasks' }, 500)
+    }
+  }
+
+  // POST /tasks/:id/claim - contractor claims a campfire task
+  const claimMatch = path.match(/^\/tasks\/([^\/]+)\/claim$/)
+  if (claimMatch && method === 'POST') {
+    const taskId = claimMatch[1]
+    const authCheck = requireAuth(auth)
+    if (!authCheck.authorized) {
+      return jsonResponse({ success: false, error: authCheck.error }, authCheck.status)
+    }
+    if (auth.user.role !== 'contractor') {
+      return jsonResponse({ success: false, error: 'Only campers can claim tasks' }, 403)
+    }
+    try {
+      const task = await env.DB.prepare(
+        'SELECT * FROM tasks WHERE id = ?'
+      ).bind(taskId).first()
+      if (!task) {
+        return jsonResponse({ success: false, error: 'Task not found' }, 404)
+      }
+      if (task.campfire_eligible !== 1 || task.status !== 'submitted' || task.contractor_id) {
+        return jsonResponse({ success: false, error: 'This task has already been claimed' }, 409)
+      }
+      await env.DB.prepare(`
+        UPDATE tasks SET contractor_id = ?, status = 'assigned', updated_at = datetime("now") WHERE id = ?
+      `).bind(auth.user.id, taskId).run()
+      await env.DB.prepare(`
+        INSERT INTO task_history (id, task_id, changed_by, from_status, to_status, note)
+        VALUES (?, ?, ?, 'submitted', 'assigned', 'Claimed from campfire')
+      `).bind(crypto.randomUUID(), taskId, auth.user.id).run()
+      const updated = await env.DB.prepare(`
+        SELECT t.*, c.display_name as client_name, con.display_name as contractor_name,
+          cat.name as category_name, p.name as project_name
+        FROM tasks t
+        LEFT JOIN users c ON t.client_id = c.id
+        LEFT JOIN users con ON t.contractor_id = con.id
+        LEFT JOIN task_categories cat ON t.category_id = cat.id
+        LEFT JOIN projects p ON t.project_id = p.id
+        WHERE t.id = ?
+      `).bind(taskId).first()
+      return jsonResponse({ success: true, data: updated })
+    } catch (err) {
+      console.error('Claim task error:', err)
+      return jsonResponse({ success: false, error: 'Failed to claim task' }, 500)
+    }
+  }
+
   // GET /tasks - list tasks with filters
   if (path === '/tasks' && method === 'GET') {
     const authCheck = requireAuth(auth)
@@ -289,7 +363,7 @@ export async function handleTasks(request, env, auth, path, method) {
 
     try {
       const body = await request.json()
-      const { title, description, priority, category_id, project_id, client_id, template_id, deadline } = body
+      const { title, description, priority, category_id, project_id, client_id, template_id, deadline, campfire_eligible } = body
 
       if (!title || !description || !priority || !category_id || !project_id) {
         return jsonResponse(
@@ -370,9 +444,9 @@ export async function handleTasks(request, env, auth, path, method) {
       await env.DB.prepare(`
         INSERT INTO tasks (
           id, title, description, status, priority, category_id, project_id,
-          client_id, created_by, template_id, deadline, ai_metadata
+          client_id, created_by, template_id, deadline, ai_metadata, campfire_eligible
         )
-        VALUES (?, ?, ?, 'submitted', ?, ?, ?, ?, ?, ?, ?, NULL)
+        VALUES (?, ?, ?, 'submitted', ?, ?, ?, ?, ?, ?, ?, NULL, ?)
       `).bind(
         taskId,
         title,
@@ -383,7 +457,8 @@ export async function handleTasks(request, env, auth, path, method) {
         finalClientId,
         auth.user.id,
         template_id || null,
-        deadline || null
+        deadline || null,
+        campfire_eligible ? 1 : 0
       ).run()
 
       // Create initial history entry
@@ -539,6 +614,12 @@ export async function handleTasks(request, env, auth, path, method) {
       if (body.deadline !== undefined) {
         updates.push('deadline = ?')
         bindings.push(body.deadline)
+      }
+
+      // Admin can toggle campfire eligibility
+      if (body.campfire_eligible !== undefined && auth.user.role === 'admin') {
+        updates.push('campfire_eligible = ?')
+        bindings.push(body.campfire_eligible ? 1 : 0)
       }
 
       if (updates.length === 0) {
