@@ -5,7 +5,7 @@ import {
 } from 'recharts'
 import useAuth from '@/hooks/useAuth'
 import useToast from '@/hooks/useToast'
-import { Card, Select, DatePicker, Spinner, PageHeader, DataTable, Button } from '@/components/ui'
+import { Card, Select, DatePicker, EmberLoader, PageHeader, DataTable, Button } from '@/components/ui'
 import StatCard from '@/components/features/analytics/StatCard'
 import { apiEndpoint } from '@/config/env'
 import { getAuthHeaders } from '@/services/auth'
@@ -313,7 +313,7 @@ export default function AdminAnalytics() {
           subtitle="Comprehensive overview of task, project, and camper performance"
         />
         <div style={{ display: 'flex', justifyContent: 'center', padding: spacing[16] }}>
-          <Spinner size="lg" />
+          <EmberLoader size="lg" />
         </div>
       </div>
     )

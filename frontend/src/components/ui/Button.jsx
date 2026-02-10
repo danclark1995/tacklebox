@@ -1,7 +1,7 @@
 import React from 'react'
 import PropTypes from 'prop-types'
 import { colours, spacing, radii, typography, transitions } from '@/config/tokens'
-import Spinner from './Spinner'
+import EmberLoader from './EmberLoader'
 
 const Button = ({
   variant = 'primary',
@@ -112,7 +112,7 @@ const Button = ({
       className={className}
     >
       {loading ? (
-        <Spinner size="sm" colour={variant === 'primary' ? colours.neutral[50] : colours.neutral[900]} />
+        <EmberLoader size="sm" />
       ) : (
         icon && <span style={{ display: 'flex', alignItems: 'center' }}>{icon}</span>
       )}

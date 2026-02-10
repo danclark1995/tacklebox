@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react'
 import PropTypes from 'prop-types'
-import { Button, Select, DatePicker, Textarea, EmptyState, Spinner } from '@/components/ui'
+import { Button, Select, DatePicker, Textarea, EmptyState, EmberLoader } from '@/components/ui'
 import useAuth from '@/hooks/useAuth'
 import { TIME_DURATION_OPTIONS, VALIDATION } from '@/config/constants'
 import { formatDate, formatDuration } from '@/utils/formatters'
@@ -403,7 +403,7 @@ export default function TimeLogSection({
       {/* Loading state */}
       {loading && (
         <div style={{ display: 'flex', justifyContent: 'center', padding: spacing[4] }}>
-          <Spinner size="md" />
+          <EmberLoader size="md" />
         </div>
       )}
 

@@ -1,7 +1,7 @@
 import React from 'react'
 import PropTypes from 'prop-types'
 import { colours, spacing, radii, typography, transitions } from '@/config/tokens'
-import Spinner from './Spinner'
+import EmberLoader from './EmberLoader'
 
 const SearchBar = ({
   value,
@@ -78,7 +78,7 @@ const SearchBar = ({
       />
       {loading && (
         <div style={spinnerContainerStyles}>
-          <Spinner size="sm" colour={colours.neutral[900]} />
+          <EmberLoader size="sm" />
         </div>
       )}
     </div>

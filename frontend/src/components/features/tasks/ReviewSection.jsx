@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import PropTypes from 'prop-types'
-import { Button, Select, Textarea, EmptyState, Spinner, StarRating } from '@/components/ui'
+import { Button, Select, Textarea, EmptyState, EmberLoader, StarRating } from '@/components/ui'
 import useAuth from '@/hooks/useAuth'
 import {
   TIME_DURATION_OPTIONS,
@@ -499,7 +499,7 @@ export default function ReviewSection({
       <div>
         <h2 style={sectionTitleStyles}>Post-Task Review</h2>
         <div style={{ display: 'flex', justifyContent: 'center', padding: spacing[8] }}>
-          <Spinner size="lg" />
+          <EmberLoader size="lg" />
         </div>
       </div>
     )
