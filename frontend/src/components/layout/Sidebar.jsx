@@ -1,10 +1,12 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { NavLink } from 'react-router-dom'
-import { Home, CheckSquare, Users, Palette, Wrench, Settings, BookOpen, User, Compass, Menu } from 'lucide-react'
+import { Home, CheckSquare, Users, Palette, Wrench, Settings, BookOpen, User, Compass, Menu, Flame } from 'lucide-react'
 import useAuth from '@/hooks/useAuth'
 import Avatar from '@/components/ui/Avatar'
 import Button from '@/components/ui/Button'
-import FlameIcon from '@/components/ui/FlameIcon'
+import WaveProgressBar from '@/components/ui/WaveProgressBar'
+import { apiEndpoint } from '@/config/env'
+import { getAuthHeaders } from '@/services/auth'
 import { colours, spacing, typography, radii, transitions } from '@/config/tokens'
 import { ROLES } from '@/config/constants'
 
@@ -18,7 +20,7 @@ const navItemsByRole = {
     { path: '/client/profile', label: 'Profile', icon: <User size={ICON_SIZE} /> },
   ],
   [ROLES.CONTRACTOR]: [
-    { path: '/camper', label: 'Home', icon: <FlameIcon level={1} size="sm" animated /> },
+    { path: '/camper', label: 'Home', icon: <Flame size={ICON_SIZE} /> },
     { path: '/camper/tasks', label: 'Tasks', icon: <CheckSquare size={ICON_SIZE} /> },
     { path: '/camper/brands', label: 'Brands', icon: <Palette size={ICON_SIZE} /> },
     { path: '/camper/journey', label: 'Journey', icon: <Compass size={ICON_SIZE} /> },
@@ -44,9 +46,34 @@ export default function Sidebar() {
   const { user, logout } = useAuth()
   const [isOpen, setIsOpen] = useState(false)
 
+  const [xpData, setXpData] = useState(null)
+
+  useEffect(() => {
+    if (user?.role !== 'contractor' || !user?.id) return
+    async function loadXP() {
+      try {
+        const res = await fetch(apiEndpoint(`/gamification/xp/${user.id}`), {
+          headers: { ...getAuthHeaders() },
+        })
+        const json = await res.json()
+        if (json.success !== false) setXpData(json.data || json)
+      } catch {}
+    }
+    loadXP()
+  }, [user?.id, user?.role])
+
   if (!user) return null
 
   const navItems = navItemsByRole[user.role] || []
+
+  // XP progress for sidebar
+  let xpProgress = 0
+  if (xpData) {
+    const currentXp = xpData.current_level_details?.xp_required || 0
+    const nextXp = xpData.next_level?.xp_required || 0
+    const xpNeeded = nextXp - currentXp
+    xpProgress = xpNeeded > 0 ? Math.min(((xpData.total_xp - currentXp) / xpNeeded) * 100, 100) : 100
+  }
 
   const sidebarStyle = {
     position: 'fixed',
@@ -92,7 +119,7 @@ export default function Sidebar() {
   const navItemStyle = {
     display: 'flex',
     alignItems: 'center',
-    gap: spacing[2],
+    gap: '12px',
     padding: `${spacing[2]} ${spacing[3]}`,
     color: colours.neutral[600],
     textDecoration: 'none',
@@ -107,6 +134,15 @@ export default function Sidebar() {
     ...navItemStyle,
     backgroundColor: colours.neutral[200],
     color: colours.neutral[900],
+  }
+
+  const iconBoxStyle = {
+    width: '18px',
+    height: '18px',
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
   }
 
   const footerStyle = {
@@ -211,7 +247,7 @@ export default function Sidebar() {
               style={({ isActive }) => isActive ? activeNavItemStyle : navItemStyle}
               onClick={() => setIsOpen(false)}
             >
-              {item.icon}
+              <span style={iconBoxStyle}>{item.icon}</span>
               <span>{item.label}</span>
             </NavLink>
           ))}
@@ -225,6 +261,14 @@ export default function Sidebar() {
               <div style={roleBadgeStyle}>{ROLE_DISPLAY[user.role]}</div>
             </div>
           </div>
+          {user.role === 'contractor' && xpData && (
+            <div style={{ marginBottom: spacing[2] }}>
+              <div style={{ fontSize: '11px', color: '#666', marginBottom: '4px' }}>
+                Level {xpData.current_level || 1} · {(xpData.total_xp || 0).toLocaleString()} XP
+              </div>
+              <WaveProgressBar progress={xpProgress} size="sm" />
+            </div>
+          )}
           <Button
             variant="outline"
             size="sm"

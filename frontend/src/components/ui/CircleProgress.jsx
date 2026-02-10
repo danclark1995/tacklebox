@@ -165,37 +165,38 @@ const CircleProgress = ({
           )
         })}
 
-        {/* Centre text */}
-        <text
-          x={cx} y={cy - 20}
-          textAnchor="middle"
-          fill="#ffffff"
-          fontSize={48}
-          fontWeight={700}
-          fontFamily="Inter, -apple-system, sans-serif"
-        >
-          {currentLevel}
-        </text>
-        <text
-          x={cx} y={cy + 8}
-          textAnchor="middle"
-          fill="#ffffff"
-          fontSize={14}
-          fontWeight={400}
-          fontFamily="Inter, -apple-system, sans-serif"
-        >
-          {displayLevels.find(l => l.level === currentLevel)?.name || ''}
-        </text>
       </svg>
 
-      {/* Centre FlameIcon overlay */}
+      {/* Centre campfire */}
       <div style={{
         position: 'absolute',
         top: '50%',
         left: '50%',
-        transform: 'translate(-50%, 8px)',
+        transform: 'translate(-50%, -50%)',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
       }}>
-        <FlameIcon level={currentLevel} size="md" animated />
+        <div style={{
+          borderRadius: '50%',
+          boxShadow: '0 0 40px rgba(255,255,255,0.08)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}>
+          <FlameIcon level={currentLevel} size="lg" animated />
+        </div>
+        <div style={{
+          marginTop: '-2px',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          gap: '3px',
+        }}>
+          <div style={{ width: '28px', height: '2px', backgroundColor: '#ffffff', opacity: 0.3, transform: 'rotate(-20deg)', borderRadius: '1px' }} />
+          <div style={{ width: '24px', height: '2px', backgroundColor: '#ffffff', opacity: 0.25, transform: 'rotate(15deg)', borderRadius: '1px' }} />
+          <div style={{ width: '22px', height: '2px', backgroundColor: '#ffffff', opacity: 0.2, transform: 'rotate(-8deg)', borderRadius: '1px' }} />
+        </div>
       </div>
     </div>
   )
