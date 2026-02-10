@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import useToast from '@/hooks/useToast'
 import Button from '@/components/ui/Button'
+import Dropdown from '@/components/ui/Dropdown'
 import EmberLoader from '@/components/ui/EmberLoader'
 import { apiEndpoint } from '@/config/env'
 import { getAuthHeaders } from '@/services/auth'
@@ -332,9 +333,12 @@ export default function AIAssistantPanel({ task, brandProfile, onAttachmentAdded
   const renderTypeSelector = () => (
     <div style={{ marginBottom: spacing[3] }}>
       <label style={labelStyle}>Content Type</label>
-      <select style={selectStyle} value={contentType} onChange={e => setContentType(e.target.value)}>
-        {CONTENT_TYPES.map(ct => <option key={ct.value} value={ct.value}>{ct.label}</option>)}
-      </select>
+      <Dropdown
+        value={contentType}
+        onChange={v => setContentType(v)}
+        options={CONTENT_TYPES}
+        style={{ marginBottom: spacing[3] }}
+      />
     </div>
   )
 
@@ -343,15 +347,19 @@ export default function AIAssistantPanel({ task, brandProfile, onAttachmentAdded
       <div style={rowStyle}>
         <div>
           <label style={labelStyle}>Platform</label>
-          <select style={{ ...selectStyle, marginBottom: 0 }} value={platform} onChange={e => { setPlatform(e.target.value); setFormat('post') }}>
-            {PLATFORMS.map(p => <option key={p.value} value={p.value}>{p.label}</option>)}
-          </select>
+          <Dropdown
+            value={platform}
+            onChange={v => { setPlatform(v); setFormat('post') }}
+            options={PLATFORMS}
+          />
         </div>
         <div>
           <label style={labelStyle}>Format</label>
-          <select style={{ ...selectStyle, marginBottom: 0 }} value={format} onChange={e => setFormat(e.target.value)}>
-            {(FORMATS[platform] || []).map(f => <option key={f.value} value={f.value}>{f.label}</option>)}
-          </select>
+          <Dropdown
+            value={format}
+            onChange={v => setFormat(v)}
+            options={FORMATS[platform] || []}
+          />
         </div>
       </div>
       <div style={{ marginTop: spacing[3] }}>
@@ -366,9 +374,12 @@ export default function AIAssistantPanel({ task, brandProfile, onAttachmentAdded
     <>
       <div>
         <label style={labelStyle}>Document Type</label>
-        <select style={selectStyle} value={documentType} onChange={e => setDocumentType(e.target.value)}>
-          {DOC_TYPES.map(d => <option key={d.value} value={d.value}>{d.label}</option>)}
-        </select>
+        <Dropdown
+          value={documentType}
+          onChange={v => setDocumentType(v)}
+          options={DOC_TYPES}
+          style={{ marginBottom: spacing[3] }}
+        />
       </div>
       <div>
         <label style={labelStyle}>Prompt</label>
@@ -398,16 +409,21 @@ export default function AIAssistantPanel({ task, brandProfile, onAttachmentAdded
         </div>
         <div>
           <label style={labelStyle}>Tone</label>
-          <select style={{ ...selectStyle, marginBottom: 0 }} value={tone} onChange={e => setTone(e.target.value)}>
-            {TONES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
-          </select>
+          <Dropdown
+            value={tone}
+            onChange={v => setTone(v)}
+            options={TONES}
+          />
         </div>
       </div>
       <div style={{ marginTop: spacing[3] }}>
         <label style={labelStyle}>Slides</label>
-        <select style={selectStyle} value={numSlides} onChange={e => setNumSlides(parseInt(e.target.value))}>
-          {[4, 5, 6, 8, 10, 12].map(n => <option key={n} value={n}>{n} slides</option>)}
-        </select>
+        <Dropdown
+          value={numSlides}
+          onChange={v => setNumSlides(parseInt(v))}
+          options={[4, 5, 6, 8, 10, 12].map(n => ({ value: n, label: `${n} slides` }))}
+          style={{ marginBottom: spacing[3] }}
+        />
       </div>
       <div>
         <label style={labelStyle}>Key Points (optional)</label>
@@ -421,9 +437,12 @@ export default function AIAssistantPanel({ task, brandProfile, onAttachmentAdded
     <>
       <div>
         <label style={labelStyle}>Ad Format</label>
-        <select style={selectStyle} value={adFormat} onChange={e => setAdFormat(e.target.value)}>
-          {AD_FORMATS.map(f => <option key={f.value} value={f.value}>{f.label}</option>)}
-        </select>
+        <Dropdown
+          value={adFormat}
+          onChange={v => setAdFormat(v)}
+          options={AD_FORMATS}
+          style={{ marginBottom: spacing[3] }}
+        />
       </div>
       <div style={rowStyle}>
         <div>

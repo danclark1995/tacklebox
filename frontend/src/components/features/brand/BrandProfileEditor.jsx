@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Input, Textarea, Button, Card } from '@/components/ui'
+import { Input, Textarea, Button, Card, Dropdown } from '@/components/ui'
 import { colours, spacing, typography, radii, transitions } from '@/config/tokens'
 
 const SECTIONS = [
@@ -422,16 +422,26 @@ export default function BrandProfileEditor({ profile, clientId, onSaveSection, o
             <Input value={newLogo.file_path} onChange={e => setNewLogo(prev => ({ ...prev, file_path: e.target.value }))} placeholder="File path / URL" disabled={saving} />
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 120px', gap: spacing[3] }}>
-            <select value={newLogo.background_type} onChange={e => setNewLogo(prev => ({ ...prev, background_type: e.target.value }))} disabled={saving} style={selectStyle}>
-              <option value="transparent">Transparent</option>
-              <option value="light">Light</option>
-              <option value="dark">Dark</option>
-            </select>
-            <select value={newLogo.logo_type} onChange={e => setNewLogo(prev => ({ ...prev, logo_type: e.target.value }))} disabled={saving} style={selectStyle}>
-              <option value="primary">Primary</option>
-              <option value="wordmark">Wordmark</option>
-              <option value="icon">Icon</option>
-            </select>
+            <Dropdown
+              value={newLogo.background_type}
+              onChange={v => setNewLogo(prev => ({ ...prev, background_type: v }))}
+              disabled={saving}
+              options={[
+                { value: 'transparent', label: 'Transparent' },
+                { value: 'light', label: 'Light' },
+                { value: 'dark', label: 'Dark' },
+              ]}
+            />
+            <Dropdown
+              value={newLogo.logo_type}
+              onChange={v => setNewLogo(prev => ({ ...prev, logo_type: v }))}
+              disabled={saving}
+              options={[
+                { value: 'primary', label: 'Primary' },
+                { value: 'wordmark', label: 'Wordmark' },
+                { value: 'icon', label: 'Icon' },
+              ]}
+            />
             <Button
               type="button"
               variant="primary"

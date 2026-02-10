@@ -4,6 +4,7 @@ import useAuth from '@/hooks/useAuth'
 import { apiEndpoint } from '@/config/env'
 import { getAuthHeaders } from '@/services/auth'
 import Button from '@/components/ui/Button'
+import Dropdown from '@/components/ui/Dropdown'
 import { colours, spacing, typography, radii, transitions } from '@/config/tokens'
 
 const DOC_TYPES = [
@@ -130,16 +131,21 @@ export default function CreateDocument() {
       <div style={twoColStyle}>
         <div style={panelStyle}>
           <label style={labelStyle}>Brand Profile</label>
-          <select style={selectStyle} value={selectedProfile} onChange={e => setSelectedProfile(e.target.value)}>
-            {brandProfiles.map(bp => (
-              <option key={bp.id} value={bp.id}>{bp.company || bp.client_name || 'Brand Profile'}</option>
-            ))}
-          </select>
+          <Dropdown
+            value={selectedProfile}
+            onChange={v => setSelectedProfile(v)}
+            options={brandProfiles.map(bp => ({ value: bp.id, label: bp.company || bp.client_name || 'Brand Profile' }))}
+            placeholder="Select brand profile"
+            style={{ marginBottom: spacing[4] }}
+          />
 
           <label style={labelStyle}>Document Type</label>
-          <select style={selectStyle} value={documentType} onChange={e => setDocumentType(e.target.value)}>
-            {DOC_TYPES.map(d => <option key={d.value} value={d.value}>{d.label}</option>)}
-          </select>
+          <Dropdown
+            value={documentType}
+            onChange={v => setDocumentType(v)}
+            options={DOC_TYPES}
+            style={{ marginBottom: spacing[4] }}
+          />
 
           <label style={labelStyle}>Prompt</label>
           <textarea

@@ -4,6 +4,7 @@ import useAuth from '@/hooks/useAuth'
 import { apiEndpoint } from '@/config/env'
 import { getAuthHeaders } from '@/services/auth'
 import Button from '@/components/ui/Button'
+import Dropdown from '@/components/ui/Dropdown'
 import { colours, spacing, typography, radii, transitions } from '@/config/tokens'
 
 const AD_FORMATS = [
@@ -132,16 +133,21 @@ export default function CreateAd() {
       <div style={twoColStyle}>
         <div style={panelStyle}>
           <label style={labelStyle}>Brand Profile</label>
-          <select style={selectStyle} value={selectedProfile} onChange={e => setSelectedProfile(e.target.value)}>
-            {brandProfiles.map(bp => (
-              <option key={bp.id} value={bp.id}>{bp.company || bp.client_name || 'Brand Profile'}</option>
-            ))}
-          </select>
+          <Dropdown
+            value={selectedProfile}
+            onChange={v => setSelectedProfile(v)}
+            options={brandProfiles.map(bp => ({ value: bp.id, label: bp.company || bp.client_name || 'Brand Profile' }))}
+            placeholder="Select brand profile"
+            style={{ marginBottom: spacing[4] }}
+          />
 
           <label style={labelStyle}>Ad Format</label>
-          <select style={selectStyle} value={adFormat} onChange={e => setAdFormat(e.target.value)}>
-            {AD_FORMATS.map(f => <option key={f.value} value={f.value}>{f.label}</option>)}
-          </select>
+          <Dropdown
+            value={adFormat}
+            onChange={v => setAdFormat(v)}
+            options={AD_FORMATS}
+            style={{ marginBottom: spacing[4] }}
+          />
 
           <label style={labelStyle}>Headline (optional — AI will generate if blank)</label>
           <input

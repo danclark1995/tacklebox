@@ -4,6 +4,7 @@ import useAuth from '@/hooks/useAuth'
 import { apiEndpoint } from '@/config/env'
 import { getAuthHeaders } from '@/services/auth'
 import Button from '@/components/ui/Button'
+import Dropdown from '@/components/ui/Dropdown'
 import { colours, spacing, typography, radii, transitions } from '@/config/tokens'
 
 const TONES = [
@@ -136,11 +137,13 @@ export default function CreatePresentation() {
       <div style={twoColStyle}>
         <div style={panelStyle}>
           <label style={labelStyle}>Brand Profile</label>
-          <select style={selectStyle} value={selectedProfile} onChange={e => setSelectedProfile(e.target.value)}>
-            {brandProfiles.map(bp => (
-              <option key={bp.id} value={bp.id}>{bp.company || bp.client_name || 'Brand Profile'}</option>
-            ))}
-          </select>
+          <Dropdown
+            value={selectedProfile}
+            onChange={v => setSelectedProfile(v)}
+            options={brandProfiles.map(bp => ({ value: bp.id, label: bp.company || bp.client_name || 'Brand Profile' }))}
+            placeholder="Select brand profile"
+            style={{ marginBottom: spacing[4] }}
+          />
 
           <label style={labelStyle}>Topic</label>
           <textarea
@@ -161,15 +164,19 @@ export default function CreatePresentation() {
           <div style={rowStyle}>
             <div>
               <label style={labelStyle}>Slides</label>
-              <select style={{ ...selectStyle, marginBottom: 0 }} value={numSlides} onChange={e => setNumSlides(parseInt(e.target.value))}>
-                {[4, 5, 6, 8, 10, 12].map(n => <option key={n} value={n}>{n} slides</option>)}
-              </select>
+              <Dropdown
+                value={numSlides}
+                onChange={v => setNumSlides(parseInt(v))}
+                options={[4, 5, 6, 8, 10, 12].map(n => ({ value: n, label: `${n} slides` }))}
+              />
             </div>
             <div>
               <label style={labelStyle}>Tone</label>
-              <select style={{ ...selectStyle, marginBottom: 0 }} value={tone} onChange={e => setTone(e.target.value)}>
-                {TONES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
-              </select>
+              <Dropdown
+                value={tone}
+                onChange={v => setTone(v)}
+                options={TONES}
+              />
             </div>
           </div>
 
