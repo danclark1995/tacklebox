@@ -28,7 +28,7 @@ export default function UserTable({ users = [], loading = false, onEdit, onDeact
     {
       key: 'user',
       label: 'User',
-      render: (row) => (
+      render: (_, row) => (
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           <Avatar
             src={row.avatar_url}
@@ -58,7 +58,7 @@ export default function UserTable({ users = [], loading = false, onEdit, onDeact
     {
       key: 'email',
       label: 'Email',
-      render: (row) => (
+      render: (_, row) => (
         <span style={{ fontSize: '14px', color: colours.neutral[700] }}>
           {row.email}
         </span>
@@ -67,7 +67,7 @@ export default function UserTable({ users = [], loading = false, onEdit, onDeact
     {
       key: 'role',
       label: 'Role',
-      render: (row) => (
+      render: (_, row) => (
         <Badge variant={getRoleBadgeVariant(row.role)}>
           {ROLE_LABELS[row.role]}
         </Badge>
@@ -76,7 +76,7 @@ export default function UserTable({ users = [], loading = false, onEdit, onDeact
     {
       key: 'status',
       label: 'Status',
-      render: (row) => (
+      render: (_, row) => (
         <Badge variant={row.is_active ? 'success' : 'neutral'}>
           {row.is_active ? 'Active' : 'Inactive'}
         </Badge>
@@ -85,7 +85,7 @@ export default function UserTable({ users = [], loading = false, onEdit, onDeact
     {
       key: 'created_at',
       label: 'Created',
-      render: (row) => (
+      render: (_, row) => (
         <span style={{ fontSize: '13px', color: colours.neutral[600] }}>
           {formatDateTime(row.created_at)}
         </span>
@@ -94,7 +94,7 @@ export default function UserTable({ users = [], loading = false, onEdit, onDeact
     {
       key: 'task_count',
       label: 'Tasks',
-      render: (row) => (
+      render: (_, row) => (
         <span style={{
           fontSize: '14px',
           fontWeight: 500,
@@ -107,7 +107,7 @@ export default function UserTable({ users = [], loading = false, onEdit, onDeact
     {
       key: 'actions',
       label: 'Actions',
-      render: (row) => (
+      render: (_, row) => (
         <div style={{ display: 'flex', gap: '8px' }}>
           <Button
             variant="secondary"

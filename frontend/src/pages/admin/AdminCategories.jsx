@@ -141,17 +141,17 @@ export default function AdminCategories() {
     {
       key: 'name',
       label: 'Name',
-      render: (category) => category.name
+      render: (_, category) => category.name
     },
     {
       key: 'description',
       label: 'Description',
-      render: (category) => category.description || '-'
+      render: (_, category) => category.description || '-'
     },
     {
       key: 'default_priority',
       label: 'Default Priority',
-      render: (category) => (
+      render: (_, category) => (
         <Badge variant={category.default_priority === 'high' ? 'error' : category.default_priority === 'medium' ? 'warning' : 'info'}>
           {category.default_priority}
         </Badge>
@@ -160,12 +160,12 @@ export default function AdminCategories() {
     {
       key: 'icon',
       label: 'Icon',
-      render: (category) => category.icon || '-'
+      render: (_, category) => category.icon || '-'
     },
     {
       key: 'active',
       label: 'Status',
-      render: (category) => (
+      render: (_, category) => (
         <Badge variant={category.active ? 'success' : 'neutral'}>
           {category.active ? 'Active' : 'Inactive'}
         </Badge>
@@ -174,7 +174,7 @@ export default function AdminCategories() {
     {
       key: 'actions',
       label: 'Actions',
-      render: (category) => (
+      render: (_, category) => (
         <div style={{ display: 'flex', gap: spacing[2] }}>
           <Button size="sm" variant="secondary" onClick={() => handleEditCategory(category)}>
             Edit
