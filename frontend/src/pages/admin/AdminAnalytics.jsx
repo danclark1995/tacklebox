@@ -3,6 +3,7 @@ import {
   LineChart, Line, BarChart, Bar, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
 } from 'recharts'
+import { Cpu, Sparkles } from 'lucide-react'
 import useAuth from '@/hooks/useAuth'
 import useToast from '@/hooks/useToast'
 import { Card, Select, DatePicker, EmberLoader, PageHeader, DataTable, Button } from '@/components/ui'
@@ -134,6 +135,7 @@ export default function AdminAnalytics() {
 
   const [loading, setLoading] = useState(true)
   const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' })
+  const [aiStats, setAiStats] = useState(null)
 
   // Build filters object from state
   const buildFilters = useCallback(() => {
@@ -173,6 +175,18 @@ export default function AdminAnalytics() {
     }
     loadFilterOptions()
   }, [addToast])
+
+  // Fetch AI stats on mount
+  useEffect(() => {
+    async function loadAiStats() {
+      try {
+        const res = await fetch(apiEndpoint('/generate/stats'), { headers: { ...getAuthHeaders() } })
+        const json = await res.json()
+        if (json.success) setAiStats(json.data)
+      } catch {}
+    }
+    loadAiStats()
+  }, [])
 
   // Fetch all analytics data
   const fetchAnalytics = useCallback(async () => {
@@ -508,6 +522,27 @@ export default function AdminAnalytics() {
       </Card>
 
       <div style={{ height: spacing[6] }} />
+
+      {/* ── AI Stats Row ───────────────────────────────────────── */}
+      {aiStats && (
+        <>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: spacing[4] }}>
+            <StatCard
+              label="AI-Assisted Tasks"
+              value={fmtCount(aiStats.ai_assisted_tasks)}
+              colour={colours.neutral[900]}
+              icon={<Cpu size={20} />}
+            />
+            <StatCard
+              label="Total Generations"
+              value={fmtCount(aiStats.total_generations)}
+              colour={colours.neutral[700]}
+              icon={<Sparkles size={20} />}
+            />
+          </div>
+          <div style={{ height: spacing[4] }} />
+        </>
+      )}
 
       {/* ── Summary Stats Row ────────────────────────────────── */}
       <div style={summaryRowStyles}>

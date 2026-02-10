@@ -353,5 +353,31 @@ export async function handleGenerate(request, env, auth, path, method) {
     }
   }
 
+  // GET /generate/stats - AI generation statistics (admin only)
+  if (path === '/generate/stats' && method === 'GET') {
+    const authCheck = requireRole(auth, 'admin')
+    if (!authCheck.authorized) {
+      return jsonResponse({ success: false, error: authCheck.error }, authCheck.status)
+    }
+
+    try {
+      const [aiTasksResult, generationsResult] = await Promise.all([
+        env.DB.prepare('SELECT COUNT(*) as count FROM tasks WHERE complexity_level = 0').first(),
+        env.DB.prepare('SELECT COUNT(*) as count FROM generations').first(),
+      ])
+
+      return jsonResponse({
+        success: true,
+        data: {
+          ai_assisted_tasks: aiTasksResult?.count || 0,
+          total_generations: generationsResult?.count || 0,
+        },
+      })
+    } catch (err) {
+      console.error('Generate stats error:', err)
+      return jsonResponse({ success: false, error: 'Failed to fetch stats' }, 500)
+    }
+  }
+
   return jsonResponse({ success: false, error: 'Route not found' }, 404)
 }

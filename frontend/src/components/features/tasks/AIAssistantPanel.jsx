@@ -84,9 +84,9 @@ function safeArr(val) {
   return []
 }
 
-export default function AIAssistantPanel({ task, brandProfile, onAttachmentAdded }) {
+export default function AIAssistantPanel({ task, brandProfile, onAttachmentAdded, complexityLevel }) {
   const { addToast } = useToast()
-  const [expanded, setExpanded] = useState(false)
+  const [expanded, setExpanded] = useState(complexityLevel === 0)
   const [contentType, setContentType] = useState(() => detectContentType(task?.category_name) || 'social_image')
   const [generating, setGenerating] = useState(false)
   const [attaching, setAttaching] = useState(false)
@@ -188,12 +188,15 @@ export default function AIAssistantPanel({ task, brandProfile, onAttachmentAdded
     }
   }
 
+  const isAiAssist = complexityLevel === 0
+
   const panelStyle = {
     marginBottom: spacing[4],
-    border: `1px solid ${colours.neutral[200]}`,
+    border: `1px solid ${isAiAssist ? '#333' : colours.neutral[200]}`,
     borderRadius: radii.xl,
     backgroundColor: colours.surface,
     overflow: 'hidden',
+    boxShadow: isAiAssist ? '0 0 12px rgba(255,255,255,0.08)' : 'none',
   }
 
   const headerStyle = {
@@ -545,6 +548,23 @@ export default function AIAssistantPanel({ task, brandProfile, onAttachmentAdded
 
       {expanded && (
         <div style={bodyStyle}>
+          {isAiAssist && (
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              padding: `${spacing[2]} ${spacing[3]}`,
+              marginBottom: spacing[3],
+              fontSize: typography.fontSize.sm,
+              color: colours.neutral[700],
+              backgroundColor: 'rgba(255,255,255,0.03)',
+              borderRadius: radii.md,
+              border: '1px solid #222',
+            }}>
+              {sparkleIcon}
+              AI Assist Task — Generate a draft to get started
+            </div>
+          )}
           {renderBrandSummary()}
           {renderTypeSelector()}
           {renderForm()}

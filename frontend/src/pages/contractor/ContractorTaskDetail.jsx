@@ -417,6 +417,7 @@ export default function ContractorTaskDetail() {
         task={task}
         brandProfile={brandProfile}
         onAttachmentAdded={handleAIAttachmentAdded}
+        complexityLevel={task?.complexity_level}
       />
 
       <TaskDetail

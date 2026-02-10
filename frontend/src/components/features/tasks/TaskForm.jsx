@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Input, Textarea, Select, DatePicker, FileUpload, Button, Toggle } from '@/components/ui'
-import { PRIORITIES, PRIORITY_LABELS, VALIDATION } from '@/config/constants'
+import { PRIORITIES, PRIORITY_LABELS, VALIDATION, SCALING_TIERS } from '@/config/constants'
 import { colours, spacing } from '@/config/tokens'
 
 /**
@@ -19,6 +19,7 @@ export default function TaskForm({
   initialData = null,
   loading = false,
   clientId = null,
+  isAdmin = false,
 }) {
   const [formData, setFormData] = useState({
     project_id: '',
@@ -30,6 +31,7 @@ export default function TaskForm({
     deadline: '',
     attachments: [],
     campfire_eligible: false,
+    complexity_level: '',
   })
 
   const [errors, setErrors] = useState({})
@@ -48,6 +50,7 @@ export default function TaskForm({
         deadline: initialData.deadline || '',
         attachments: [],
         campfire_eligible: !!initialData.campfire_eligible,
+        complexity_level: initialData.complexity_level != null ? String(initialData.complexity_level) : '',
       })
     }
   }, [initialData])
@@ -122,6 +125,18 @@ export default function TaskForm({
     value: priority,
     label: PRIORITY_LABELS[priority],
   }))
+
+  const complexityOptions = [
+    { value: '', label: 'Not set' },
+    ...SCALING_TIERS.map(tier => ({
+      value: String(tier.level),
+      label: tier.level === 0
+        ? 'Level 0 — AI Assist'
+        : tier.rateMax === 0
+          ? `Level ${tier.level} — ${tier.name} ($${tier.rateMin}+/hr)`
+          : `Level ${tier.level} — ${tier.name} ($${tier.rateMin}–$${tier.rateMax}/hr)`,
+    })),
+  ]
 
   const projectOptions = projects.map(p => ({ value: p.id, label: p.name }))
   const categoryOptions = categories.map(c => ({ value: c.id, label: c.name }))
@@ -275,6 +290,27 @@ export default function TaskForm({
           </span>
         )}
       </div>
+
+      {/* Complexity Level (admin only) */}
+      {isAdmin && (
+        <div>
+          <label style={{
+            display: 'block',
+            fontSize: '14px',
+            fontWeight: 500,
+            color: colours.neutral[700],
+            marginBottom: spacing[2],
+          }}>
+            Complexity Level
+          </label>
+          <Select
+            value={formData.complexity_level}
+            onChange={(e) => handleChange('complexity_level', e.target.value)}
+            options={complexityOptions}
+            disabled={loading}
+          />
+        </div>
+      )}
 
       {/* Deadline */}
       <div>

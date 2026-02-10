@@ -363,7 +363,7 @@ export async function handleTasks(request, env, auth, path, method) {
 
     try {
       const body = await request.json()
-      const { title, description, priority, category_id, project_id, client_id, template_id, deadline, campfire_eligible } = body
+      const { title, description, priority, category_id, project_id, client_id, template_id, deadline, campfire_eligible, complexity_level } = body
 
       if (!title || !description || !priority || !category_id || !project_id) {
         return jsonResponse(
@@ -444,9 +444,9 @@ export async function handleTasks(request, env, auth, path, method) {
       await env.DB.prepare(`
         INSERT INTO tasks (
           id, title, description, status, priority, category_id, project_id,
-          client_id, created_by, template_id, deadline, ai_metadata, campfire_eligible
+          client_id, created_by, template_id, deadline, ai_metadata, campfire_eligible, complexity_level
         )
-        VALUES (?, ?, ?, 'submitted', ?, ?, ?, ?, ?, ?, ?, NULL, ?)
+        VALUES (?, ?, ?, 'submitted', ?, ?, ?, ?, ?, ?, ?, NULL, ?, ?)
       `).bind(
         taskId,
         title,
@@ -458,7 +458,8 @@ export async function handleTasks(request, env, auth, path, method) {
         auth.user.id,
         template_id || null,
         deadline || null,
-        campfire_eligible ? 1 : 0
+        campfire_eligible ? 1 : 0,
+        complexity_level != null ? Number(complexity_level) : null
       ).run()
 
       // Create initial history entry
@@ -620,6 +621,18 @@ export async function handleTasks(request, env, auth, path, method) {
       if (body.campfire_eligible !== undefined && auth.user.role === 'admin') {
         updates.push('campfire_eligible = ?')
         bindings.push(body.campfire_eligible ? 1 : 0)
+      }
+
+      // Admin can set complexity level (0-12)
+      if (body.complexity_level !== undefined && auth.user.role === 'admin') {
+        const level = Number(body.complexity_level)
+        if (body.complexity_level === null || body.complexity_level === '') {
+          updates.push('complexity_level = ?')
+          bindings.push(null)
+        } else if (!isNaN(level) && level >= 0 && level <= 12) {
+          updates.push('complexity_level = ?')
+          bindings.push(level)
+        }
       }
 
       if (updates.length === 0) {

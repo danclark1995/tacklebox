@@ -203,8 +203,9 @@ export const XP_REWARDS = {
   REVIEW_COMPLETED: 10,
 }
 
-// 12-Tier Scaling System
+// 13-Tier Scaling System (Level 0 = AI Assist)
 export const SCALING_TIERS = [
+  { level: 0,  name: 'AI Assist',    xpRequired: 0,      rateMin: 0,   rateMax: 0,   fireStage: 'Strike the Match',  description: 'AI-assisted task generation' },
   { level: 1,  name: 'Volunteer',    xpRequired: 0,      rateMin: 0,   rateMax: 12,  fireStage: 'Strike the Match',  description: 'Learning the basics, step-by-step guidance' },
   { level: 2,  name: 'Apprentice',   xpRequired: 500,    rateMin: 12,  rateMax: 24,  fireStage: 'Strike the Match',  description: 'Using tools, building foundations' },
   { level: 3,  name: 'Junior',       xpRequired: 1500,   rateMin: 24,  rateMax: 36,  fireStage: 'Find Kindling',     description: 'Minimal complexity, growing skills' },

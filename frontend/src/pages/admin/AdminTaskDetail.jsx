@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
+import { Cpu } from 'lucide-react'
 import useToast from '@/hooks/useToast'
 import EmberLoader from '@/components/ui/EmberLoader'
 import Button from '@/components/ui/Button'
@@ -11,6 +12,7 @@ import TaskDetail from '@/components/features/tasks/TaskDetail'
 import AIAssistantPanel from '@/components/features/tasks/AIAssistantPanel'
 import { apiEndpoint } from '@/config/env'
 import { getAuthHeaders } from '@/services/auth'
+import { SCALING_TIERS } from '@/config/constants'
 import { spacing, colours, typography } from '@/config/tokens'
 
 export default function AdminTaskDetail() {
@@ -34,6 +36,40 @@ export default function AdminTaskDetail() {
   const [aiAnalysis, setAiAnalysis] = useState(null)
   const [aiLoading, setAiLoading] = useState(false)
   const [brandProfile, setBrandProfile] = useState(null)
+  const [complexityLevel, setComplexityLevel] = useState(null)
+
+  const complexityOptions = [
+    { value: '', label: 'Not set' },
+    ...SCALING_TIERS.map(tier => ({
+      value: String(tier.level),
+      label: tier.level === 0
+        ? 'Level 0 — AI Assist'
+        : tier.rateMax === 0
+          ? `Level ${tier.level} — ${tier.name} ($${tier.rateMin}+/hr)`
+          : `Level ${tier.level} — ${tier.name} ($${tier.rateMin}–$${tier.rateMax}/hr)`,
+    })),
+  ]
+
+  const handleComplexityChange = async (value) => {
+    const newLevel = value === '' ? null : Number(value)
+    setComplexityLevel(newLevel)
+    try {
+      const res = await fetch(apiEndpoint(`/tasks/${id}`), {
+        method: 'PUT',
+        headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
+        body: JSON.stringify({ complexity_level: newLevel }),
+      })
+      const json = await res.json()
+      if (json.success) {
+        setTask(json.data)
+        addToast('Complexity level updated', 'success')
+      } else {
+        addToast(json.error || 'Failed to update', 'error')
+      }
+    } catch (err) {
+      addToast(err.message, 'error')
+    }
+  }
 
   useEffect(() => {
     async function load() {
@@ -60,6 +96,7 @@ export default function AdminTaskDetail() {
 
         if (taskJson.success) {
           setTask(taskJson.data)
+          setComplexityLevel(taskJson.data?.complexity_level ?? null)
           if (taskJson.data?.ai_metadata) {
             try {
               setAiAnalysis(JSON.parse(taskJson.data.ai_metadata))
@@ -479,6 +516,65 @@ export default function AdminTaskDetail() {
 
       {renderAdminActions()}
 
+      {/* Complexity Level Selector */}
+      {task.status !== 'closed' && (
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: spacing[3],
+          marginBottom: spacing[4],
+        }}>
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px',
+            fontSize: typography.fontSize.sm,
+            fontWeight: typography.fontWeight.medium,
+            color: colours.neutral[700],
+            whiteSpace: 'nowrap',
+          }}>
+            {complexityLevel === 0 && <Cpu size={14} />}
+            Complexity Level
+          </div>
+          <div style={{ width: '320px' }}>
+            <Select
+              value={complexityLevel != null ? String(complexityLevel) : ''}
+              onChange={(e) => handleComplexityChange(e.target.value)}
+              options={complexityOptions}
+            />
+          </div>
+          {complexityLevel != null && (() => {
+            const tier = SCALING_TIERS.find(t => t.level === complexityLevel)
+            return tier ? (
+              <span style={{
+                fontSize: typography.fontSize.xs,
+                color: colours.neutral[500],
+              }}>
+                {tier.description}
+              </span>
+            ) : null
+          })()}
+        </div>
+      )}
+
+      {/* Complexity Level Display (closed tasks) */}
+      {task.status === 'closed' && complexityLevel != null && (() => {
+        const tier = SCALING_TIERS.find(t => t.level === complexityLevel)
+        return tier ? (
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px',
+            fontSize: typography.fontSize.sm,
+            color: colours.neutral[600],
+            marginBottom: spacing[4],
+          }}>
+            {complexityLevel === 0 && <Cpu size={14} />}
+            Level {tier.level} — {tier.name}
+          </div>
+        ) : null
+      })()}
+
       {(aiAnalysis || task.ai_metadata) && (
         <GlowCard style={{ marginBottom: spacing[4], padding: spacing[4], borderLeft: `4px solid ${colours.neutral[700]}` }}>
           <h3 style={{ fontSize: '16px', fontWeight: 600, marginBottom: spacing[3], color: colours.neutral[800] }}>
@@ -496,6 +592,7 @@ export default function AdminTaskDetail() {
         task={task}
         brandProfile={brandProfile}
         onAttachmentAdded={handleAIAttachmentAdded}
+        complexityLevel={task?.complexity_level}
       />
 
       <TaskDetail

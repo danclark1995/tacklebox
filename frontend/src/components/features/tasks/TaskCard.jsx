@@ -53,6 +53,20 @@ export default function TaskCard({ task, onClick }) {
           <Badge variant={priorityVariant}>
             {task.priority?.toUpperCase()}
           </Badge>
+          {task.complexity_level != null && (
+            <span style={{
+              fontSize: '11px',
+              padding: '2px 6px',
+              borderRadius: '4px',
+              border: '1px solid #333',
+              backgroundColor: '#111',
+              color: task.complexity_level === 0 ? '#ffffff' : colours.neutral[500],
+              boxShadow: task.complexity_level === 0 ? '0 0 6px rgba(255,255,255,0.3)' : 'none',
+              fontWeight: 600,
+            }}>
+              L{task.complexity_level}
+            </span>
+          )}
         </div>
 
         {/* Title */}
