@@ -49,6 +49,89 @@ export async function handleGamification(request, env, auth, path, method) {
     }
   }
 
+  // GET /gamification/me - get current user's full journey data in one call
+  if (path === '/gamification/me' && method === 'GET') {
+    const authCheck = requireAuth(auth)
+    if (!authCheck.authorized) {
+      return jsonResponse(
+        { success: false, error: authCheck.error },
+        authCheck.status
+      )
+    }
+
+    const userId = auth.user.id
+
+    try {
+      // Get XP profile
+      const xpData = await env.DB.prepare(
+        'SELECT * FROM contractor_xp WHERE user_id = ?'
+      ).bind(userId).first()
+
+      // Get all levels
+      const levelsResult = await env.DB.prepare(
+        'SELECT * FROM xp_levels ORDER BY level ASC'
+      ).all()
+      const levels = levelsResult.results || []
+
+      // Default XP data for users without a profile yet
+      const totalXp = xpData?.total_xp ?? 0
+      const currentLevelNum = xpData?.current_level ?? 1
+
+      // Get current level details
+      const currentLevel = levels.find(l => l.level === currentLevelNum) || null
+      const nextLevel = levels.find(l => l.level === currentLevelNum + 1) || null
+
+      // Get all badges with earned status
+      const badgesResult = await env.DB.prepare(`
+        SELECT b.*,
+          ub.awarded_at,
+          CASE WHEN ub.user_id IS NOT NULL THEN 1 ELSE 0 END as earned
+        FROM badges b
+        LEFT JOIN user_badges ub ON b.id = ub.badge_id AND ub.user_id = ?
+        ORDER BY b.name ASC
+      `).bind(userId).all()
+
+      const badges = (badgesResult.results || []).map(b => ({
+        ...b,
+        earned: b.earned === 1,
+      }))
+
+      // Get categories worked count
+      const categoriesResult = await env.DB.prepare(`
+        SELECT COUNT(DISTINCT t.category_id) as count
+        FROM tasks t
+        WHERE t.contractor_id = ? AND t.status = 'closed' AND t.category_id IS NOT NULL
+      `).bind(userId).first()
+      const categoriesWorked = categoriesResult?.count ?? 0
+
+      return jsonResponse({
+        success: true,
+        data: {
+          total_xp: totalXp,
+          current_level: currentLevelNum,
+          tasks_completed: xpData?.tasks_completed ?? 0,
+          on_time_count: xpData?.on_time_count ?? 0,
+          total_tasks_with_deadline: xpData?.total_tasks_with_deadline ?? 0,
+          avg_quality_rating: xpData?.avg_quality_rating ?? 0,
+          current_level_details: currentLevel,
+          next_level: nextLevel,
+          xp_to_next_level: nextLevel
+            ? Math.max(nextLevel.xp_required - totalXp, 0)
+            : null,
+          categories_worked: categoriesWorked,
+          badges,
+          levels,
+        },
+      })
+    } catch (err) {
+      console.error('Get journey data error:', err)
+      return jsonResponse(
+        { success: false, error: 'Failed to fetch journey data' },
+        500
+      )
+    }
+  }
+
   // GET /gamification/badges - get all available badges (no userId in path)
   if (path === '/gamification/badges' && method === 'GET') {
     const authCheck = requireAuth(auth)

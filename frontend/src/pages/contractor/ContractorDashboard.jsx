@@ -143,7 +143,7 @@ export default function ContractorDashboard() {
     fontFamily: typography.fontFamily.sans,
     fontSize: typography.fontSize.sm,
     fontWeight: typography.fontWeight.medium,
-    color: colours.neutral[600],
+    color: '#ffffff',
     textDecoration: 'none',
   }
 
@@ -179,8 +179,13 @@ export default function ContractorDashboard() {
             <GlowCard>
               <XPBar xpData={xpData} />
               <div style={{ marginTop: spacing[3] }}>
-                <Link to="/camper/journey" style={viewStatsLinkStyle}>
-                  View All Stats &rarr;
+                <Link
+                  to="/camper/journey"
+                  style={viewStatsLinkStyle}
+                  onMouseEnter={e => e.currentTarget.style.textDecoration = 'underline'}
+                  onMouseLeave={e => e.currentTarget.style.textDecoration = 'none'}
+                >
+                  View Your Journey &rarr;
                 </Link>
               </div>
             </GlowCard>
