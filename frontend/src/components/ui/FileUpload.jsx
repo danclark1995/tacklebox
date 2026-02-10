@@ -283,12 +283,12 @@ const FileUpload = ({
   const getStatusColour = (status) => {
     switch (status) {
       case 'uploading':
-        return colours.primary[500]
+        return colours.neutral[900]
       case 'complete':
-        return colours.success[500]
+        return colours.neutral[700]
       case 'error':
       case 'cancelled':
-        return colours.error[500]
+        return colours.neutral[500]
       default:
         return colours.neutral[400]
     }
@@ -315,11 +315,11 @@ const FileUpload = ({
 
   const dropZoneStyles = {
     fontFamily: typography.fontFamily.sans,
-    border: `2px dashed ${isDragging ? colours.primary[500] : colours.neutral[300]}`,
+    border: `2px dashed ${isDragging ? colours.neutral[900] : colours.neutral[300]}`,
     borderRadius: radii.lg,
     padding: spacing[8],
     textAlign: 'center',
-    backgroundColor: isDragging ? colours.primary[50] : disabled ? colours.neutral[50] : colours.white,
+    backgroundColor: isDragging ? colours.neutral[100] : disabled ? colours.neutral[50] : colours.white,
     cursor: disabled ? 'not-allowed' : 'pointer',
     transition: `all ${transitions.normal}`,
   }
@@ -413,7 +413,7 @@ const FileUpload = ({
     fontSize: typography.fontSize.sm,
     fontWeight: typography.fontWeight.medium,
     color: colours.white,
-    backgroundColor: colours.primary[500],
+    backgroundColor: colours.neutral[900],
     border: 'none',
     borderRadius: radii.md,
     padding: `${spacing[2]} ${spacing[4]}`,
@@ -425,7 +425,7 @@ const FileUpload = ({
   const errorStyles = {
     fontFamily: typography.fontFamily.sans,
     fontSize: typography.fontSize.sm,
-    color: colours.error[500],
+    color: colours.neutral[700],
     marginTop: spacing[2],
   }
 
@@ -437,7 +437,7 @@ const FileUpload = ({
       height="16"
       viewBox="0 0 24 24"
       fill="none"
-      stroke={colours.success[500]}
+      stroke={colours.neutral[700]}
       strokeWidth="2"
       strokeLinecap="round"
       strokeLinejoin="round"
@@ -531,7 +531,7 @@ const FileUpload = ({
                 {entry.status === 'complete' && <CheckIcon />}
 
                 {(entry.status === 'error' || entry.status === 'cancelled') && (
-                  <XIcon colour={colours.error[500]} />
+                  <XIcon colour={colours.neutral[500]} />
                 )}
 
                 {entry.status === 'pending' && (
@@ -560,7 +560,7 @@ const FileUpload = ({
                     title="Cancel upload"
                     aria-label={`Cancel upload of ${entry.file.name}`}
                   >
-                    <XIcon colour={colours.error[500]} />
+                    <XIcon colour={colours.neutral[500]} />
                   </button>
                 )}
               </div>
@@ -570,17 +570,17 @@ const FileUpload = ({
                 <ProgressBar
                   value={entry.progress}
                   size="sm"
-                  colour={colours.primary[500]}
+                  colour={colours.neutral[900]}
                   showLabel={false}
                 />
               )}
 
-              {/* Completed progress bar — full, green */}
+              {/* Completed progress bar — full */}
               {entry.status === 'complete' && (
                 <ProgressBar
                   value={100}
                   size="sm"
-                  colour={colours.success[500]}
+                  colour={colours.neutral[700]}
                   showLabel={false}
                 />
               )}

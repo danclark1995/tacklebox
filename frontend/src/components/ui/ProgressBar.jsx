@@ -5,7 +5,7 @@ import { colours, radii, typography, transitions } from '@/config/tokens'
 const ProgressBar = ({
   value = 0,
   size = 'md',
-  colour = colours.primary[500],
+  colour = colours.neutral[900],
   showLabel = false,
   className = '',
 }) => {

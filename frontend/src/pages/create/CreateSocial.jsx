@@ -182,7 +182,7 @@ export default function CreateSocial() {
           />
 
           {error && (
-            <div style={{ color: colours.error[500], fontSize: typography.fontSize.sm, marginBottom: spacing[3] }}>
+            <div style={{ color: colours.neutral[700], fontSize: typography.fontSize.sm, marginBottom: spacing[3] }}>
               {error}
             </div>
           )}

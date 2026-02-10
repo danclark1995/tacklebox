@@ -75,15 +75,15 @@ export default function LoginPage() {
 
   const errorStyle = {
     fontSize: typography.fontSize.sm,
-    color: colours.error[600],
+    color: colours.neutral[700],
     marginTop: spacing[1],
   }
 
   const formErrorStyle = {
     fontSize: typography.fontSize.sm,
-    color: colours.error[600],
+    color: colours.neutral[700],
     padding: spacing[3],
-    backgroundColor: colours.error[50],
+    backgroundColor: colours.neutral[100],
     borderRadius: '6px',
     textAlign: 'center',
   }

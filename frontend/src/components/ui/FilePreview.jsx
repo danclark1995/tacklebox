@@ -138,7 +138,7 @@ const FilePreview = ({
           style={{
             width: '100%',
             height: '100%',
-            backgroundColor: colours.error[500],
+            backgroundColor: colours.neutral[700],
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',

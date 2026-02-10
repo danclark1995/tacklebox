@@ -12,7 +12,7 @@ const STEPS = [
     description:
       'TackleBox is your personal creative project hub. Here you can submit tasks, track progress, and access your brand materials.',
     icon: () => (
-      <svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke={colours.primary[500]} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke={colours.neutral[900]} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
         <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z" />
         <polyline points="9 22 9 12 15 12 15 22" />
       </svg>
@@ -24,7 +24,7 @@ const STEPS = [
     description:
       'Your brand profile contains your colours, voice, values, and guidelines. Campers use this to ensure every deliverable matches your brand.',
     icon: () => (
-      <svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke={colours.secondary[500]} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke={colours.neutral[700]} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
         <circle cx="13.5" cy="6.5" r="2.5" />
         <circle cx="19" cy="13" r="2" />
         <circle cx="7" cy="13" r="2" />
@@ -42,7 +42,7 @@ const STEPS = [
     description:
       'Select a project, pick a category, add your brief, and we\'ll handle the rest. You can track progress in real-time.',
     icon: () => (
-      <svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke={colours.primary[500]} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke={colours.neutral[900]} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
         <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" />
         <polyline points="14 2 14 8 20 8" />
         <line x1="16" y1="13" x2="8" y2="13" />
@@ -57,7 +57,7 @@ const STEPS = [
     description:
       'Access your brand guides, style documents, and assets all in one place. Everything stays organized and up-to-date.',
     icon: () => (
-      <svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke={colours.secondary[500]} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke={colours.neutral[700]} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
         <path d="M2 3h6a4 4 0 014 4v14a3 3 0 00-3-3H2z" />
         <path d="M22 3h-6a4 4 0 00-4 4v14a3 3 0 013-3h7z" />
       </svg>
@@ -141,9 +141,9 @@ const OnboardingWizard = ({ user, onComplete }) => {
     height: '10px',
     borderRadius: radii.full,
     backgroundColor: index === currentStep
-      ? colours.primary[500]
+      ? colours.neutral[900]
       : index < currentStep
-        ? colours.primary[300]
+        ? colours.neutral[500]
         : colours.neutral[200],
     transition: `all ${transitions.normal}`,
   })
@@ -163,7 +163,7 @@ const OnboardingWizard = ({ user, onComplete }) => {
     width: '120px',
     height: '120px',
     borderRadius: radii.full,
-    backgroundColor: currentStep % 2 === 0 ? colours.primary[50] : colours.secondary[50],
+    backgroundColor: currentStep % 2 === 0 ? colours.neutral[100] : colours.neutral[100],
     marginBottom: spacing[6],
   }
 

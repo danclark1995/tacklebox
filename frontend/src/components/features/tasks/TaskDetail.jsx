@@ -237,7 +237,7 @@ export default function TaskDetail({
               </p>
 
               {brandProfile && (isContractor || isAdmin) && (
-                <div style={{ marginTop: spacing[6], padding: spacing[4], backgroundColor: colours.primary[50], borderRadius: '8px' }}>
+                <div style={{ marginTop: spacing[6], padding: spacing[4], backgroundColor: colours.neutral[100], borderRadius: '8px' }}>
                   <h4 style={{ fontSize: '14px', fontWeight: 600, marginBottom: spacing[2] }}>Brand Profile</h4>
                   <Button
                     variant="secondary"

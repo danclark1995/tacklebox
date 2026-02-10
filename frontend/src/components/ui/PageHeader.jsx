@@ -27,7 +27,7 @@ const PageHeader = ({
   const backLinkStyles = {
     fontFamily: typography.fontFamily.sans,
     fontSize: typography.fontSize.sm,
-    color: colours.primary[500],
+    color: colours.neutral[900],
     textDecoration: 'none',
     display: 'inline-flex',
     alignItems: 'center',

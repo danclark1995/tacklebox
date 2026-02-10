@@ -15,7 +15,7 @@ export default function ForbiddenPage() {
   const errorCodeStyle = {
     fontSize: typography.fontSize['4xl'],
     fontWeight: typography.fontWeight.bold,
-    color: colours.secondary[500],
+    color: colours.neutral[700],
     marginBottom: spacing[4],
   }
 
@@ -34,20 +34,20 @@ export default function ForbiddenPage() {
   }
 
   const linkStyle = {
-    color: colours.secondary[500],
+    color: colours.neutral[700],
     textDecoration: 'none',
     fontSize: typography.fontSize.lg,
     fontWeight: typography.fontWeight.semibold,
     padding: `${spacing[3]} ${spacing[6]}`,
     borderRadius: '8px',
-    border: `2px solid ${colours.secondary[500]}`,
+    border: `2px solid ${colours.neutral[700]}`,
     transition: 'all 200ms ease',
     display: 'inline-block',
   }
 
   const linkHoverStyle = `
     .forbidden-link:hover {
-      background-color: ${colours.secondary[500]};
+      background-color: ${colours.neutral[700]};
       color: ${colours.white};
     }
   `

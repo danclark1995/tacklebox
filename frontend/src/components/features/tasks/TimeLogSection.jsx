@@ -227,8 +227,8 @@ function TimeEntryRow({ entry, canEdit, onEdit, onDelete }) {
     fontFamily: typography.fontFamily.mono,
     fontSize: typography.fontSize.sm,
     fontWeight: typography.fontWeight.semibold,
-    color: colours.primary[600],
-    backgroundColor: colours.primary[50],
+    color: colours.neutral[900],
+    backgroundColor: colours.neutral[100],
     padding: `${spacing[1]} ${spacing[2]}`,
     borderRadius: radii.sm,
   }
@@ -287,7 +287,7 @@ function TimeEntryRow({ entry, canEdit, onEdit, onDelete }) {
           </button>
           <button
             type="button"
-            style={{ ...iconBtnStyles, color: colours.error[400] }}
+            style={{ ...iconBtnStyles, color: colours.neutral[600] }}
             onClick={() => onDelete(entry.id)}
             title="Delete entry"
           >
@@ -380,7 +380,7 @@ export default function TimeLogSection({
     fontFamily: typography.fontFamily.sans,
     fontSize: typography.fontSize.base,
     fontWeight: typography.fontWeight.bold,
-    color: colours.primary[500],
+    color: colours.neutral[900],
   }
 
   const addBtnWrapperStyles = {

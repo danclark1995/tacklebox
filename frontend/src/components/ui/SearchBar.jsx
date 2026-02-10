@@ -70,7 +70,7 @@ const SearchBar = ({
         placeholder={placeholder}
         style={inputStyles}
         onFocus={(e) => {
-          e.target.style.borderColor = colours.primary[500]
+          e.target.style.borderColor = colours.neutral[900]
         }}
         onBlur={(e) => {
           e.target.style.borderColor = colours.neutral[300]
@@ -78,7 +78,7 @@ const SearchBar = ({
       />
       {loading && (
         <div style={spinnerContainerStyles}>
-          <Spinner size="sm" colour={colours.primary[500]} />
+          <Spinner size="sm" colour={colours.neutral[900]} />
         </div>
       )}
     </div>

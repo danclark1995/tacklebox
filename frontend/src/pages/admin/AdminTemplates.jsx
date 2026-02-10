@@ -479,7 +479,7 @@ export default function AdminTemplates() {
                     <button
                       style={checklistRemoveStyle}
                       onClick={() => handleRemoveChecklistItem(index)}
-                      onMouseEnter={(e) => { e.currentTarget.style.color = colours.error[500] }}
+                      onMouseEnter={(e) => { e.currentTarget.style.color = colours.neutral[700] }}
                       onMouseLeave={(e) => { e.currentTarget.style.color = colours.neutral[400] }}
                     >
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -498,7 +498,7 @@ export default function AdminTemplates() {
                     onKeyPress={handleChecklistKeyPress}
                     placeholder="Add a checklist item..."
                     style={checklistInputStyle}
-                    onFocus={(e) => { e.target.style.borderColor = colours.primary[500] }}
+                    onFocus={(e) => { e.target.style.borderColor = colours.neutral[900] }}
                     onBlur={(e) => { e.target.style.borderColor = colours.neutral[300] }}
                   />
                   <Button

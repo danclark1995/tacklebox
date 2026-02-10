@@ -203,14 +203,46 @@ export const XP_REWARDS = {
   REVIEW_COMPLETED: 10,
 }
 
-export const INITIAL_BADGES = [
-  { name: 'First Catch', description: 'Complete your first task', criteria_type: 'tasks_completed', criteria_value: 1, icon: 'award' },
-  { name: 'On the Clock', description: '100% on-time delivery, 5 consecutive tasks', criteria_type: 'on_time_streak', criteria_value: 5, icon: 'clock' },
-  { name: 'Five Star', description: 'Receive a 5-star quality rating', criteria_type: 'quality_rating', criteria_value: 5, icon: 'star' },
-  { name: 'Speed Demon', description: 'Complete 3 tasks under estimated time', criteria_type: 'under_estimated', criteria_value: 3, icon: 'zap' },
-  { name: 'Streak Master', description: 'Complete 10 tasks with no revisions', criteria_type: 'no_revision_streak', criteria_value: 10, icon: 'trending-up' },
-  { name: 'Heavy Lifter', description: 'Log 100+ hours of work', criteria_type: 'hours_logged', criteria_value: 6000, icon: 'shield' },
-  { name: 'Feedback Champ', description: 'Complete 10 consecutive post-task reviews', criteria_type: 'review_streak', criteria_value: 10, icon: 'message-circle' },
+// 12-Tier Scaling System
+export const SCALING_TIERS = [
+  { level: 1,  name: 'Volunteer',    xpRequired: 0,      rateMin: 0,   rateMax: 12,  fireStage: 'Strike the Match',  description: 'Learning the basics, step-by-step guidance' },
+  { level: 2,  name: 'Apprentice',   xpRequired: 500,    rateMin: 12,  rateMax: 24,  fireStage: 'Strike the Match',  description: 'Using tools, building foundations' },
+  { level: 3,  name: 'Junior',       xpRequired: 1500,   rateMin: 24,  rateMax: 36,  fireStage: 'Find Kindling',     description: 'Minimal complexity, growing skills' },
+  { level: 4,  name: 'Intermediate', xpRequired: 3500,   rateMin: 36,  rateMax: 60,  fireStage: 'Light First Flame', description: 'Average complexity, gaining confidence' },
+  { level: 5,  name: 'Senior',       xpRequired: 7000,   rateMin: 60,  rateMax: 96,  fireStage: 'Feed the Fire',     description: 'High complexity work' },
+  { level: 6,  name: 'Specialist',   xpRequired: 12000,  rateMin: 96,  rateMax: 120, fireStage: 'Choose Your Wood',  description: 'Custom work from brand guidelines' },
+  { level: 7,  name: 'Camp Leader',  xpRequired: 20000,  rateMin: 120, rateMax: 120, fireStage: 'Build the Blaze',   description: 'The transition - leading own projects' },
+  { level: 8,  name: 'Guide',        xpRequired: 30000,  rateMin: 120, rateMax: 240, fireStage: 'Build the Blaze',   description: 'Leading teams, creating blueprints' },
+  { level: 9,  name: 'Trailblazer',  xpRequired: 45000,  rateMin: 240, rateMax: 360, fireStage: 'Share the Warmth',  description: 'Advanced leadership, mapping new paths' },
+  { level: 10, name: 'Pioneer',      xpRequired: 65000,  rateMin: 360, rateMax: 600, fireStage: 'Share the Warmth',  description: 'Innovation and originality' },
+  { level: 11, name: 'Legend',        xpRequired: 90000,  rateMin: 600, rateMax: 960, fireStage: 'Tend the Embers',   description: 'Industry-level impact' },
+  { level: 12, name: 'Legacy',        xpRequired: 120000, rateMin: 960, rateMax: 0,   fireStage: 'Tend the Embers',   description: 'Building your own campsite' },
+]
+
+export const FIRE_STAGES = [
+  'Strike the Match',
+  'Find Kindling',
+  'Light First Flame',
+  'Feed the Fire',
+  'Choose Your Wood',
+  'Build the Blaze',
+  'Share the Warmth',
+  'Tend the Embers',
+]
+
+export const BADGES = [
+  { id: 'first-spark',      name: 'First Spark',      description: 'Completed your first task',            icon: 'flame',              triggerType: 'tasks_completed',   triggerValue: 1 },
+  { id: 'kindling',         name: 'Kindling',         description: 'Completed 5 tasks',                    icon: 'layers',             triggerType: 'tasks_completed',   triggerValue: 5 },
+  { id: 'flame-keeper',     name: 'Flame Keeper',     description: 'Completed 25 tasks',                   icon: 'fire-extinguisher',  triggerType: 'tasks_completed',   triggerValue: 25 },
+  { id: 'blaze-builder',    name: 'Blaze Builder',    description: 'Completed 50 tasks',                   icon: 'zap',                triggerType: 'tasks_completed',   triggerValue: 50 },
+  { id: 'warmth-sharer',    name: 'Warmth Sharer',    description: 'Gave your first review',               icon: 'heart-handshake',    triggerType: 'reviews_given',     triggerValue: 1 },
+  { id: 'ember-tender',     name: 'Ember Tender',     description: 'Completed 100 tasks',                  icon: 'sparkles',           triggerType: 'tasks_completed',   triggerValue: 100 },
+  { id: 'keeper-fish',      name: 'Keeper Fish',      description: 'Reached Level 7 - Camp Leader',        icon: 'fish',               triggerType: 'level_reached',     triggerValue: 7 },
+  { id: 'gold-standard',    name: 'Gold Standard',    description: 'Achieved 5-star average rating',       icon: 'star',               triggerType: 'avg_rating',        triggerValue: 5 },
+  { id: 'trailblazer',      name: 'Trailblazer',      description: 'Worked across 5+ categories',          icon: 'compass',            triggerType: 'categories_worked', triggerValue: 5 },
+  { id: 'community-pillar', name: 'Community Pillar', description: 'Helped 10+ clients',                   icon: 'tent',               triggerType: 'clients_helped',    triggerValue: 10 },
+  { id: 'forest-builder',   name: 'Forest Builder',   description: 'Reached Level 10 - Pioneer',           icon: 'tree-pine',          triggerType: 'level_reached',     triggerValue: 10 },
+  { id: 'legacy-maker',     name: 'Legacy Maker',     description: 'Reached Level 12 - Legacy',            icon: 'trees',              triggerType: 'level_reached',     triggerValue: 12 },
 ]
 
 // ── Validation Rules ───────────────────────────────────────────────

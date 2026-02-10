@@ -22,13 +22,13 @@ export default function BrandGuideCard({ guide, onView, onDelete }) {
         <div style={{
           width: '100%',
           height: '150px',
-          backgroundColor: colours.error[50],
+          backgroundColor: colours.neutral[100],
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
           borderRadius: '8px 8px 0 0',
         }}>
-          <span style={{ fontSize: '48px', color: colours.error[500] }}>📄</span>
+          <span style={{ fontSize: '48px', color: colours.neutral[700] }}>📄</span>
         </div>
       )
     } else if (fileType.includes('image')) {

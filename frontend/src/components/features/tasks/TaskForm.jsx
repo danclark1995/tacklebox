@@ -139,7 +139,7 @@ export default function TaskForm({
           color: colours.neutral[700],
           marginBottom: spacing[2],
         }}>
-          Project <span style={{ color: colours.error[500] }}>*</span>
+          Project <span style={{ color: colours.neutral[700] }}>*</span>
         </label>
         <Select
           value={formData.project_id}
@@ -149,7 +149,7 @@ export default function TaskForm({
           disabled={loading}
         />
         {errors.project_id && (
-          <span style={{ color: colours.error[500], fontSize: '13px', marginTop: spacing[1], display: 'block' }}>
+          <span style={{ color: colours.neutral[700], fontSize: '13px', marginTop: spacing[1], display: 'block' }}>
             {errors.project_id}
           </span>
         )}
@@ -164,7 +164,7 @@ export default function TaskForm({
           color: colours.neutral[700],
           marginBottom: spacing[2],
         }}>
-          Category <span style={{ color: colours.error[500] }}>*</span>
+          Category <span style={{ color: colours.neutral[700] }}>*</span>
         </label>
         <Select
           value={formData.category_id}
@@ -174,7 +174,7 @@ export default function TaskForm({
           disabled={loading}
         />
         {errors.category_id && (
-          <span style={{ color: colours.error[500], fontSize: '13px', marginTop: spacing[1], display: 'block' }}>
+          <span style={{ color: colours.neutral[700], fontSize: '13px', marginTop: spacing[1], display: 'block' }}>
             {errors.category_id}
           </span>
         )}
@@ -210,7 +210,7 @@ export default function TaskForm({
           color: colours.neutral[700],
           marginBottom: spacing[2],
         }}>
-          Title <span style={{ color: colours.error[500] }}>*</span>
+          Title <span style={{ color: colours.neutral[700] }}>*</span>
         </label>
         <Input
           value={formData.title}
@@ -219,7 +219,7 @@ export default function TaskForm({
           disabled={loading}
         />
         {errors.title && (
-          <span style={{ color: colours.error[500], fontSize: '13px', marginTop: spacing[1], display: 'block' }}>
+          <span style={{ color: colours.neutral[700], fontSize: '13px', marginTop: spacing[1], display: 'block' }}>
             {errors.title}
           </span>
         )}
@@ -234,7 +234,7 @@ export default function TaskForm({
           color: colours.neutral[700],
           marginBottom: spacing[2],
         }}>
-          Description <span style={{ color: colours.error[500] }}>*</span>
+          Description <span style={{ color: colours.neutral[700] }}>*</span>
         </label>
         <Textarea
           value={formData.description}
@@ -244,7 +244,7 @@ export default function TaskForm({
           disabled={loading}
         />
         {errors.description && (
-          <span style={{ color: colours.error[500], fontSize: '13px', marginTop: spacing[1], display: 'block' }}>
+          <span style={{ color: colours.neutral[700], fontSize: '13px', marginTop: spacing[1], display: 'block' }}>
             {errors.description}
           </span>
         )}
@@ -259,7 +259,7 @@ export default function TaskForm({
           color: colours.neutral[700],
           marginBottom: spacing[2],
         }}>
-          Priority <span style={{ color: colours.error[500] }}>*</span>
+          Priority <span style={{ color: colours.neutral[700] }}>*</span>
         </label>
         <Select
           value={formData.priority}
@@ -268,7 +268,7 @@ export default function TaskForm({
           disabled={loading}
         />
         {errors.priority && (
-          <span style={{ color: colours.error[500], fontSize: '13px', marginTop: spacing[1], display: 'block' }}>
+          <span style={{ color: colours.neutral[700], fontSize: '13px', marginTop: spacing[1], display: 'block' }}>
             {errors.priority}
           </span>
         )}

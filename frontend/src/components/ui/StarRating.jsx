@@ -12,15 +12,15 @@ const Star = ({ filled, hovered, size, onClick, onMouseEnter, onMouseLeave, read
   const px = sizeMap[size] || sizeMap.md
 
   const fillColor = hovered
-    ? colours.warning[300]
+    ? colours.neutral[500]
     : filled
-      ? colours.warning[400]
+      ? colours.neutral[600]
       : 'none'
 
   const strokeColor = hovered
-    ? colours.warning[300]
+    ? colours.neutral[500]
     : filled
-      ? colours.warning[400]
+      ? colours.neutral[600]
       : colours.neutral[300]
 
   const starStyle = {

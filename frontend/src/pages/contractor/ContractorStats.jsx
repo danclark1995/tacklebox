@@ -186,7 +186,7 @@ const statValueStyle = {
   fontFamily: typography.fontFamily.sans,
   fontSize: typography.fontSize['3xl'],
   fontWeight: typography.fontWeight.bold,
-  color: colours.primary[500],
+  color: colours.neutral[900],
 }
 
 const statUnitStyle = {

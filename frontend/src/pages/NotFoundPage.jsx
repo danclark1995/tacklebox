@@ -15,7 +15,7 @@ export default function NotFoundPage() {
   const errorCodeStyle = {
     fontSize: typography.fontSize['4xl'],
     fontWeight: typography.fontWeight.bold,
-    color: colours.primary[500],
+    color: colours.neutral[900],
     marginBottom: spacing[4],
   }
 
@@ -34,20 +34,20 @@ export default function NotFoundPage() {
   }
 
   const linkStyle = {
-    color: colours.primary[500],
+    color: colours.neutral[900],
     textDecoration: 'none',
     fontSize: typography.fontSize.lg,
     fontWeight: typography.fontWeight.semibold,
     padding: `${spacing[3]} ${spacing[6]}`,
     borderRadius: '8px',
-    border: `2px solid ${colours.primary[500]}`,
+    border: `2px solid ${colours.neutral[900]}`,
     transition: 'all 200ms ease',
     display: 'inline-block',
   }
 
   const linkHoverStyle = `
     a:hover {
-      background-color: ${colours.primary[500]};
+      background-color: ${colours.neutral[900]};
       color: ${colours.white};
     }
   `

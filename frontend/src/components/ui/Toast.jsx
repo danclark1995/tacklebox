@@ -15,28 +15,28 @@ export const useToast = () => {
 const Toast = ({ id, message, variant, onClose }) => {
   const variantStyles = {
     success: {
-      backgroundColor: colours.success[50],
-      borderColor: colours.success[500],
-      color: colours.success[800],
-      iconColor: colours.success[500],
+      backgroundColor: colours.neutral[100],
+      borderColor: colours.neutral[700],
+      color: colours.neutral[800],
+      iconColor: colours.neutral[700],
     },
     error: {
-      backgroundColor: colours.error[50],
-      borderColor: colours.error[500],
-      color: colours.error[800],
-      iconColor: colours.error[500],
+      backgroundColor: colours.neutral[100],
+      borderColor: colours.neutral[500],
+      color: colours.neutral[800],
+      iconColor: colours.neutral[500],
     },
     warning: {
-      backgroundColor: colours.warning[50],
-      borderColor: colours.warning[500],
-      color: colours.warning[800],
-      iconColor: colours.warning[500],
+      backgroundColor: colours.neutral[100],
+      borderColor: colours.neutral[700],
+      color: colours.neutral[800],
+      iconColor: colours.neutral[700],
     },
     info: {
-      backgroundColor: colours.info[50],
-      borderColor: colours.info[500],
-      color: colours.info[800],
-      iconColor: colours.info[500],
+      backgroundColor: colours.neutral[100],
+      borderColor: colours.neutral[700],
+      color: colours.neutral[800],
+      iconColor: colours.neutral[700],
     },
   }
 

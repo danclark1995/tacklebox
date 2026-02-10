@@ -98,7 +98,7 @@ export default function UserTable({ users = [], loading = false, onEdit, onDeact
         <span style={{
           fontSize: '14px',
           fontWeight: 500,
-          color: colours.primary[600],
+          color: colours.neutral[900],
         }}>
           {row.task_count || 0}
         </span>

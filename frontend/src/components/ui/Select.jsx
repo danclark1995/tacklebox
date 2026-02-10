@@ -35,7 +35,7 @@ const Select = ({
     padding: `${spacing[2]} ${spacing[4]}`,
     height: '40px',
     borderRadius: radii.md,
-    border: `1px solid ${error ? colours.error[500] : isFocused ? colours.primary[500] : colours.neutral[300]}`,
+    border: `1px solid ${error ? colours.neutral[700] : isFocused ? colours.neutral[900] : colours.neutral[300]}`,
     backgroundColor: disabled ? colours.neutral[50] : colours.white,
     color: colours.neutral[900],
     transition: `all ${transitions.normal}`,
@@ -46,7 +46,7 @@ const Select = ({
   const errorStyles = {
     fontFamily: typography.fontFamily.sans,
     fontSize: typography.fontSize.xs,
-    color: colours.error[500],
+    color: colours.neutral[700],
   }
 
   return (
@@ -54,7 +54,7 @@ const Select = ({
       {label && (
         <label style={labelStyles}>
           {label}
-          {required && <span style={{ color: colours.error[500], marginLeft: spacing[1] }}>*</span>}
+          {required && <span style={{ color: colours.neutral[700], marginLeft: spacing[1] }}>*</span>}
         </label>
       )}
       <select

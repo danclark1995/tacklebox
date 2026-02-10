@@ -97,7 +97,7 @@ export default function ProjectForm({
           color: colours.neutral[700],
           marginBottom: spacing[2],
         }}>
-          Project Name <span style={{ color: colours.error[500] }}>*</span>
+          Project Name <span style={{ color: colours.neutral[700] }}>*</span>
         </label>
         <Input
           value={formData.name}
@@ -106,7 +106,7 @@ export default function ProjectForm({
           disabled={loading}
         />
         {errors.name && (
-          <span style={{ color: colours.error[500], fontSize: '13px', marginTop: spacing[1], display: 'block' }}>
+          <span style={{ color: colours.neutral[700], fontSize: '13px', marginTop: spacing[1], display: 'block' }}>
             {errors.name}
           </span>
         )}
@@ -121,7 +121,7 @@ export default function ProjectForm({
           color: colours.neutral[700],
           marginBottom: spacing[2],
         }}>
-          Description <span style={{ color: colours.error[500] }}>*</span>
+          Description <span style={{ color: colours.neutral[700] }}>*</span>
         </label>
         <Textarea
           value={formData.description}
@@ -131,7 +131,7 @@ export default function ProjectForm({
           disabled={loading}
         />
         {errors.description && (
-          <span style={{ color: colours.error[500], fontSize: '13px', marginTop: spacing[1], display: 'block' }}>
+          <span style={{ color: colours.neutral[700], fontSize: '13px', marginTop: spacing[1], display: 'block' }}>
             {errors.description}
           </span>
         )}
@@ -147,7 +147,7 @@ export default function ProjectForm({
             color: colours.neutral[700],
             marginBottom: spacing[2],
           }}>
-            Client <span style={{ color: colours.error[500] }}>*</span>
+            Client <span style={{ color: colours.neutral[700] }}>*</span>
           </label>
           <Select
             value={formData.client_id}
@@ -157,7 +157,7 @@ export default function ProjectForm({
             disabled={loading}
           />
           {errors.client_id && (
-            <span style={{ color: colours.error[500], fontSize: '13px', marginTop: spacing[1], display: 'block' }}>
+            <span style={{ color: colours.neutral[700], fontSize: '13px', marginTop: spacing[1], display: 'block' }}>
               {errors.client_id}
             </span>
           )}
@@ -173,7 +173,7 @@ export default function ProjectForm({
           color: colours.neutral[700],
           marginBottom: spacing[2],
         }}>
-          Status <span style={{ color: colours.error[500] }}>*</span>
+          Status <span style={{ color: colours.neutral[700] }}>*</span>
         </label>
         <Select
           value={formData.status}
@@ -182,7 +182,7 @@ export default function ProjectForm({
           disabled={loading}
         />
         {errors.status && (
-          <span style={{ color: colours.error[500], fontSize: '13px', marginTop: spacing[1], display: 'block' }}>
+          <span style={{ color: colours.neutral[700], fontSize: '13px', marginTop: spacing[1], display: 'block' }}>
             {errors.status}
           </span>
         )}

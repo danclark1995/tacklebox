@@ -1,6 +1,6 @@
 /**
  * Gamification Routes — XP, Levels, Badges, Leaderboard
- * GET /gamification/xp/:userId - get contractor XP profile
+ * GET /gamification/xp/:userId - get camper XP profile
  * GET /gamification/levels - get all XP levels
  * GET /gamification/badges - get all available badges
  * GET /gamification/badges/:userId - get badges earned by a user
@@ -88,43 +88,35 @@ export async function handleGamification(request, env, auth, path, method) {
     }
 
     try {
-      if (auth.user.role === 'admin') {
-        // Admin: full ranking of all contractors
-        const result = await env.DB.prepare(`
-          SELECT cx.*, u.display_name, u.email,
-            xl.name as level_name, xl.icon as level_icon
-          FROM contractor_xp cx
-          JOIN users u ON cx.user_id = u.id
-          LEFT JOIN xp_levels xl ON cx.current_level = xl.level
-          ORDER BY cx.total_xp DESC
-        `).all()
-
-        return jsonResponse({
-          success: true,
-          data: result.results || [],
-        })
-      }
-
-      // Contractor: own rank + top 5
-      const allRanked = await env.DB.prepare(`
-        SELECT cx.*, u.display_name,
-          xl.name as level_name, xl.icon as level_icon
+      const result = await env.DB.prepare(`
+        SELECT cx.*, u.display_name, u.email,
+          xl.name as level_name, xl.fire_stage, xl.rate_min, xl.rate_max
         FROM contractor_xp cx
         JOIN users u ON cx.user_id = u.id
         LEFT JOIN xp_levels xl ON cx.current_level = xl.level
         ORDER BY cx.total_xp DESC
       `).all()
 
-      const rankings = allRanked.results || []
-      const top5 = rankings.slice(0, 5)
+      const entries = (result.results || []).map((entry, index) => ({
+        ...entry,
+        rank: index + 1,
+      }))
 
-      // Find the current user's rank
+      if (auth.user.role === 'admin') {
+        return jsonResponse({
+          success: true,
+          data: entries,
+        })
+      }
+
+      // Contractor: own rank + top 5
+      const top5 = entries.slice(0, 5)
       let ownRank = null
       let ownEntry = null
-      for (let i = 0; i < rankings.length; i++) {
-        if (rankings[i].user_id === auth.user.id) {
-          ownRank = i + 1
-          ownEntry = rankings[i]
+      for (const entry of entries) {
+        if (entry.user_id === auth.user.id) {
+          ownRank = entry.rank
+          ownEntry = entry
           break
         }
       }
@@ -196,7 +188,7 @@ export async function handleGamification(request, env, auth, path, method) {
     }
   }
 
-  // GET /gamification/xp/:userId - get contractor XP profile
+  // GET /gamification/xp/:userId - get camper XP profile
   const xpMatch = path.match(/^\/gamification\/xp\/([^\/]+)$/)
   if (xpMatch && method === 'GET') {
     const userId = xpMatch[1]
@@ -246,7 +238,7 @@ export async function handleGamification(request, env, auth, path, method) {
           current_level_details: currentLevel,
           next_level: nextLevel || null,
           xp_to_next_level: nextLevel
-            ? nextLevel.xp_threshold - xpData.total_xp
+            ? nextLevel.xp_required - xpData.total_xp
             : null,
         },
       })
@@ -280,7 +272,7 @@ export async function handleGamification(request, env, auth, path, method) {
 
       if (!user) {
         return jsonResponse(
-          { success: false, error: 'Contractor not found' },
+          { success: false, error: 'Camper not found' },
           404
         )
       }
@@ -325,8 +317,6 @@ export async function handleGamification(request, env, auth, path, method) {
       const avgQualityRating = qualityResult.avg_quality || 0
 
       // d. Calculate total XP components
-
-      // five_star_count: admin reviews with quality_rating = 5
       const fiveStarResult = await env.DB.prepare(`
         SELECT COUNT(*) as count
         FROM task_reviews tr
@@ -337,7 +327,6 @@ export async function handleGamification(request, env, auth, path, method) {
       `).bind(userId).first()
       const fiveStarCount = fiveStarResult.count
 
-      // under_estimated_count: admin reviews with time_assessment = 'under'
       const underEstimatedResult = await env.DB.prepare(`
         SELECT COUNT(*) as count
         FROM task_reviews tr
@@ -348,7 +337,6 @@ export async function handleGamification(request, env, auth, path, method) {
       `).bind(userId).first()
       const underEstimatedCount = underEstimatedResult.count
 
-      // reviews_completed: contractor's own reviews
       const reviewsResult = await env.DB.prepare(
         "SELECT COUNT(*) as count FROM task_reviews WHERE reviewer_id = ? AND reviewer_role = 'contractor'"
       ).bind(userId).first()
@@ -361,9 +349,9 @@ export async function handleGamification(request, env, auth, path, method) {
         (underEstimatedCount * XP_REWARDS.UNDER_ESTIMATED_BONUS) +
         (reviewsCompleted * XP_REWARDS.REVIEW_COMPLETED)
 
-      // e. Determine current_level
+      // e. Determine current_level using xp_required
       const levelResult = await env.DB.prepare(
-        'SELECT level FROM xp_levels WHERE xp_threshold <= ? ORDER BY xp_threshold DESC LIMIT 1'
+        'SELECT level FROM xp_levels WHERE xp_required <= ? ORDER BY xp_required DESC LIMIT 1'
       ).bind(totalXp).first()
       const currentLevel = levelResult ? levelResult.level : 1
 
@@ -397,60 +385,44 @@ export async function handleGamification(request, env, auth, path, method) {
       const earnedBadgeIds = new Set((existingBadges.results || []).map(b => b.badge_id))
 
       // Pre-fetch data needed for badge checks
-      const hoursResult = await env.DB.prepare(
-        'SELECT COALESCE(SUM(duration_minutes), 0) as total FROM time_entries WHERE user_id = ?'
-      ).bind(userId).first()
-      const totalHoursMinutes = hoursResult.total
-
-      // No-revision streak: count tasks with no 'revision' in task_history
-      const noRevisionResult = await env.DB.prepare(`
-        SELECT COUNT(*) as count FROM tasks t
-        WHERE t.contractor_id = ?
-          AND t.status = 'closed'
-          AND NOT EXISTS (
-            SELECT 1 FROM task_history th
-            WHERE th.task_id = t.id AND th.to_status = 'revision'
-          )
+      const categoriesResult = await env.DB.prepare(`
+        SELECT COUNT(DISTINCT tc.id) as count
+        FROM tasks t
+        JOIN task_categories tc ON t.category_id = tc.id
+        WHERE t.contractor_id = ? AND t.status = 'closed'
       `).bind(userId).first()
-      const noRevisionCount = noRevisionResult.count
+      const categoriesWorked = categoriesResult.count
+
+      const clientsResult = await env.DB.prepare(`
+        SELECT COUNT(DISTINCT client_id) as count
+        FROM tasks
+        WHERE contractor_id = ? AND status = 'closed'
+      `).bind(userId).first()
+      const clientsHelped = clientsResult.count
 
       for (const badge of (allBadges.results || [])) {
         if (earnedBadgeIds.has(badge.id)) continue
 
         let shouldAward = false
 
-        switch (badge.criteria_type) {
+        switch (badge.trigger_type) {
           case 'tasks_completed':
-            shouldAward = tasksCompleted >= badge.criteria_value
+            shouldAward = tasksCompleted >= badge.trigger_value
             break
-          case 'quality_rating':
-            // Award if any admin review for contractor's tasks has quality_rating >= criteria_value
-            {
-              const qualityCheck = await env.DB.prepare(`
-                SELECT COUNT(*) as count
-                FROM task_reviews tr
-                JOIN tasks t ON tr.task_id = t.id
-                WHERE t.contractor_id = ?
-                  AND tr.reviewer_role = 'admin'
-                  AND tr.quality_rating >= ?
-              `).bind(userId, badge.criteria_value).first()
-              shouldAward = qualityCheck.count > 0
-            }
+          case 'reviews_given':
+            shouldAward = reviewsCompleted >= badge.trigger_value
             break
-          case 'hours_logged':
-            shouldAward = totalHoursMinutes >= badge.criteria_value
+          case 'level_reached':
+            shouldAward = currentLevel >= badge.trigger_value
             break
-          case 'on_time_streak':
-            shouldAward = onTimeCount >= badge.criteria_value
+          case 'avg_rating':
+            shouldAward = avgQualityRating >= badge.trigger_value && tasksCompleted > 0
             break
-          case 'under_estimated':
-            shouldAward = underEstimatedCount >= badge.criteria_value
+          case 'categories_worked':
+            shouldAward = categoriesWorked >= badge.trigger_value
             break
-          case 'no_revision_streak':
-            shouldAward = noRevisionCount >= badge.criteria_value
-            break
-          case 'review_streak':
-            shouldAward = reviewsCompleted >= badge.criteria_value
+          case 'clients_helped':
+            shouldAward = clientsHelped >= badge.trigger_value
             break
         }
 
@@ -490,7 +462,7 @@ export async function handleGamification(request, env, auth, path, method) {
           current_level_details: currentLevelDetails,
           next_level: nextLevel || null,
           xp_to_next_level: nextLevel
-            ? nextLevel.xp_threshold - updatedXp.total_xp
+            ? nextLevel.xp_required - updatedXp.total_xp
             : null,
           badges: updatedBadges.results || [],
         },

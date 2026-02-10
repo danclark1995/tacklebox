@@ -5,28 +5,28 @@ import { colours, spacing, radii, typography } from '@/config/tokens'
 const Badge = ({ children, variant = 'primary', size = 'md', className = '' }) => {
   const variantStyles = {
     primary: {
-      backgroundColor: colours.primary[100],
-      color: colours.primary[700],
+      backgroundColor: colours.neutral[200],
+      color: colours.neutral[900],
     },
     secondary: {
-      backgroundColor: colours.secondary[100],
-      color: colours.secondary[700],
+      backgroundColor: colours.neutral[200],
+      color: colours.neutral[800],
     },
     success: {
-      backgroundColor: colours.success[100],
-      color: colours.success[700],
+      backgroundColor: colours.neutral[200],
+      color: colours.neutral[700],
     },
     warning: {
-      backgroundColor: colours.warning[100],
-      color: colours.warning[700],
+      backgroundColor: colours.neutral[200],
+      color: colours.neutral[700],
     },
     error: {
-      backgroundColor: colours.error[100],
-      color: colours.error[700],
+      backgroundColor: colours.neutral[200],
+      color: colours.neutral[500],
     },
     info: {
-      backgroundColor: colours.info[100],
-      color: colours.info[700],
+      backgroundColor: colours.neutral[200],
+      color: colours.neutral[700],
     },
     neutral: {
       backgroundColor: colours.neutral[100],

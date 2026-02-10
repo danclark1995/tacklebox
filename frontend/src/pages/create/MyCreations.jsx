@@ -152,7 +152,7 @@ export default function MyCreations() {
 
   const deleteStyle = {
     fontSize: typography.fontSize.xs,
-    color: colours.error[500],
+    color: colours.neutral[700],
     cursor: 'pointer',
     background: 'none',
     border: 'none',

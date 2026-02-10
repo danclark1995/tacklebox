@@ -52,7 +52,7 @@ export default function ProtectedRoute({ roles, children }) {
     }
 
     const linkStyle = {
-      color: colours.primary[500],
+      color: colours.neutral[900],
       textDecoration: 'none',
       fontSize: typography.fontSize.base,
       fontWeight: typography.fontWeight.medium,

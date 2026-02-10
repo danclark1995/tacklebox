@@ -113,7 +113,7 @@ export default function SearchResults() {
     gap: spacing[4],
     padding: `${spacing[3]} ${spacing[4]}`,
     borderRadius: radii.lg,
-    backgroundColor: hoveredItem === itemKey ? colours.primary[50] : colours.white,
+    backgroundColor: hoveredItem === itemKey ? colours.neutral[100] : colours.white,
     border: `1px solid ${colours.neutral[100]}`,
     marginBottom: spacing[2],
     cursor: 'pointer',

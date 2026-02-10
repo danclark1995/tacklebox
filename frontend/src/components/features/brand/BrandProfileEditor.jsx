@@ -507,7 +507,7 @@ export default function BrandProfileEditor({ profile, clientId, onSaveSection, o
             <div style={{ padding: spacing[5] }}>
               {extracting ? (
                 <div style={{ textAlign: 'center', padding: spacing[8] }}>
-                  <div style={{ width: 32, height: 32, border: `3px solid ${colours.neutral[200]}`, borderTopColor: colours.primary[500], borderRadius: '50%', animation: 'spin 1s linear infinite', margin: '0 auto', marginBottom: spacing[3] }} />
+                  <div style={{ width: 32, height: 32, border: `3px solid ${colours.neutral[200]}`, borderTopColor: colours.neutral[900], borderRadius: '50%', animation: 'spin 1s linear infinite', margin: '0 auto', marginBottom: spacing[3] }} />
                   <p style={{ color: colours.neutral[700], fontSize: typography.fontSize.base, fontWeight: typography.fontWeight.medium }}>Analyzing brand guide...</p>
                   <p style={{ color: colours.neutral[500], fontSize: typography.fontSize.sm, marginTop: spacing[1] }}>Extracting brand profile data with AI</p>
                   <style>{`@keyframes spin { to { transform: rotate(360deg) } }`}</style>
@@ -521,7 +521,7 @@ export default function BrandProfileEditor({ profile, clientId, onSaveSection, o
                     onDrop={e => { e.preventDefault(); setDragOver(false); const f = e.dataTransfer.files[0]; if (f && f.type === 'application/pdf') setSelectedFile(f) }}
                     onClick={() => { const input = document.createElement('input'); input.type = 'file'; input.accept = '.pdf'; input.onchange = e => { if (e.target.files[0]) setSelectedFile(e.target.files[0]) }; input.click() }}
                     style={{
-                      padding: spacing[6], border: `2px dashed ${dragOver ? colours.primary[500] : colours.neutral[300]}`,
+                      padding: spacing[6], border: `2px dashed ${dragOver ? colours.neutral[900] : colours.neutral[300]}`,
                       borderRadius: radii.lg, textAlign: 'center', cursor: 'pointer',
                       backgroundColor: dragOver ? colours.neutral[200] : 'transparent',
                       transition: `all ${transitions.fast}`, marginBottom: spacing[4],
@@ -555,11 +555,11 @@ export default function BrandProfileEditor({ profile, clientId, onSaveSection, o
 
       {/* Success banner */}
       {extractionDone && (
-        <div style={{ padding: `${spacing[3]} ${spacing[4]}`, backgroundColor: colours.success[500] + '18', border: `1px solid ${colours.success[500]}40`, borderRadius: radii.lg, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <span style={{ fontSize: typography.fontSize.sm, fontWeight: typography.fontWeight.medium, color: colours.success[500] }}>
+        <div style={{ padding: `${spacing[3]} ${spacing[4]}`, backgroundColor: colours.neutral[700] + '18', border: `1px solid ${colours.neutral[700]}40`, borderRadius: radii.lg, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <span style={{ fontSize: typography.fontSize.sm, fontWeight: typography.fontWeight.medium, color: colours.neutral[700] }}>
             Brand profile extracted! Review each section and save.
           </span>
-          <button type="button" onClick={() => setExtractionDone(false)} style={{ background: 'none', border: 'none', color: colours.success[500], cursor: 'pointer', fontSize: typography.fontSize.lg, fontFamily: typography.fontFamily.sans }}>x</button>
+          <button type="button" onClick={() => setExtractionDone(false)} style={{ background: 'none', border: 'none', color: colours.neutral[700], cursor: 'pointer', fontSize: typography.fontSize.lg, fontFamily: typography.fontFamily.sans }}>x</button>
         </div>
       )}
 
@@ -586,7 +586,7 @@ export default function BrandProfileEditor({ profile, clientId, onSaveSection, o
               <span style={{ width: 20, textAlign: 'center', fontSize: typography.fontSize.xs }}>{section.icon}</span>
               {section.label}
               {populatedSections[section.id] && (
-                <span style={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: colours.success[500], marginLeft: 'auto', flexShrink: 0 }} />
+                <span style={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: colours.neutral[700], marginLeft: 'auto', flexShrink: 0 }} />
               )}
             </button>
           ))}

@@ -534,7 +534,7 @@ export default function AIAssistantPanel({ task, brandProfile, onAttachmentAdded
           {renderForm()}
 
           {error && (
-            <div style={{ color: colours.error[500], fontSize: typography.fontSize.sm, marginTop: spacing[2], marginBottom: spacing[2] }}>
+            <div style={{ color: colours.neutral[700], fontSize: typography.fontSize.sm, marginTop: spacing[2], marginBottom: spacing[2] }}>
               {error}
             </div>
           )}

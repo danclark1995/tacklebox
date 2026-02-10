@@ -1,37 +1,33 @@
 import React from 'react'
 import PropTypes from 'prop-types'
+import {
+  Flame, Layers, Zap, Star, Compass, Sparkles, Fish, Lock,
+  HeartHandshake, TreePine, Trees, Award, FireExtinguisher, Tent,
+} from 'lucide-react'
 import Card from '@/components/ui/Card'
 import Badge from '@/components/ui/Badge'
-import { colours, spacing, typography, radii, shadows, transitions } from '@/config/tokens'
+import { colours, spacing, typography, radii, shadows } from '@/config/tokens'
 
-/**
- * Badge icon name -> visual representation.
- * Each entry has an emoji, a fallback SVG-safe label, and an accent colour.
- */
 const ICON_MAP = {
-  award:           { emoji: '\uD83C\uDFC6', colour: colours.neutral[800] },
-  clock:           { emoji: '\u23F0',       colour: colours.info[500] },
-  star:            { emoji: '\u2B50',       colour: colours.neutral[700] },
-  zap:             { emoji: '\u26A1',       colour: colours.warning[500] },
-  'trending-up':   { emoji: '\uD83D\uDCC8', colour: colours.success[500] },
-  shield:          { emoji: '\uD83D\uDEE1\uFE0F', colour: colours.neutral[600] },
-  'message-circle':{ emoji: '\uD83D\uDCAC', colour: colours.primary[400] },
-  trophy:          { emoji: '\uD83C\uDFC6', colour: colours.neutral[800] },
-  fire:            { emoji: '\uD83D\uDD25', colour: colours.secondary[500] },
-  target:          { emoji: '\uD83C\uDFAF', colour: colours.error[500] },
-  check:           { emoji: '\u2705',       colour: colours.success[500] },
-  rocket:          { emoji: '\uD83D\uDE80', colour: colours.info[500] },
+  'flame': Flame,
+  'layers': Layers,
+  'fire-extinguisher': FireExtinguisher,
+  'zap': Zap,
+  'heart-handshake': HeartHandshake,
+  'sparkles': Sparkles,
+  'fish': Fish,
+  'star': Star,
+  'compass': Compass,
+  'tent': Tent,
+  'tree-pine': TreePine,
+  'trees': Trees,
+  'award': Award,
 }
 
 const resolveIcon = (name) => {
-  const entry = ICON_MAP[(name || '').toLowerCase()]
-  return entry || { emoji: '\uD83C\uDFC5', colour: colours.neutral[400] }
+  return ICON_MAP[(name || '').toLowerCase()] || Award
 }
 
-/**
- * BadgeGrid — displays earned and available badges in a responsive grid or
- * a compact horizontal-scroll row (earned only).
- */
 const BadgeGrid = ({ badges = [], compact = false }) => {
   if (!badges || badges.length === 0) return null
 
@@ -39,15 +35,14 @@ const BadgeGrid = ({ badges = [], compact = false }) => {
 
   if (displayBadges.length === 0) return null
 
-  // --- Compact: horizontal scroll row ------------------------------------
   if (compact) {
     return (
       <div style={compactContainerStyle}>
         {displayBadges.map(badge => {
-          const icon = resolveIcon(badge.icon)
+          const IconComponent = resolveIcon(badge.icon_name || badge.icon)
           return (
             <div key={badge.id} style={compactBadgeStyle}>
-              <span style={{ fontSize: typography.fontSize['2xl'] }}>{icon.emoji}</span>
+              <IconComponent size={18} color={colours.neutral[900]} />
               <span style={compactNameStyle}>{badge.name}</span>
             </div>
           )
@@ -56,57 +51,46 @@ const BadgeGrid = ({ badges = [], compact = false }) => {
     )
   }
 
-  // --- Full grid ---------------------------------------------------------
   return (
     <div style={gridStyle}>
       {badges.map(badge => {
-        const icon = resolveIcon(badge.icon)
+        const IconComponent = resolveIcon(badge.icon_name || badge.icon)
         const earned = badge.earned
 
         return (
           <Card key={badge.id} padding="md">
-            <div style={earned ? earnedCardInner : unearnedCardInner}>
-              {/* Border accent for earned badges */}
-              {earned && <div style={goldAccent} />}
+            <div style={cardInnerStyle}>
+              {earned && <div style={accentBar} />}
 
-              {/* Icon */}
               <div style={iconContainerStyle}>
-                <span
-                  style={{
-                    fontSize: typography.fontSize['4xl'],
-                    filter: earned ? 'none' : 'grayscale(100%)',
-                    opacity: earned ? 1 : 0.4,
-                    position: 'relative',
-                  }}
-                >
-                  {icon.emoji}
-                </span>
-                {!earned && <span style={lockOverlayStyle}>{'\uD83D\uDD12'}</span>}
+                <IconComponent
+                  size={32}
+                  color={earned ? colours.neutral[900] : colours.neutral[400]}
+                  style={{ opacity: earned ? 1 : 0.4 }}
+                />
+                {!earned && (
+                  <span style={lockOverlayStyle}>
+                    <Lock size={12} color={colours.neutral[400]} />
+                  </span>
+                )}
               </div>
 
-              {/* Name */}
-              <div
-                style={{
-                  ...nameStyle,
-                  color: earned ? colours.neutral[900] : colours.neutral[400],
-                }}
-              >
+              <div style={{
+                ...nameStyle,
+                color: earned ? colours.neutral[900] : colours.neutral[400],
+              }}>
                 {badge.name}
               </div>
 
-              {/* Description */}
-              <div
-                style={{
-                  ...descriptionStyle,
-                  color: earned ? colours.neutral[600] : colours.neutral[400],
-                }}
-              >
+              <div style={{
+                ...descriptionStyle,
+                color: earned ? colours.neutral[600] : colours.neutral[400],
+              }}>
                 {badge.description}
               </div>
 
-              {/* Status label */}
               {earned ? (
-                <Badge variant="success" size="sm">
+                <Badge variant="neutral" size="sm">
                   Earned {badge.awarded_at
                     ? new Date(badge.awarded_at).toLocaleDateString()
                     : ''}
@@ -122,17 +106,13 @@ const BadgeGrid = ({ badges = [], compact = false }) => {
   )
 }
 
-// =========================================================================
-// Styles
-// =========================================================================
-
 const gridStyle = {
   display: 'grid',
   gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))',
   gap: spacing[4],
 }
 
-const earnedCardInner = {
+const cardInnerStyle = {
   display: 'flex',
   flexDirection: 'column',
   alignItems: 'center',
@@ -142,17 +122,13 @@ const earnedCardInner = {
   overflow: 'hidden',
 }
 
-const unearnedCardInner = {
-  ...earnedCardInner,
-}
-
-const goldAccent = {
+const accentBar = {
   position: 'absolute',
   top: 0,
   left: 0,
   right: 0,
   height: '3px',
-  background: 'linear-gradient(90deg, #ffffff, #a3a3a3, #ffffff)',
+  background: `linear-gradient(90deg, ${colours.neutral[900]}, ${colours.neutral[500]}, ${colours.neutral[900]})`,
   borderRadius: `${radii.sm} ${radii.sm} 0 0`,
 }
 
@@ -168,7 +144,6 @@ const lockOverlayStyle = {
   position: 'absolute',
   bottom: '-4px',
   right: '-8px',
-  fontSize: typography.fontSize.base,
 }
 
 const nameStyle = {
@@ -183,7 +158,6 @@ const descriptionStyle = {
   lineHeight: typography.lineHeight.normal,
 }
 
-// Compact styles
 const compactContainerStyle = {
   display: 'flex',
   gap: spacing[3],
@@ -210,10 +184,6 @@ const compactNameStyle = {
   color: colours.neutral[700],
 }
 
-// =========================================================================
-// PropTypes
-// =========================================================================
-
 BadgeGrid.propTypes = {
   badges: PropTypes.arrayOf(
     PropTypes.shape({
@@ -221,6 +191,7 @@ BadgeGrid.propTypes = {
       name: PropTypes.string.isRequired,
       description: PropTypes.string,
       icon: PropTypes.string,
+      icon_name: PropTypes.string,
       earned: PropTypes.bool,
       awarded_at: PropTypes.string,
     })

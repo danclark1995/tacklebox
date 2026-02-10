@@ -106,7 +106,7 @@ export default function UserForm({
           color: colours.neutral[700],
           marginBottom: spacing[2],
         }}>
-          Full Name <span style={{ color: colours.error[500] }}>*</span>
+          Full Name <span style={{ color: colours.neutral[700] }}>*</span>
         </label>
         <Input
           value={formData.display_name}
@@ -115,7 +115,7 @@ export default function UserForm({
           disabled={loading}
         />
         {errors.display_name && (
-          <span style={{ color: colours.error[500], fontSize: '13px', marginTop: spacing[1], display: 'block' }}>
+          <span style={{ color: colours.neutral[700], fontSize: '13px', marginTop: spacing[1], display: 'block' }}>
             {errors.display_name}
           </span>
         )}
@@ -130,7 +130,7 @@ export default function UserForm({
           color: colours.neutral[700],
           marginBottom: spacing[2],
         }}>
-          Email <span style={{ color: colours.error[500] }}>*</span>
+          Email <span style={{ color: colours.neutral[700] }}>*</span>
         </label>
         <Input
           type="email"
@@ -145,7 +145,7 @@ export default function UserForm({
           </span>
         )}
         {errors.email && (
-          <span style={{ color: colours.error[500], fontSize: '13px', marginTop: spacing[1], display: 'block' }}>
+          <span style={{ color: colours.neutral[700], fontSize: '13px', marginTop: spacing[1], display: 'block' }}>
             {errors.email}
           </span>
         )}
@@ -160,7 +160,7 @@ export default function UserForm({
           color: colours.neutral[700],
           marginBottom: spacing[2],
         }}>
-          Role <span style={{ color: colours.error[500] }}>*</span>
+          Role <span style={{ color: colours.neutral[700] }}>*</span>
         </label>
         <Select
           value={formData.role}
@@ -169,7 +169,7 @@ export default function UserForm({
           disabled={loading}
         />
         {errors.role && (
-          <span style={{ color: colours.error[500], fontSize: '13px', marginTop: spacing[1], display: 'block' }}>
+          <span style={{ color: colours.neutral[700], fontSize: '13px', marginTop: spacing[1], display: 'block' }}>
             {errors.role}
           </span>
         )}
@@ -203,7 +203,7 @@ export default function UserForm({
           color: colours.neutral[700],
           marginBottom: spacing[2],
         }}>
-          Password {!isEditMode && <span style={{ color: colours.error[500] }}>*</span>}
+          Password {!isEditMode && <span style={{ color: colours.neutral[700] }}>*</span>}
           {isEditMode && ' (leave blank to keep current)'}
         </label>
         <Input
@@ -219,7 +219,7 @@ export default function UserForm({
           </span>
         )}
         {errors.password && (
-          <span style={{ color: colours.error[500], fontSize: '13px', marginTop: spacing[1], display: 'block' }}>
+          <span style={{ color: colours.neutral[700], fontSize: '13px', marginTop: spacing[1], display: 'block' }}>
             {errors.password}
           </span>
         )}

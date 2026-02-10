@@ -28,7 +28,7 @@ export default function TaskCard({ task, onClick }) {
       style={{
         cursor: 'pointer',
         transition: 'all 150ms ease',
-        borderLeft: `4px solid ${colours.primary[500]}`,
+        borderLeft: `4px solid ${colours.neutral[900]}`,
       }}
       onMouseEnter={(e) => {
         e.currentTarget.style.boxShadow = '0 4px 16px rgba(255, 255, 255, 0.05)'
@@ -80,7 +80,7 @@ export default function TaskCard({ task, onClick }) {
                 width: '4px',
                 height: '4px',
                 borderRadius: '50%',
-                backgroundColor: colours.primary[500]
+                backgroundColor: colours.neutral[900]
               }} />
               <span>{task.category_name}</span>
             </div>
@@ -104,7 +104,7 @@ export default function TaskCard({ task, onClick }) {
                 width: '4px',
                 height: '4px',
                 borderRadius: '50%',
-                backgroundColor: colours.warning[500]
+                backgroundColor: colours.neutral[700]
               }} />
               <span>Due: {formatDate(task.deadline)}</span>
             </div>

@@ -30,12 +30,12 @@ const Avatar = ({ src, name, size = 'md', className = '' }) => {
     if (!name) return colours.neutral[400]
 
     const colourPalette = [
-      colours.primary[500],
-      colours.secondary[500],
-      colours.success[500],
-      colours.info[500],
-      colours.warning[500],
-      colours.error[500],
+      colours.neutral[400],
+      colours.neutral[500],
+      colours.neutral[600],
+      colours.neutral[700],
+      colours.neutral[800],
+      colours.neutral[900],
     ]
 
     let hash = 0

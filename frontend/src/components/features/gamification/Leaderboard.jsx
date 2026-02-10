@@ -2,27 +2,9 @@ import React from 'react'
 import PropTypes from 'prop-types'
 import { colours, spacing, typography, radii, transitions } from '@/config/tokens'
 
-/**
- * Rank accent colours for the top three positions.
- */
-const RANK_COLOURS = {
-  1: '#fbbf24', // Gold
-  2: '#d4d4d4', // Silver
-  3: '#d97706', // Bronze
-}
-
-/**
- * Leaderboard table component.
- *
- * Props:
- *   entries       — [{ rank, user_id, display_name, total_xp, current_level, level_name, tasks_completed }]
- *   currentUserId — highlights the current user's row
- *   compact       — if true, show only top 5 plus the current user's row
- */
 const Leaderboard = ({ entries = [], currentUserId, compact = false }) => {
   if (!entries || entries.length === 0) return null
 
-  // In compact mode, show top 5 + the current user (if not already in top 5).
   let displayEntries = entries
   if (compact) {
     const top5 = entries.slice(0, 5)
@@ -32,13 +14,6 @@ const Leaderboard = ({ entries = [], currentUserId, compact = false }) => {
     } else {
       displayEntries = top5
     }
-  }
-
-  const getRankDisplay = (rank) => {
-    if (rank === 1) return '\uD83E\uDD47'
-    if (rank === 2) return '\uD83E\uDD48'
-    if (rank === 3) return '\uD83E\uDD49'
-    return `#${rank}`
   }
 
   return (
@@ -56,18 +31,13 @@ const Leaderboard = ({ entries = [], currentUserId, compact = false }) => {
         <tbody>
           {displayEntries.map((entry, index) => {
             const isCurrentUser = String(entry.user_id) === String(currentUserId)
-            const rankColour = RANK_COLOURS[entry.rank]
-            // If we're in compact mode and this is a gap row (user not in top 5)
             const showGap = compact && index === 5
 
             return (
               <React.Fragment key={entry.user_id}>
                 {showGap && (
                   <tr>
-                    <td
-                      colSpan={compact ? 3 : 5}
-                      style={gapRowStyle}
-                    >
+                    <td colSpan={compact ? 3 : 5} style={gapRowStyle}>
                       &middot;&middot;&middot;
                     </td>
                   </tr>
@@ -76,70 +46,52 @@ const Leaderboard = ({ entries = [], currentUserId, compact = false }) => {
                   style={{
                     ...trStyle,
                     backgroundColor: isCurrentUser
-                      ? colours.primary[50]
+                      ? colours.neutral[100]
                       : 'transparent',
                   }}
                 >
-                  {/* Rank */}
-                  <td
-                    style={{
-                      ...tdStyle,
-                      fontWeight: typography.fontWeight.bold,
-                      color: rankColour || colours.neutral[700],
-                      fontSize: entry.rank <= 3
-                        ? typography.fontSize.lg
-                        : typography.fontSize.sm,
-                    }}
-                  >
-                    {getRankDisplay(entry.rank)}
+                  <td style={{
+                    ...tdStyle,
+                    fontWeight: typography.fontWeight.bold,
+                    color: colours.neutral[900],
+                  }}>
+                    #{entry.rank}
                   </td>
 
-                  {/* Name */}
-                  <td
-                    style={{
-                      ...tdStyle,
-                      fontWeight: isCurrentUser
-                        ? typography.fontWeight.bold
-                        : typography.fontWeight.medium,
-                      color: isCurrentUser
-                        ? colours.primary[600]
-                        : colours.neutral[900],
-                    }}
-                  >
+                  <td style={{
+                    ...tdStyle,
+                    fontWeight: isCurrentUser
+                      ? typography.fontWeight.bold
+                      : typography.fontWeight.medium,
+                    color: colours.neutral[900],
+                  }}>
                     {entry.display_name}
                     {isCurrentUser && (
                       <span style={youLabelStyle}> (You)</span>
                     )}
                   </td>
 
-                  {/* Level (hidden in compact) */}
                   {!compact && (
                     <td style={{ ...tdStyle, color: colours.neutral[600] }}>
                       {entry.level_name || `Level ${entry.current_level}`}
                     </td>
                   )}
 
-                  {/* XP */}
-                  <td
-                    style={{
-                      ...tdStyle,
-                      textAlign: 'right',
-                      fontWeight: typography.fontWeight.semibold,
-                      color: colours.neutral[800],
-                    }}
-                  >
+                  <td style={{
+                    ...tdStyle,
+                    textAlign: 'right',
+                    fontWeight: typography.fontWeight.semibold,
+                    color: colours.neutral[800],
+                  }}>
                     {(entry.total_xp || 0).toLocaleString()}
                   </td>
 
-                  {/* Tasks (hidden in compact) */}
                   {!compact && (
-                    <td
-                      style={{
-                        ...tdStyle,
-                        textAlign: 'right',
-                        color: colours.neutral[600],
-                      }}
-                    >
+                    <td style={{
+                      ...tdStyle,
+                      textAlign: 'right',
+                      color: colours.neutral[600],
+                    }}>
                       {entry.tasks_completed ?? '-'}
                     </td>
                   )}
@@ -152,10 +104,6 @@ const Leaderboard = ({ entries = [], currentUserId, compact = false }) => {
     </div>
   )
 }
-
-// =========================================================================
-// Styles
-// =========================================================================
 
 const containerStyle = (compact) => ({
   overflowX: 'auto',
@@ -204,13 +152,9 @@ const gapRowStyle = {
 
 const youLabelStyle = {
   fontSize: typography.fontSize.xs,
-  color: colours.primary[400],
+  color: colours.neutral[500],
   fontWeight: typography.fontWeight.normal,
 }
-
-// =========================================================================
-// PropTypes
-// =========================================================================
 
 Leaderboard.propTypes = {
   entries: PropTypes.arrayOf(

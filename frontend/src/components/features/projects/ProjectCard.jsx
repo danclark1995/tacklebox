@@ -102,7 +102,7 @@ export default function ProjectCard({ project, onClick }) {
             <span style={{
               fontSize: '13px',
               fontWeight: 600,
-              color: colours.primary[600],
+              color: colours.neutral[900],
             }}>
               {completedCount} of {totalCount} tasks
             </span>

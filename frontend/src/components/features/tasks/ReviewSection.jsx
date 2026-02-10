@@ -95,7 +95,7 @@ const mutedTextStyles = {
 const noteStyles = {
   fontFamily: typography.fontFamily.sans,
   fontSize: typography.fontSize.xs,
-  color: colours.warning[600],
+  color: colours.neutral[700],
   marginTop: spacing[1],
 }
 
@@ -107,7 +107,7 @@ const columnHeaderStyles = {
   marginTop: 0,
   marginBottom: spacing[4],
   paddingBottom: spacing[2],
-  borderBottom: `2px solid ${colours.primary[100]}`,
+  borderBottom: `2px solid ${colours.neutral[200]}`,
 }
 
 // ── Read-Only Review Card ────────────────────────────────────────────
@@ -280,7 +280,7 @@ function ContractorReviewForm({ totalTimeMinutes, onSubmit, loading }) {
           max={RATING_MAX}
         />
         {errors.difficulty_rating && (
-          <span style={{ fontFamily: typography.fontFamily.sans, fontSize: typography.fontSize.xs, color: colours.error[500] }}>
+          <span style={{ fontFamily: typography.fontFamily.sans, fontSize: typography.fontSize.xs, color: colours.neutral[700] }}>
             {errors.difficulty_rating}
           </span>
         )}
@@ -399,7 +399,7 @@ function AdminReviewForm({ onSubmit, loading }) {
           max={RATING_MAX}
         />
         {errors.quality_rating && (
-          <span style={{ fontFamily: typography.fontFamily.sans, fontSize: typography.fontSize.xs, color: colours.error[500] }}>
+          <span style={{ fontFamily: typography.fontFamily.sans, fontSize: typography.fontSize.xs, color: colours.neutral[700] }}>
             {errors.quality_rating}
           </span>
         )}

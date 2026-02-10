@@ -88,7 +88,7 @@ const SearchDropdown = ({ results, query, loading, isOpen, onClose, onNavigate }
     gap: spacing[3],
     padding: `${spacing[2]} ${spacing[4]}`,
     cursor: 'pointer',
-    backgroundColor: hoveredItem === itemKey ? colours.primary[50] : colours.white,
+    backgroundColor: hoveredItem === itemKey ? colours.neutral[100] : colours.white,
     transition: `background-color ${transitions.fast}`,
     borderBottom: `1px solid ${colours.neutral[50]}`,
   })

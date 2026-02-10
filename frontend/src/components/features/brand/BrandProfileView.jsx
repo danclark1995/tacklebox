@@ -53,7 +53,7 @@ export default function BrandProfileView({ profile, clientName, companyName, log
       {/* Mission */}
       {profile.mission_statement && (
         <Section title="Mission">
-          <div style={{ padding: spacing[5], backgroundColor: colours.neutral[100], borderLeft: `4px solid ${colours.primary[500]}`, borderRadius: radii.lg }}>
+          <div style={{ padding: spacing[5], backgroundColor: colours.neutral[100], borderLeft: `4px solid ${colours.neutral[900]}`, borderRadius: radii.lg }}>
             <p style={{ fontSize: '17px', lineHeight: 1.8, color: colours.neutral[800], fontStyle: 'italic' }}>{profile.mission_statement}</p>
           </div>
           {profile.target_audience && (
@@ -94,9 +94,9 @@ export default function BrandProfileView({ profile, clientName, companyName, log
         <Section title="Brand Values">
           <div style={{ display: 'grid', gridTemplateColumns: brandValues.length > 2 ? 'repeat(auto-fit, minmax(250px, 1fr))' : '1fr', gap: spacing[4] }}>
             {brandValues.map((val, i) => (
-              <div key={i} style={{ padding: spacing[5], backgroundColor: colours.neutral[100], borderRadius: radii.lg, borderTop: `3px solid ${colours.primary[500]}` }}>
+              <div key={i} style={{ padding: spacing[5], backgroundColor: colours.neutral[100], borderRadius: radii.lg, borderTop: `3px solid ${colours.neutral[900]}` }}>
                 <h4 style={{ fontSize: typography.fontSize.lg, fontWeight: typography.fontWeight.bold, color: colours.neutral[900], marginBottom: spacing[1] }}>{val.name}</h4>
-                {val.tagline && <p style={{ fontSize: typography.fontSize.sm, color: colours.primary[500], fontWeight: typography.fontWeight.medium, marginBottom: spacing[2] }}>{val.tagline}</p>}
+                {val.tagline && <p style={{ fontSize: typography.fontSize.sm, color: colours.neutral[900], fontWeight: typography.fontWeight.medium, marginBottom: spacing[2] }}>{val.tagline}</p>}
                 {val.narrative && <p style={{ fontSize: typography.fontSize.sm, lineHeight: 1.7, color: colours.neutral[700] }}>{val.narrative}</p>}
               </div>
             ))}
@@ -270,7 +270,7 @@ export default function BrandProfileView({ profile, clientName, companyName, log
           <div style={{ display: 'grid', gridTemplateColumns: profile.dos && profile.donts ? '1fr 1fr' : '1fr', gap: spacing[6] }}>
             {profile.dos && (
               <div>
-                <h4 style={{ fontSize: '16px', fontWeight: 600, color: colours.success[500], marginBottom: spacing[3], display: 'flex', alignItems: 'center', gap: spacing[2] }}>
+                <h4 style={{ fontSize: '16px', fontWeight: 600, color: colours.neutral[700], marginBottom: spacing[3], display: 'flex', alignItems: 'center', gap: spacing[2] }}>
                   <span style={{ fontSize: '20px' }}>+</span> Do
                 </h4>
                 <p style={bodyStyle}>{profile.dos}</p>
@@ -278,7 +278,7 @@ export default function BrandProfileView({ profile, clientName, companyName, log
             )}
             {profile.donts && (
               <div>
-                <h4 style={{ fontSize: '16px', fontWeight: 600, color: colours.error[500], marginBottom: spacing[3], display: 'flex', alignItems: 'center', gap: spacing[2] }}>
+                <h4 style={{ fontSize: '16px', fontWeight: 600, color: colours.neutral[700], marginBottom: spacing[3], display: 'flex', alignItems: 'center', gap: spacing[2] }}>
                   <span style={{ fontSize: '20px' }}>-</span> Don't
                 </h4>
                 <p style={bodyStyle}>{profile.donts}</p>
@@ -298,7 +298,7 @@ export default function BrandProfileView({ profile, clientName, companyName, log
       {/* Brand Guide PDF */}
       {profile.brand_guide_path && (
         <Section title="Brand Guide Document">
-          <a href={profile.brand_guide_path} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: spacing[2], padding: `${spacing[3]} ${spacing[4]}`, backgroundColor: colours.neutral[100], borderRadius: radii.lg, border: `1px solid ${colours.neutral[200]}`, color: colours.primary[500], textDecoration: 'none', fontSize: typography.fontSize.sm, fontWeight: typography.fontWeight.medium }}>
+          <a href={profile.brand_guide_path} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: spacing[2], padding: `${spacing[3]} ${spacing[4]}`, backgroundColor: colours.neutral[100], borderRadius: radii.lg, border: `1px solid ${colours.neutral[200]}`, color: colours.neutral[900], textDecoration: 'none', fontSize: typography.fontSize.sm, fontWeight: typography.fontWeight.medium }}>
             View Full Brand Guide PDF
           </a>
         </Section>

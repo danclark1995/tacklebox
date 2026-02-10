@@ -10,28 +10,28 @@ const StatusBadge = ({ status }) => {
       color: colours.neutral[700],
     },
     [TASK_STATUSES.ASSIGNED]: {
-      backgroundColor: colours.info[100],
-      color: colours.info[700],
+      backgroundColor: colours.neutral[200],
+      color: colours.neutral[700],
     },
     [TASK_STATUSES.IN_PROGRESS]: {
-      backgroundColor: colours.primary[100],
-      color: colours.primary[700],
+      backgroundColor: colours.neutral[200],
+      color: colours.neutral[900],
     },
     [TASK_STATUSES.REVIEW]: {
-      backgroundColor: colours.warning[100],
-      color: colours.warning[700],
+      backgroundColor: colours.neutral[200],
+      color: colours.neutral[700],
     },
     [TASK_STATUSES.REVISION]: {
-      backgroundColor: colours.secondary[100],
-      color: colours.secondary[700],
+      backgroundColor: colours.neutral[200],
+      color: colours.neutral[800],
     },
     [TASK_STATUSES.APPROVED]: {
-      backgroundColor: colours.success[100],
-      color: colours.success[700],
+      backgroundColor: colours.neutral[200],
+      color: colours.neutral[700],
     },
     [TASK_STATUSES.CLOSED]: {
-      backgroundColor: colours.success[200],
-      color: colours.success[800],
+      backgroundColor: colours.neutral[300],
+      color: colours.neutral[800],
     },
     [TASK_STATUSES.CANCELLED]: {
       backgroundColor: colours.neutral[200],

@@ -219,7 +219,7 @@ export default function AdminBrandProfileEdit() {
     display: 'inline-flex',
     alignItems: 'center',
     gap: spacing[2],
-    color: colours.primary[500],
+    color: colours.neutral[900],
     textDecoration: 'none',
     fontSize: typography.fontSize.sm,
     fontWeight: typography.fontWeight.medium,

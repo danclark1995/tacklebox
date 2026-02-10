@@ -59,7 +59,7 @@ const Input = ({
     fontFamily: typography.fontFamily.sans,
     width: '100%',
     borderRadius: radii.md,
-    border: `1px solid ${error ? colours.error[500] : isFocused ? colours.primary[500] : colours.neutral[300]}`,
+    border: `1px solid ${error ? colours.neutral[700] : isFocused ? colours.neutral[900] : colours.neutral[300]}`,
     backgroundColor: disabled ? colours.neutral[50] : colours.white,
     color: colours.neutral[900],
     transition: `all ${transitions.normal}`,
@@ -79,7 +79,7 @@ const Input = ({
   const errorStyles = {
     fontFamily: typography.fontFamily.sans,
     fontSize: typography.fontSize.xs,
-    color: colours.error[500],
+    color: colours.neutral[700],
     marginTop: spacing[1],
   }
 
@@ -88,7 +88,7 @@ const Input = ({
       {label && (
         <label style={labelStyles}>
           {label}
-          {required && <span style={{ color: colours.error[500], marginLeft: spacing[1] }}>*</span>}
+          {required && <span style={{ color: colours.neutral[700], marginLeft: spacing[1] }}>*</span>}
         </label>
       )}
       <div style={inputContainerStyles}>

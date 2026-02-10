@@ -31,7 +31,7 @@ export default function TaskProgressTracker({ status }) {
               <div style={{
                 ...connectorStyle,
                 backgroundColor: isCompleted || isCurrent
-                  ? colours.primary[500]
+                  ? colours.neutral[900]
                   : colours.neutral[300],
               }} />
             )}
@@ -40,11 +40,11 @@ export default function TaskProgressTracker({ status }) {
             <div style={{
               ...dotStyle,
               backgroundColor: isCancelled
-                ? colours.error[500]
+                ? colours.neutral[500]
                 : isCompleted
-                  ? colours.primary[500]
+                  ? colours.neutral[900]
                   : isCurrent
-                    ? colours.primary[500]
+                    ? colours.neutral[900]
                     : colours.neutral[300],
               boxShadow: isCurrent
                 ? `0 0 0 4px ${colours.neutral[200]}`
@@ -136,6 +136,6 @@ const revisionBadgeStyle = {
   transform: 'translateX(-50%)',
   fontSize: typography.fontSize.xs,
   fontWeight: typography.fontWeight.medium,
-  color: colours.warning[500],
+  color: colours.neutral[700],
   whiteSpace: 'nowrap',
 }

@@ -418,7 +418,7 @@ export default function AdminTaskDetail() {
     display: 'inline-flex',
     alignItems: 'center',
     gap: spacing[2],
-    color: colours.primary[500],
+    color: colours.neutral[900],
     textDecoration: 'none',
     fontSize: typography.fontSize.sm,
     fontWeight: typography.fontWeight.medium,
@@ -480,8 +480,8 @@ export default function AdminTaskDetail() {
       {renderAdminActions()}
 
       {(aiAnalysis || task.ai_metadata) && (
-        <Card style={{ marginBottom: spacing[4], padding: spacing[4], borderLeft: `4px solid ${colours.info[500]}` }}>
-          <h3 style={{ fontSize: '16px', fontWeight: 600, marginBottom: spacing[3], color: colours.info[700] }}>
+        <Card style={{ marginBottom: spacing[4], padding: spacing[4], borderLeft: `4px solid ${colours.neutral[700]}` }}>
+          <h3 style={{ fontSize: '16px', fontWeight: 600, marginBottom: spacing[3], color: colours.neutral[800] }}>
             AI Brief Analysis
           </h3>
           <div style={{ whiteSpace: 'pre-wrap', lineHeight: 1.6, color: colours.neutral[700] }}>

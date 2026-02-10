@@ -109,7 +109,7 @@ export default function ProjectDetail({
             <span style={{
               fontSize: '14px',
               fontWeight: 600,
-              color: colours.primary[600],
+              color: colours.neutral[900],
             }}>
               {completedCount} of {totalCount} tasks complete
             </span>

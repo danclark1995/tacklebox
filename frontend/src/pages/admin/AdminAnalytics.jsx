@@ -41,20 +41,20 @@ function fmtPct(n) {
 
 // ── Chart colour palettes ─────────────────────────────────────────
 const STATUS_COLOURS = [
-  colours.primary[500],
-  colours.secondary[500],
-  colours.success[500],
-  colours.warning[500],
-  colours.error[500],
-  colours.info[500],
+  colours.neutral[900],
+  colours.neutral[700],
+  colours.neutral[700],
+  colours.neutral[700],
+  colours.neutral[700],
+  colours.neutral[700],
   colours.neutral[400],
   colours.neutral[600],
 ]
 
 const PRIORITY_COLOUR_MAP = {
-  urgent: colours.error[500],
-  high: colours.warning[500],
-  medium: colours.info[500],
+  urgent: colours.neutral[700],
+  high: colours.neutral[700],
+  medium: colours.neutral[700],
   low: colours.neutral[400],
 }
 
@@ -398,7 +398,7 @@ export default function AdminAnalytics() {
         const filled = '\u2605'
         const empty = '\u2606'
         return (
-          <span style={{ color: colours.warning[400], letterSpacing: '1px' }}>
+          <span style={{ color: colours.neutral[600], letterSpacing: '1px' }}>
             {filled.repeat(stars)}{empty.repeat(5 - stars)}
             <span style={{ color: colours.neutral[600], marginLeft: spacing[1], letterSpacing: 'normal' }}>
               {fmtDecimal(val)}
@@ -514,7 +514,7 @@ export default function AdminAnalytics() {
         <StatCard
           label="Total Tasks"
           value={fmtCount(taskData?.total)}
-          colour={colours.primary[500]}
+          colour={colours.neutral[900]}
           icon={
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M9 11l3 3L22 4" />
@@ -525,7 +525,7 @@ export default function AdminAnalytics() {
         <StatCard
           label="Avg Turnaround"
           value={`${fmtDecimal(turnaroundData?.avg_days_overall)} days`}
-          colour={colours.info[500]}
+          colour={colours.neutral[700]}
           icon={
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <circle cx="12" cy="12" r="10" />
@@ -536,7 +536,7 @@ export default function AdminAnalytics() {
         <StatCard
           label="Total Hours Logged"
           value={fmtDecimal(timeData?.total_hours)}
-          colour={colours.success[500]}
+          colour={colours.neutral[700]}
           icon={
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
@@ -549,7 +549,7 @@ export default function AdminAnalytics() {
         <StatCard
           label="Avg Quality Rating"
           value={`${fmtDecimal(reviewData?.avg_quality)} / 5`}
-          colour={colours.warning[500]}
+          colour={colours.neutral[700]}
           icon={
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
@@ -567,7 +567,7 @@ export default function AdminAnalytics() {
             <StatCard
               label="Total Tasks"
               value={fmtCount(taskData?.total)}
-              colour={colours.primary[500]}
+              colour={colours.neutral[900]}
             />
             {byStatusData.map((s, i) => (
               <StatCard
@@ -610,9 +610,9 @@ export default function AdminAnalytics() {
                     type="monotone"
                     dataKey="count"
                     name="Tasks"
-                    stroke={colours.primary[500]}
+                    stroke={colours.neutral[900]}
                     strokeWidth={2}
-                    dot={{ r: 4, fill: colours.primary[500] }}
+                    dot={{ r: 4, fill: colours.neutral[900] }}
                     activeDot={{ r: 6 }}
                   />
                 </LineChart>
@@ -661,7 +661,7 @@ export default function AdminAnalytics() {
             <StatCard
               label="Average Turnaround"
               value={`${fmtDecimal(turnaroundData?.avg_days_overall)} days`}
-              colour={colours.info[500]}
+              colour={colours.neutral[700]}
             />
           </div>
 
@@ -742,8 +742,8 @@ export default function AdminAnalytics() {
                   />
                   <Tooltip content={<ChartTooltip />} />
                   <Legend />
-                  <Bar dataKey="task_count" name="Tasks" fill={colours.primary[500]} radius={[0, 4, 4, 0]} />
-                  <Bar dataKey="avg_hours" name="Avg Hours" fill={colours.secondary[500]} radius={[0, 4, 4, 0]} />
+                  <Bar dataKey="task_count" name="Tasks" fill={colours.neutral[900]} radius={[0, 4, 4, 0]} />
+                  <Bar dataKey="avg_hours" name="Avg Hours" fill={colours.neutral[700]} radius={[0, 4, 4, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -782,12 +782,12 @@ export default function AdminAnalytics() {
             <StatCard
               label="Total Hours"
               value={fmtDecimal(timeData?.total_hours)}
-              colour={colours.success[500]}
+              colour={colours.neutral[700]}
             />
             <StatCard
               label="Avg Hours per Task"
               value={fmtDecimal(timeData?.avg_per_task)}
-              colour={colours.info[500]}
+              colour={colours.neutral[700]}
             />
           </div>
 
@@ -824,7 +824,7 @@ export default function AdminAnalytics() {
                   }}
                 />
                 <Tooltip content={<ChartTooltip />} />
-                <Bar dataKey="hours" name="Hours" fill={colours.primary[500]} radius={[4, 4, 0, 0]} />
+                <Bar dataKey="hours" name="Hours" fill={colours.neutral[900]} radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -836,22 +836,22 @@ export default function AdminAnalytics() {
             <StatCard
               label="Total Reviews"
               value={fmtCount(reviewData?.total_reviews)}
-              colour={colours.primary[500]}
+              colour={colours.neutral[900]}
             />
             <StatCard
               label="Completion Rate"
               value={fmtPct(reviewData?.completion_rate)}
-              colour={colours.success[500]}
+              colour={colours.neutral[700]}
             />
             <StatCard
               label="Avg Difficulty"
               value={`${fmtDecimal(reviewData?.avg_difficulty)} / 5`}
-              colour={colours.warning[500]}
+              colour={colours.neutral[700]}
             />
             <StatCard
               label="Avg Quality"
               value={`${fmtDecimal(reviewData?.avg_quality)} / 5`}
-              colour={colours.info[500]}
+              colour={colours.neutral[700]}
             />
           </div>
         </Section>

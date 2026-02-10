@@ -105,12 +105,7 @@ export default function AdminDashboard() {
   const summaryValueStyle = {
     fontSize: typography.fontSize['3xl'],
     fontWeight: typography.fontWeight.bold,
-    color: colours.primary[500],
-  }
-
-  const alertValueStyle = {
-    ...summaryValueStyle,
-    color: colours.warning[500],
+    color: colours.neutral[900],
   }
 
   const filtersStyle = {
@@ -155,7 +150,7 @@ export default function AdminDashboard() {
 
         <Card style={summaryCardStyle}>
           <div style={summaryLabelStyle}>In Review</div>
-          <div style={alertValueStyle}>{reviewTasks.length}</div>
+          <div style={summaryValueStyle}>{reviewTasks.length}</div>
         </Card>
 
         <Card style={summaryCardStyle}>
@@ -228,7 +223,7 @@ export default function AdminDashboard() {
 
         <TaskList
           tasks={filteredTasks}
-          onTaskClick={(task) => navigate(`/tasks/${task.id}`)}
+          onTaskClick={(task) => navigate(`/admin/tasks/${task.id}`)}
         />
       </div>
     </div>

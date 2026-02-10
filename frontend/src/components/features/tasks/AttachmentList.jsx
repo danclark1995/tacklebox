@@ -198,9 +198,9 @@ function AttachmentCard({ attachment, canDelete, onDelete, onPreview }) {
             type="button"
             style={{
               ...iconBtnStyles,
-              color: confirmDelete ? colours.white : colours.error[500],
-              borderColor: colours.error[300],
-              backgroundColor: confirmDelete ? colours.error[500] : 'transparent',
+              color: confirmDelete ? colours.white : colours.neutral[700],
+              borderColor: colours.neutral[500],
+              backgroundColor: confirmDelete ? colours.neutral[700] : 'transparent',
             }}
             onClick={handleDelete}
             onBlur={() => setConfirmDelete(false)}

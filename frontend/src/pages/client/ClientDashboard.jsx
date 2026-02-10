@@ -87,7 +87,7 @@ export default function ClientDashboard() {
   const summaryCardStyle = (isActive) => ({
     padding: spacing[5],
     cursor: 'pointer',
-    border: isActive ? `2px solid ${colours.primary[500]}` : 'none',
+    border: isActive ? `2px solid ${colours.neutral[900]}` : 'none',
     transition: 'all 0.2s ease',
   })
 
@@ -100,7 +100,7 @@ export default function ClientDashboard() {
   const summaryValueStyle = {
     fontSize: typography.fontSize['3xl'],
     fontWeight: typography.fontWeight.bold,
-    color: colours.primary[500],
+    color: colours.neutral[900],
   }
 
   const sectionStyle = {

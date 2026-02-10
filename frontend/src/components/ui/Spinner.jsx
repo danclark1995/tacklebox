@@ -2,7 +2,7 @@ import React from 'react'
 import PropTypes from 'prop-types'
 import { colours } from '@/config/tokens'
 
-const Spinner = ({ size = 'md', colour = colours.primary[500], className = '' }) => {
+const Spinner = ({ size = 'md', colour = colours.neutral[900], className = '' }) => {
   const sizes = {
     sm: 16,
     md: 24,
