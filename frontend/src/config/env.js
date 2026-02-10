@@ -15,12 +15,12 @@ const config = {
   environment: isDev ? 'development' : 'production',
 
   // API
-  apiUrl: import.meta.env.VITE_API_URL || (isDev ? 'http://localhost:8787' : 'https://api.tacklebox.app'),
+  apiUrl: import.meta.env.VITE_API_URL || (isDev ? 'http://localhost:8787' : 'https://tacklebox-api.square-sunset-3584.workers.dev'),
   apiVersion: 'v1',
 
   // App
   appName: 'TackleBox',
-  appUrl: import.meta.env.VITE_APP_URL || (isDev ? 'http://localhost:5173' : 'https://app.tacklebox.app'),
+  appUrl: import.meta.env.VITE_APP_URL || (isDev ? 'http://localhost:5173' : 'https://tacklebox-3mu.pages.dev'),
 
   // Feature flags (for progressive rollout)
   features: {
