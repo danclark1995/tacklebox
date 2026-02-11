@@ -22,6 +22,7 @@ import { handleAnalytics } from './analytics.js'
 import { handleSearch } from './search.js'
 import { handleAI } from './ai.js'
 import { handleGenerate } from './generate.js'
+import { handleSupport } from './support.js'
 
 export async function handleApiRequest(request, env, ctx) {
   const url = new URL(request.url)
@@ -65,6 +66,7 @@ export async function handleApiRequest(request, env, ctx) {
   if (path.startsWith('/search')) return handleSearch(request, env, auth, path, method)
   if (path.startsWith('/ai')) return handleAI(request, env, auth, path, method)
   if (path.startsWith('/generate')) return handleGenerate(request, env, auth, path, method)
+  if (path.startsWith('/support')) return handleSupport(request, env, auth, path, method)
 
   return jsonResponse({ success: false, error: 'Route not found' }, 404)
 }

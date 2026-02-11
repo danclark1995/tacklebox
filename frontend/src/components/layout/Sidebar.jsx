@@ -47,6 +47,7 @@ export default function Sidebar() {
   const [isOpen, setIsOpen] = useState(false)
 
   const [xpData, setXpData] = useState(null)
+  const [supportCount, setSupportCount] = useState(0)
 
   useEffect(() => {
     if (user?.role !== 'contractor' || !user?.id) return
@@ -61,6 +62,20 @@ export default function Sidebar() {
     }
     loadXP()
   }, [user?.id, user?.role])
+
+  useEffect(() => {
+    if (user?.role !== 'admin') return
+    async function loadSupportCount() {
+      try {
+        const res = await fetch(apiEndpoint('/support'), { headers: getAuthHeaders() })
+        const json = await res.json()
+        if (json.success) {
+          setSupportCount((json.data || []).filter(m => m.status === 'open').length)
+        }
+      } catch {}
+    }
+    loadSupportCount()
+  }, [user?.role])
 
   if (!user) return null
 
@@ -249,6 +264,16 @@ export default function Sidebar() {
             >
               <span style={iconBoxStyle}>{item.icon}</span>
               <span>{item.label}</span>
+              {item.path === '/admin/settings' && supportCount > 0 && (
+                <span style={{
+                  width: '8px',
+                  height: '8px',
+                  borderRadius: '50%',
+                  backgroundColor: colours.neutral[900],
+                  marginLeft: 'auto',
+                  flexShrink: 0,
+                }} />
+              )}
             </NavLink>
           ))}
         </nav>

@@ -6,6 +6,7 @@
 
 import { jsonResponse } from '../index.js'
 import { requireAuth } from '../middleware/auth.js'
+import { notifyNewComment } from '../services/notifications.js'
 
 export async function handleComments(request, env, auth, path, method) {
   // GET /comments?task_id= - list comments for a task
@@ -70,11 +71,8 @@ export async function handleComments(request, env, auth, path, method) {
       if (auth.user.role === 'client') {
         // Clients can't see internal comments
         query += ' AND c.visibility = "all"'
-      } else if (auth.user.role === 'contractor') {
-        // Contractors can only see 'all' visibility comments
-        query += ' AND c.visibility = "all"'
       }
-      // Admin sees all comments
+      // Admin and contractors see all comments (including internal)
 
       query += ' ORDER BY c.created_at ASC'
 
@@ -176,6 +174,19 @@ export async function handleComments(request, env, auth, path, method) {
         LEFT JOIN users u ON c.user_id = u.id
         WHERE c.id = ?
       `).bind(commentId).first()
+
+      // Notify other task participants (non-blocking)
+      try {
+        const participants = await env.DB.prepare(`
+          SELECT DISTINCT u.id, u.email, u.display_name
+          FROM users u
+          WHERE u.id IN (?, ?, ?) AND u.id != ?
+        `).bind(task.client_id, task.contractor_id || '', 'admin', auth.user.id).all()
+        const recipients = (participants.results || []).filter(p => p.email)
+        if (recipients.length > 0) {
+          notifyNewComment(task, newComment, recipients)
+        }
+      } catch (e) { /* notification errors are non-critical */ }
 
       return jsonResponse(
         {

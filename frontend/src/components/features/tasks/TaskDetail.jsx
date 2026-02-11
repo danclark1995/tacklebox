@@ -1,5 +1,6 @@
-import { useState } from 'react'
-import { Tabs, Button, Badge, StatusBadge, Avatar, Modal, Select, Textarea, FileUpload, EmptyState, TaskProgressTracker } from '@/components/ui'
+import { useState, useRef, useCallback } from 'react'
+import { MessageSquare, Send, Lock } from 'lucide-react'
+import { Tabs, Button, Badge, StatusBadge, Avatar, Modal, Select, Textarea, FileUpload, EmptyState, TaskProgressTracker, Toggle } from '@/components/ui'
 import TaskHistory from './TaskHistory'
 import TimeLogSection from '@/components/features/tasks/TimeLogSection'
 import ReviewSection from '@/components/features/tasks/ReviewSection'
@@ -9,14 +10,25 @@ import { formatDate, formatDateTime, formatFileSize } from '@/utils/formatters'
 import { colours, spacing } from '@/config/tokens'
 import useAuth from '@/hooks/useAuth'
 
-/**
- * TaskDetail
- *
- * Full task detail view with tabbed interface.
- * Tabs: Overview | Attachments | Comments | History
- * Overview tab: all metadata, brand profile link, action buttons per role/status.
- * Action buttons vary by role/status.
- */
+function formatRelativeTime(dateStr) {
+  if (!dateStr) return ''
+  const now = Date.now()
+  const then = new Date(dateStr).getTime()
+  const diff = Math.floor((now - then) / 1000)
+  if (diff < 60) return 'Just now'
+  if (diff < 3600) return `${Math.floor(diff / 60)}m ago`
+  if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`
+  const days = Math.floor(diff / 86400)
+  if (days === 1) {
+    const d = new Date(dateStr)
+    return `Yesterday at ${d.getHours()}:${String(d.getMinutes()).padStart(2, '0')} ${d.getHours() >= 12 ? 'PM' : 'AM'}`
+  }
+  if (days < 7) return `${days}d ago`
+  return `${Math.floor(days / 7)}w ago`
+}
+
+const ROLE_LABELS = { admin: 'Admin', contractor: 'Camper', client: 'Client' }
+
 export default function TaskDetail({
   task,
   comments = [],
@@ -39,10 +51,10 @@ export default function TaskDetail({
   const { user, hasRole } = useAuth()
   const [activeTab, setActiveTab] = useState('overview')
   const [showAssignModal, setShowAssignModal] = useState(false)
-  const [showCommentForm, setShowCommentForm] = useState(false)
   const [commentText, setCommentText] = useState('')
-  const [commentVisibility, setCommentVisibility] = useState(COMMENT_VISIBILITY.ALL)
+  const [commentInternal, setCommentInternal] = useState(false)
   const [selectedContractor, setSelectedContractor] = useState('')
+  const textareaRef = useRef(null)
 
   if (!task) {
     return <EmptyState title="Task not found" description="The task you're looking for doesn't exist." />
@@ -68,109 +80,83 @@ export default function TaskDetail({
 
   const handleSubmitComment = () => {
     if (commentText.trim() && onComment) {
-      onComment({ content: commentText, visibility: commentVisibility })
+      onComment({
+        content: commentText,
+        visibility: commentInternal ? COMMENT_VISIBILITY.INTERNAL : COMMENT_VISIBILITY.ALL,
+      })
       setCommentText('')
-      setShowCommentForm(false)
+      setCommentInternal(false)
+      if (textareaRef.current) {
+        textareaRef.current.style.height = 'auto'
+      }
     }
+  }
+
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault()
+      handleSubmitComment()
+    }
+  }
+
+  const handleTextareaInput = (e) => {
+    setCommentText(e.target.value)
+    // Auto-grow
+    const el = e.target
+    el.style.height = 'auto'
+    el.style.height = Math.min(el.scrollHeight, 120) + 'px'
   }
 
   const renderActionButtons = () => {
     const buttons = []
 
-    // Contractor + assigned: "Start Work" button
     if (isAssignedContractor && task.status === TASK_STATUSES.ASSIGNED) {
       buttons.push(
-        <Button
-          key="start-work"
-          variant="primary"
-          onClick={() => handleStatusChange(TASK_STATUSES.IN_PROGRESS)}
-          disabled={loading}
-        >
+        <Button key="start-work" variant="primary" onClick={() => handleStatusChange(TASK_STATUSES.IN_PROGRESS)} disabled={loading}>
           Start Work
         </Button>
       )
     }
 
-    // Contractor + in_progress: "Submit for Review" button
     if (isAssignedContractor && task.status === TASK_STATUSES.IN_PROGRESS) {
       const hasDeliverables = attachments.some(a => a.upload_type === UPLOAD_TYPES.DELIVERABLE)
       buttons.push(
-        <Button
-          key="submit-review"
-          variant="primary"
-          onClick={() => handleStatusChange(TASK_STATUSES.REVIEW)}
-          disabled={loading || !hasDeliverables}
-          title={!hasDeliverables ? 'Upload at least one deliverable first' : ''}
-        >
+        <Button key="submit-review" variant="primary" onClick={() => handleStatusChange(TASK_STATUSES.REVIEW)} disabled={loading || !hasDeliverables} title={!hasDeliverables ? 'Upload at least one deliverable first' : ''}>
           Submit for Review
         </Button>
       )
     }
 
-    // Contractor + revision: "Resume Work" button
     if (isAssignedContractor && task.status === TASK_STATUSES.REVISION) {
       buttons.push(
-        <Button
-          key="resume-work"
-          variant="primary"
-          onClick={() => handleStatusChange(TASK_STATUSES.IN_PROGRESS)}
-          disabled={loading}
-        >
+        <Button key="resume-work" variant="primary" onClick={() => handleStatusChange(TASK_STATUSES.IN_PROGRESS)} disabled={loading}>
           Resume Work
         </Button>
       )
     }
 
-    // Admin + submitted: "Assign" button
     if (isAdmin && task.status === TASK_STATUSES.SUBMITTED) {
       buttons.push(
-        <Button
-          key="assign"
-          variant="primary"
-          onClick={() => setShowAssignModal(true)}
-          disabled={loading}
-        >
+        <Button key="assign" variant="primary" onClick={() => setShowAssignModal(true)} disabled={loading}>
           Assign Task
         </Button>
       )
     }
 
-    // Admin + review: "Approve" / "Request Revision" buttons
     if (isAdmin && task.status === TASK_STATUSES.REVIEW) {
       buttons.push(
-        <Button
-          key="approve"
-          variant="success"
-          onClick={() => handleStatusChange(TASK_STATUSES.APPROVED)}
-          disabled={loading}
-        >
+        <Button key="approve" variant="success" onClick={() => handleStatusChange(TASK_STATUSES.APPROVED)} disabled={loading}>
           Approve
         </Button>,
-        <Button
-          key="revision"
-          variant="warning"
-          onClick={() => {
-            const feedback = prompt('Enter revision feedback:')
-            if (feedback) {
-              handleStatusChange(TASK_STATUSES.REVISION, feedback)
-            }
-          }}
-          disabled={loading}
-        >
+        <Button key="revision" variant="warning" onClick={() => { const feedback = prompt('Enter revision feedback:'); if (feedback) handleStatusChange(TASK_STATUSES.REVISION, feedback) }} disabled={loading}>
           Request Revision
         </Button>
       )
     }
 
-    // Admin + approved: "Close Task" button
     if (isAdmin && task.status === TASK_STATUSES.APPROVED) {
       buttons.push(
-        <Button
-          key="close"
-          variant="primary"
-          onClick={() => handleStatusChange(TASK_STATUSES.CLOSED)}
-          disabled={loading}
-        >
+        <Button key="close" variant="primary" onClick={() => handleStatusChange(TASK_STATUSES.CLOSED)} disabled={loading}>
           Close Task
         </Button>
       )
@@ -182,7 +168,6 @@ export default function TaskDetail({
   const tabs = [
     { id: 'overview', label: 'Overview' },
     { id: 'attachments', label: `Attachments (${attachments.length})` },
-    { id: 'comments', label: `Comments (${comments.length})` },
     { id: 'time-log', label: 'Time Log' },
     { id: 'reviews', label: 'Reviews' },
     { id: 'history', label: 'History' },
@@ -229,7 +214,6 @@ export default function TaskDetail({
       <div style={{ padding: spacing[6] }}>
         {activeTab === 'overview' && (
           <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: spacing[6] }}>
-            {/* Main content */}
             <div>
               <h3 style={{ fontSize: '16px', fontWeight: 600, marginBottom: spacing[3] }}>Description</h3>
               <p style={{ lineHeight: 1.6, color: colours.neutral[700], whiteSpace: 'pre-wrap' }}>
@@ -239,18 +223,13 @@ export default function TaskDetail({
               {brandProfile && (isContractor || isAdmin) && (
                 <div style={{ marginTop: spacing[6], padding: spacing[4], backgroundColor: colours.neutral[100], borderRadius: '8px' }}>
                   <h4 style={{ fontSize: '14px', fontWeight: 600, marginBottom: spacing[2] }}>Brand Profile</h4>
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    onClick={() => window.open(`/brand-profile/${task.client_id}`, '_blank')}
-                  >
+                  <Button variant="secondary" size="sm" onClick={() => window.open(`/brand-profile/${task.client_id}`, '_blank')}>
                     View {task.client_name}'s Brand Profile
                   </Button>
                 </div>
               )}
             </div>
 
-            {/* Sidebar */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: spacing[4] }}>
               <InfoCard label="Project" value={task.project_name} />
               <InfoCard label="Client" value={task.client_name} />
@@ -269,59 +248,6 @@ export default function TaskDetail({
             taskStatus={task.status}
             loading={loading}
           />
-        )}
-
-        {activeTab === 'comments' && (
-          <div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: spacing[4], marginBottom: spacing[6] }}>
-              {comments.length === 0 ? (
-                <EmptyState title="No comments" description="No comments have been added yet." />
-              ) : (
-                comments.map(comment => (
-                  <CommentItem key={comment.id} comment={comment} />
-                ))
-              )}
-            </div>
-
-            {/* Add comment form */}
-            {!showCommentForm ? (
-              <Button variant="secondary" onClick={() => setShowCommentForm(true)}>
-                Add Comment
-              </Button>
-            ) : (
-              <div style={{ padding: spacing[4], backgroundColor: colours.neutral[50], borderRadius: '8px' }}>
-                <Textarea
-                  value={commentText}
-                  onChange={(e) => setCommentText(e.target.value)}
-                  placeholder="Write a comment..."
-                  rows={4}
-                />
-                {(isAdmin || isContractor) && (
-                  <div style={{ marginTop: spacing[3] }}>
-                    <label style={{ fontSize: '14px', fontWeight: 500, marginBottom: spacing[2], display: 'block' }}>
-                      Visibility
-                    </label>
-                    <Select
-                      value={commentVisibility}
-                      onChange={(e) => setCommentVisibility(e.target.value)}
-                      options={[
-                        { value: COMMENT_VISIBILITY.ALL, label: 'Visible to all' },
-                        { value: COMMENT_VISIBILITY.INTERNAL, label: 'Internal only' },
-                      ]}
-                    />
-                  </div>
-                )}
-                <div style={{ marginTop: spacing[3], display: 'flex', gap: spacing[2] }}>
-                  <Button variant="primary" onClick={handleSubmitComment}>
-                    Post Comment
-                  </Button>
-                  <Button variant="secondary" onClick={() => setShowCommentForm(false)}>
-                    Cancel
-                  </Button>
-                </div>
-              </div>
-            )}
-          </div>
         )}
 
         {activeTab === 'time-log' && (
@@ -358,6 +284,106 @@ export default function TaskDetail({
         )}
       </div>
 
+      {/* ── Discussion Section (always visible) ──────────────── */}
+      <div style={{
+        borderTop: '1px solid #222',
+        padding: spacing[6],
+      }}>
+        <h2 style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px',
+          fontSize: '18px',
+          fontWeight: 600,
+          color: '#ffffff',
+          marginBottom: spacing[4],
+        }}>
+          <MessageSquare size={18} />
+          Discussion ({comments.length})
+        </h2>
+
+        {/* Comment Thread */}
+        <div style={{
+          border: '1px solid #222',
+          borderRadius: '8px',
+          overflow: 'hidden',
+          marginBottom: spacing[4],
+        }}>
+          {comments.length === 0 ? (
+            <div style={{
+              padding: spacing[6],
+              textAlign: 'center',
+              color: colours.neutral[500],
+              fontSize: '14px',
+            }}>
+              No comments yet. Start the discussion below.
+            </div>
+          ) : (
+            comments.map((comment, i) => (
+              <DiscussionComment key={comment.id} comment={comment} index={i} />
+            ))
+          )}
+
+          {/* Comment Input */}
+          <div style={{
+            borderTop: '1px solid #222',
+            padding: '12px 16px',
+            backgroundColor: '#0d0d0d',
+          }}>
+            <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-end' }}>
+              <textarea
+                ref={textareaRef}
+                value={commentText}
+                onChange={handleTextareaInput}
+                onKeyDown={handleKeyDown}
+                placeholder="Add a comment..."
+                rows={1}
+                style={{
+                  flex: 1,
+                  resize: 'none',
+                  overflow: 'hidden',
+                  backgroundColor: '#111',
+                  border: '1px solid #222',
+                  borderRadius: '6px',
+                  padding: '10px 12px',
+                  color: '#ffffff',
+                  fontSize: '14px',
+                  fontFamily: 'inherit',
+                  lineHeight: 1.5,
+                  outline: 'none',
+                  maxHeight: '120px',
+                }}
+              />
+              <button
+                onClick={handleSubmitComment}
+                disabled={!commentText.trim()}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  cursor: commentText.trim() ? 'pointer' : 'default',
+                  color: commentText.trim() ? '#ffffff' : '#444',
+                  padding: '8px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  transition: 'color 150ms ease',
+                }}
+              >
+                <Send size={18} />
+              </button>
+            </div>
+            {(isAdmin || isContractor) && (
+              <div style={{ marginTop: '8px' }}>
+                <Toggle
+                  checked={commentInternal}
+                  onChange={setCommentInternal}
+                  label="Internal only"
+                />
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
       {/* Assign Modal */}
       {showAssignModal && (
         <Modal
@@ -371,7 +397,6 @@ export default function TaskDetail({
               onChange={(e) => setSelectedContractor(e.target.value)}
               options={[
                 { value: '', label: 'Select camper...' },
-                // Contractor options would be passed as prop
               ]}
             />
             <div style={{ marginTop: spacing[4], display: 'flex', gap: spacing[2] }}>
@@ -414,52 +439,48 @@ function InfoCard({ label, value }) {
   )
 }
 
-function FileItem({ file }) {
-  return (
-    <div style={{
-      display: 'flex',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-      padding: spacing[3],
-      backgroundColor: colours.neutral[50],
-      borderRadius: '6px',
-    }}>
-      <div>
-        <div style={{ fontSize: '14px', fontWeight: 500, color: colours.neutral[900] }}>
-          {file.file_name}
-        </div>
-        <div style={{ fontSize: '12px', color: colours.neutral[600], marginTop: spacing[1] }}>
-          {formatFileSize(file.file_size)} • {formatDateTime(file.created_at)}
-        </div>
-      </div>
-      <Button variant="secondary" size="sm" onClick={() => window.open(file.file_path, '_blank')}>
-        Download
-      </Button>
-    </div>
-  )
-}
+function DiscussionComment({ comment, index }) {
+  const isInternal = comment.visibility === COMMENT_VISIBILITY.INTERNAL
 
-function CommentItem({ comment }) {
   return (
     <div style={{
-      padding: spacing[4],
-      backgroundColor: colours.white,
-      border: `1px solid ${colours.neutral[200]}`,
-      borderRadius: '8px',
+      padding: '14px 16px',
+      backgroundColor: index % 2 === 0 ? '#111' : '#0f0f0f',
+      borderLeft: isInternal ? '2px solid rgba(255,255,255,0.15)' : '2px solid transparent',
+      animation: 'fadeIn 300ms ease',
     }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: spacing[2], marginBottom: spacing[2] }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
         <Avatar name={comment.user_name} size="sm" />
-        <div>
-          <div style={{ fontSize: '14px', fontWeight: 500 }}>{comment.user_name}</div>
-          <div style={{ fontSize: '12px', color: colours.neutral[600] }}>{formatDateTime(comment.created_at)}</div>
-        </div>
-        {comment.visibility === COMMENT_VISIBILITY.INTERNAL && (
-          <Badge variant="warning" size="sm">Internal</Badge>
+        <span style={{ fontSize: '14px', fontWeight: 600, color: '#ffffff' }}>
+          {comment.user_name}
+        </span>
+        <span style={{
+          fontSize: '10px',
+          color: colours.neutral[500],
+          textTransform: 'uppercase',
+          letterSpacing: '0.5px',
+        }}>
+          {ROLE_LABELS[comment.user_role] || comment.user_role}
+        </span>
+        <span style={{ fontSize: '12px', color: colours.neutral[500], marginLeft: 'auto' }}>
+          {formatRelativeTime(comment.created_at)}
+        </span>
+        {isInternal && (
+          <span style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '11px', color: colours.neutral[500] }}>
+            <Lock size={11} />
+            Internal
+          </span>
         )}
       </div>
-      <p style={{ lineHeight: 1.6, color: colours.neutral[700], whiteSpace: 'pre-wrap' }}>
+      <div style={{
+        fontSize: '14px',
+        color: '#ffffff',
+        lineHeight: 1.6,
+        whiteSpace: 'pre-wrap',
+        paddingLeft: '36px',
+      }}>
         {comment.content}
-      </p>
+      </div>
     </div>
   )
 }
