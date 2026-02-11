@@ -356,6 +356,50 @@ export async function handleBrandProfiles(request, env, auth, path, method) {
     }
   }
 
+  // --- GET /brand-profiles (list for contractors — brand profiles for assigned clients) ---
+  if (path === '/brand-profiles' && method === 'GET') {
+    const authCheck = requireAuth(auth)
+    if (!authCheck.authorized) return jsonResponse({ success: false, error: authCheck.error }, authCheck.status)
+
+    try {
+      let results = []
+      if (auth.user.role === 'admin') {
+        const q = await env.DB.prepare(`
+          SELECT bp.*, u.display_name as client_name, u.company as client_company
+          FROM brand_profiles bp
+          LEFT JOIN users u ON bp.client_id = u.id
+          ORDER BY bp.updated_at DESC
+        `).all()
+        results = q.results
+      } else if (auth.user.role === 'contractor') {
+        const q = await env.DB.prepare(`
+          SELECT DISTINCT bp.*, u.display_name as client_name, u.company as client_company
+          FROM brand_profiles bp
+          JOIN tasks t ON bp.client_id = t.client_id
+          LEFT JOIN users u ON bp.client_id = u.id
+          WHERE t.contractor_id = ?
+          ORDER BY bp.updated_at DESC
+        `).bind(auth.user.id).all()
+        results = q.results
+      } else if (auth.user.role === 'client') {
+        const q = await env.DB.prepare(`
+          SELECT bp.*, u.display_name as client_name, u.company as client_company
+          FROM brand_profiles bp
+          LEFT JOIN users u ON bp.client_id = u.id
+          WHERE bp.client_id = ?
+        `).bind(auth.user.id).all()
+        results = q.results
+      }
+
+      for (const profile of results) parseJsonFields(profile)
+
+      return jsonResponse({ success: true, data: results })
+    } catch (err) {
+      console.error('List brand profiles error:', err)
+      return jsonResponse({ success: false, error: 'Failed to fetch brand profiles' }, 500)
+    }
+  }
+
   // --- GET /brand-profiles/:clientId ---
   const getMatch = path.match(/^\/brand-profiles\/([^\/]+)$/)
   if (getMatch && method === 'GET') {

@@ -186,17 +186,6 @@ const CircleProgress = ({
         }}>
           <FlameIcon level={currentLevel} size="lg" animated />
         </div>
-        <div style={{
-          marginTop: '-2px',
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          gap: '3px',
-        }}>
-          <div style={{ width: '28px', height: '2px', backgroundColor: '#ffffff', opacity: 0.3, transform: 'rotate(-20deg)', borderRadius: '1px' }} />
-          <div style={{ width: '24px', height: '2px', backgroundColor: '#ffffff', opacity: 0.25, transform: 'rotate(15deg)', borderRadius: '1px' }} />
-          <div style={{ width: '22px', height: '2px', backgroundColor: '#ffffff', opacity: 0.2, transform: 'rotate(-8deg)', borderRadius: '1px' }} />
-        </div>
       </div>
     </div>
   )

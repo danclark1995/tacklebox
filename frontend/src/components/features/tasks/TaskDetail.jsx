@@ -166,11 +166,11 @@ export default function TaskDetail({
   }
 
   const tabs = [
-    { id: 'overview', label: 'Overview' },
-    { id: 'attachments', label: `Attachments (${attachments.length})` },
-    { id: 'time-log', label: 'Time Log' },
-    { id: 'reviews', label: 'Reviews' },
-    { id: 'history', label: 'History' },
+    { key: 'overview', label: 'Overview' },
+    { key: 'attachments', label: `Attachments (${attachments.length})` },
+    { key: 'time-log', label: 'Time Log' },
+    { key: 'reviews', label: 'Reviews' },
+    { key: 'history', label: 'History' },
   ]
 
   return (

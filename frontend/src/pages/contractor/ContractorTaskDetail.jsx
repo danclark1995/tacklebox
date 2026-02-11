@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
+import { X } from 'lucide-react'
 import useToast from '@/hooks/useToast'
 import EmberLoader from '@/components/ui/EmberLoader'
 import Button from '@/components/ui/Button'
-import Modal from '@/components/ui/Modal'
 import FileUpload from '@/components/ui/FileUpload'
 import Select from '@/components/ui/Select'
 import TaskDetail from '@/components/features/tasks/TaskDetail'
@@ -121,7 +121,7 @@ export default function ContractorTaskDetail() {
         },
         body: JSON.stringify({
           task_id: id,
-          text: commentData.text,
+          content: commentData.content,
           visibility: commentData.visibility || 'all'
         })
       })
@@ -139,13 +139,14 @@ export default function ContractorTaskDetail() {
     }
   }
 
-  const handleFileUpload = async (files) => {
+  const handleFileUpload = async (filesOrFile) => {
     setUploading(true)
     try {
       const formData = new FormData()
       formData.append('task_id', id)
       formData.append('upload_type', 'deliverable')
-      for (const file of files) {
+      const fileList = Array.isArray(filesOrFile) ? filesOrFile : [filesOrFile]
+      for (const file of fileList) {
         formData.append('files', file)
       }
 
@@ -439,26 +440,96 @@ export default function ContractorTaskDetail() {
         loading={submitting}
       />
 
+      {/* Brand Profile Slide-Over Panel */}
       {showBrandProfile && (
-        <Modal
-          isOpen={showBrandProfile}
-          onClose={() => setShowBrandProfile(false)}
-          title="Client Brand Profile"
-        >
-          <div style={{ padding: spacing[4] }}>
-            {loadingBrandProfile ? (
-              <div style={{ display: 'flex', justifyContent: 'center', padding: spacing[8] }}>
-                <EmberLoader size="md" />
-              </div>
-            ) : brandProfile ? (
-              <BrandProfileView profile={brandProfile} logos={brandLogos} />
-            ) : (
-              <p style={{ color: colours.neutral[600], textAlign: 'center' }}>
-                No brand profile available
-              </p>
-            )}
+        <>
+          <div
+            onClick={() => setShowBrandProfile(false)}
+            style={{
+              position: 'fixed',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              backgroundColor: 'rgba(0,0,0,0.5)',
+              zIndex: 998,
+            }}
+          />
+          <div style={{
+            position: 'fixed',
+            top: 0,
+            right: 0,
+            bottom: 0,
+            width: '580px',
+            maxWidth: '90vw',
+            backgroundColor: colours.surface,
+            borderLeft: `1px solid ${colours.neutral[200]}`,
+            zIndex: 999,
+            display: 'flex',
+            flexDirection: 'column',
+            animation: 'slideInRight 250ms ease',
+          }}>
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              padding: `${spacing[4]} ${spacing[5]}`,
+              borderBottom: `1px solid ${colours.neutral[200]}`,
+              flexShrink: 0,
+            }}>
+              <h2 style={{
+                fontSize: typography.fontSize.lg,
+                fontWeight: typography.fontWeight.semibold,
+                color: colours.neutral[900],
+                margin: 0,
+              }}>
+                Client Brand Profile
+              </h2>
+              <button
+                onClick={() => setShowBrandProfile(false)}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  color: colours.neutral[600],
+                  padding: spacing[1],
+                  display: 'flex',
+                  alignItems: 'center',
+                }}
+              >
+                <X size={20} />
+              </button>
+            </div>
+            <div style={{
+              flex: 1,
+              overflowY: 'auto',
+              padding: spacing[5],
+            }}>
+              {loadingBrandProfile ? (
+                <div style={{ display: 'flex', justifyContent: 'center', padding: spacing[8] }}>
+                  <EmberLoader size="md" />
+                </div>
+              ) : brandProfile ? (
+                <BrandProfileView
+                  profile={brandProfile}
+                  clientName={task?.client_name}
+                  companyName={brandProfile.client_company}
+                  logos={brandLogos}
+                />
+              ) : (
+                <p style={{ color: colours.neutral[600], textAlign: 'center' }}>
+                  No brand profile available
+                </p>
+              )}
+            </div>
           </div>
-        </Modal>
+          <style>{`
+            @keyframes slideInRight {
+              from { transform: translateX(100%); }
+              to { transform: translateX(0); }
+            }
+          `}</style>
+        </>
       )}
     </div>
   )

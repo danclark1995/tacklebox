@@ -22,9 +22,33 @@ export async function generateContent(env, brandProfile, contentType, subType, u
 
         const imageResult = await env.AI.run('@cf/black-forest-labs/flux-1-schnell', { prompt })
 
-        // FLUX returns a ReadableStream of the image
+        // FLUX may return a ReadableStream or a raw response — convert to Uint8Array for R2
         const r2Path = `generations/${id}/output.png`
-        await env.tacklebox_storage.put(r2Path, imageResult, {
+        let imageData = imageResult
+        if (imageResult instanceof ReadableStream) {
+          const reader = imageResult.getReader()
+          const chunks = []
+          while (true) {
+            const { done, value } = await reader.read()
+            if (done) break
+            chunks.push(value)
+          }
+          const totalLen = chunks.reduce((acc, c) => acc + c.length, 0)
+          imageData = new Uint8Array(totalLen)
+          let offset = 0
+          for (const chunk of chunks) { imageData.set(chunk, offset); offset += chunk.length }
+        } else if (imageResult instanceof ArrayBuffer) {
+          imageData = new Uint8Array(imageResult)
+        } else if (typeof imageResult === 'object' && imageResult !== null && !(imageResult instanceof Uint8Array) && !(imageResult instanceof Blob)) {
+          // Some models return { image: base64string } or similar
+          const b64 = imageResult.image || imageResult.data
+          if (typeof b64 === 'string') {
+            const binary = atob(b64)
+            imageData = new Uint8Array(binary.length)
+            for (let i = 0; i < binary.length; i++) imageData[i] = binary.charCodeAt(i)
+          }
+        }
+        await env.tacklebox_storage.put(r2Path, imageData, {
           httpMetadata: { contentType: 'image/png' },
         })
 
@@ -36,10 +60,33 @@ export async function generateContent(env, brandProfile, contentType, subType, u
       case 'ad_creative': {
         // Step 1: Generate background image
         const imgPrompt = buildImagePrompt(brandProfile, 'ad_background', subType, userPrompt, options)
-        const imageResult = await env.AI.run('@cf/black-forest-labs/flux-1-schnell', { prompt: imgPrompt })
+        const adImageResult = await env.AI.run('@cf/black-forest-labs/flux-1-schnell', { prompt: imgPrompt })
 
         const imgPath = `generations/${id}/background.png`
-        await env.tacklebox_storage.put(imgPath, imageResult, {
+        let adImageData = adImageResult
+        if (adImageResult instanceof ReadableStream) {
+          const reader = adImageResult.getReader()
+          const chunks = []
+          while (true) {
+            const { done, value } = await reader.read()
+            if (done) break
+            chunks.push(value)
+          }
+          const totalLen = chunks.reduce((acc, c) => acc + c.length, 0)
+          adImageData = new Uint8Array(totalLen)
+          let offset = 0
+          for (const chunk of chunks) { adImageData.set(chunk, offset); offset += chunk.length }
+        } else if (adImageResult instanceof ArrayBuffer) {
+          adImageData = new Uint8Array(adImageResult)
+        } else if (typeof adImageResult === 'object' && adImageResult !== null && !(adImageResult instanceof Uint8Array) && !(adImageResult instanceof Blob)) {
+          const b64 = adImageResult.image || adImageResult.data
+          if (typeof b64 === 'string') {
+            const binary = atob(b64)
+            adImageData = new Uint8Array(binary.length)
+            for (let i = 0; i < binary.length; i++) adImageData[i] = binary.charCodeAt(i)
+          }
+        }
+        await env.tacklebox_storage.put(imgPath, adImageData, {
           httpMetadata: { contentType: 'image/png' },
         })
 

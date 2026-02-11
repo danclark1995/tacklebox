@@ -98,7 +98,7 @@ export default function CamperJourney() {
   const avgRating = data.avg_quality_rating || 0
   const categoriesWorked = data.categories_worked || 0
 
-  const levels = SCALING_TIERS.map(t => ({ level: t.level, name: t.name }))
+  const levels = SCALING_TIERS.filter(t => t.level > 0).map(t => ({ level: t.level, name: t.name }))
 
   // Merge API badges with constant definitions for icon resolution
   const badges = (data.badges || []).map(b => {
@@ -139,7 +139,7 @@ export default function CamperJourney() {
         <div style={rateLabelStyle}>{rateLabel}</div>
 
         <div style={fireStageLabelStyle}>
-          <FlameIcon level={currentLevel} size="sm" animated={false} />
+          <FlameIcon level={currentLevel} size="sm" animated />
           <span>{fireStage}</span>
         </div>
       </section>
