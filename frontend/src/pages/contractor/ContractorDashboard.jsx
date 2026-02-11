@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
-import { Flame, Tag, Building2 } from 'lucide-react'
+import { Flame, Tag, Building2, Wrench, ChevronDown } from 'lucide-react'
 import useAuth from '@/hooks/useAuth'
 import useToast from '@/hooks/useToast'
 import GlowCard from '@/components/ui/GlowCard'
@@ -10,6 +10,7 @@ import EmptyState from '@/components/ui/EmptyState'
 import TaskList from '@/components/features/tasks/TaskList'
 import XPBar from '@/components/features/gamification/XPBar'
 import BadgeGrid from '@/components/features/gamification/BadgeGrid'
+import ToolboxGrid from '@/components/features/ToolboxGrid'
 import { apiEndpoint } from '@/config/env'
 import { getAuthHeaders } from '@/services/auth'
 import { colours, spacing, typography, radii, shadows } from '@/config/tokens'
@@ -38,6 +39,8 @@ export default function ContractorDashboard() {
   const [confirmingClaim, setConfirmingClaim] = useState(null)
   const [claimingId, setClaimingId] = useState(null)
   const [fadingOut, setFadingOut] = useState(null)
+  const [toolboxTools, setToolboxTools] = useState([])
+  const [showAllTools, setShowAllTools] = useState(false)
 
   useEffect(() => {
     async function load() {
@@ -94,6 +97,17 @@ export default function ContractorDashboard() {
     }
     loadGamification()
   }, [user?.id])
+
+  useEffect(() => {
+    async function loadToolbox() {
+      try {
+        const res = await fetch(apiEndpoint('/tools'), { headers: { ...getAuthHeaders() } })
+        const json = await res.json()
+        if (json.success) setToolboxTools(json.data || [])
+      } catch {}
+    }
+    loadToolbox()
+  }, [])
 
   const handleClaim = async (taskId) => {
     setClaimingId(taskId)
@@ -447,6 +461,42 @@ export default function ContractorDashboard() {
           />
         )}
       </div>
+
+      {/* Toolbox Section */}
+      {toolboxTools.length > 0 && (
+        <div style={sectionStyle}>
+          <h2 style={{ ...sectionTitleStyle, display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <Wrench size={16} />
+            Toolbox
+          </h2>
+          <p style={{ fontSize: typography.fontSize.sm, color: colours.neutral[500], marginBottom: spacing[4], marginTop: `-${spacing[2]}` }}>
+            Resources and tools for your work
+          </p>
+          <ToolboxGrid tools={showAllTools ? toolboxTools : toolboxTools.slice(0, 6)} />
+          {toolboxTools.length > 6 && !showAllTools && (
+            <div style={{ textAlign: 'center', marginTop: spacing[4] }}>
+              <button
+                onClick={() => setShowAllTools(true)}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: '#ffffff',
+                  cursor: 'pointer',
+                  fontSize: typography.fontSize.sm,
+                  fontWeight: typography.fontWeight.medium,
+                  fontFamily: 'inherit',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                }}
+              >
+                View all ({toolboxTools.length})
+                <ChevronDown size={14} />
+              </button>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   )
 }
