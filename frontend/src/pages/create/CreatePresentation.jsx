@@ -103,7 +103,7 @@ export default function CreatePresentation() {
 
   const selectStyle = {
     width: '100%', padding: `${spacing[2]} ${spacing[3]}`,
-    backgroundColor: colours.neutral[100], border: `1px solid ${colours.neutral[200]}`,
+    backgroundColor: '#111111', border: '1px solid #2a2a2a',
     borderRadius: radii.md, color: colours.neutral[900], fontSize: typography.fontSize.sm,
     marginBottom: spacing[4], outline: 'none',
   }
@@ -214,7 +214,7 @@ export default function CreatePresentation() {
                   src={apiEndpoint(`/storage/${result.result_path}`)}
                   style={{
                     width: '100%', minHeight: '500px', border: 'none',
-                    borderRadius: radii.lg, backgroundColor: '#000',
+                    borderRadius: radii.lg, backgroundColor: '#0a0a0a',
                   }}
                   title="Generated presentation"
                 />

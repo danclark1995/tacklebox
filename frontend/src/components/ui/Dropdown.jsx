@@ -104,7 +104,7 @@ const Dropdown = ({
           alignItems: 'center',
           justifyContent: 'space-between',
           background: '#111111',
-          border: `1px solid ${isOpen || hovered ? '#3a3a3a' : '#2a2a2a'}`,
+          border: `1px solid ${isOpen || hovered ? '#333' : '#2a2a2a'}`,
           borderRadius: '8px',
           padding: '10px 14px',
           cursor: disabled ? 'not-allowed' : 'pointer',

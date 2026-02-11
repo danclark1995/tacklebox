@@ -328,7 +328,7 @@ export default function TaskDetail({
           <div style={{
             borderTop: '1px solid #222',
             padding: '12px 16px',
-            backgroundColor: '#0d0d0d',
+            backgroundColor: '#0f0f0f',
           }}>
             <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-end' }}>
               <textarea

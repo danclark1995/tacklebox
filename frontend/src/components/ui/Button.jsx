@@ -69,17 +69,18 @@ const Button = ({
       color: colours.neutral[700],
     },
     danger: {
-      backgroundColor: colours.neutral[700],
-      color: colours.neutral[50],
+      backgroundColor: 'transparent',
+      color: '#ff4444',
+      border: '1px solid rgba(255, 68, 68, 0.3)',
     },
   }
 
   const hoverStyles = {
-    primary: { backgroundColor: colours.neutral[700] },
-    secondary: { backgroundColor: colours.neutral[200] },
-    outline: { backgroundColor: colours.neutral[200] },
+    primary: { boxShadow: '0 0 12px rgba(255, 255, 255, 0.15)', filter: 'brightness(0.95)' },
+    secondary: { borderColor: '#555', boxShadow: '0 0 8px rgba(255, 255, 255, 0.06)' },
+    outline: { borderColor: '#555', boxShadow: '0 0 8px rgba(255, 255, 255, 0.06)' },
     ghost: { backgroundColor: colours.neutral[200] },
-    danger: { backgroundColor: colours.neutral[600] },
+    danger: { backgroundColor: 'rgba(255, 68, 68, 0.1)' },
   }
 
   const [isHovered, setIsHovered] = React.useState(false)

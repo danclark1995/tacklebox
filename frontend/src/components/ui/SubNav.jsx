@@ -12,7 +12,7 @@ export default function SubNav({ tabs, activeTab, onChange }) {
     padding: `${spacing[2]} ${spacing[3]}`,
     fontSize: typography.fontSize.sm,
     fontWeight: active ? typography.fontWeight.medium : typography.fontWeight.normal,
-    color: active ? '#ffffff' : '#666666',
+    color: active ? '#ffffff' : '#666',
     background: 'none',
     border: 'none',
     borderBottom: active ? '2px solid #ffffff' : '2px solid transparent',

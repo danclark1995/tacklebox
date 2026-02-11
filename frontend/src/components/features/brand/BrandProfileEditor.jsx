@@ -406,7 +406,7 @@ export default function BrandProfileEditor({ profile, clientId, onSaveSection, o
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: spacing[3] }}>
             {logos.map(logo => (
               <div key={logo.id} style={{ padding: spacing[3], backgroundColor: colours.neutral[100], borderRadius: radii.lg, border: `1px solid ${colours.neutral[200]}` }}>
-                <img src={logo.file_path} alt={logo.variant_name} style={{ width: '100%', height: 80, objectFit: 'contain', marginBottom: spacing[2], backgroundColor: logo.background_type === 'dark' ? '#000' : logo.background_type === 'light' ? '#fff' : 'transparent', borderRadius: radii.sm }} />
+                <img src={logo.file_path} alt={logo.variant_name} style={{ width: '100%', height: 80, objectFit: 'contain', marginBottom: spacing[2], backgroundColor: logo.background_type === 'dark' ? '#0a0a0a' : logo.background_type === 'light' ? '#ffffff' : 'transparent', borderRadius: radii.sm }} />
                 <div style={{ fontSize: typography.fontSize.sm, fontWeight: typography.fontWeight.medium, color: colours.neutral[900] }}>{logo.variant_name || 'Untitled'}</div>
                 <div style={{ fontSize: typography.fontSize.xs, color: colours.neutral[500], marginBottom: spacing[2] }}>{logo.logo_type} / {logo.background_type}</div>
                 <Button type="button" variant="danger" size="sm" onClick={() => onDeleteLogo && onDeleteLogo(logo.id)} disabled={saving}>Delete</Button>

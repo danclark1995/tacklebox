@@ -247,9 +247,9 @@ export default function BrandProfileView({ profile, clientName, companyName, log
         <Section title="Logo Variants">
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: spacing[4] }}>
             {logos.map(logo => (
-              <div key={logo.id} style={{ padding: spacing[4], backgroundColor: logo.background_type === 'dark' ? '#000' : logo.background_type === 'light' ? '#fff' : colours.neutral[100], borderRadius: radii.lg, border: `1px solid ${colours.neutral[200]}`, textAlign: 'center' }}>
+              <div key={logo.id} style={{ padding: spacing[4], backgroundColor: logo.background_type === 'dark' ? '#0a0a0a' : logo.background_type === 'light' ? '#ffffff' : colours.neutral[100], borderRadius: radii.lg, border: `1px solid ${colours.neutral[200]}`, textAlign: 'center' }}>
                 <img src={logo.file_path} alt={logo.variant_name} style={{ maxWidth: '100%', height: 80, objectFit: 'contain', marginBottom: spacing[2] }} />
-                <div style={{ fontSize: typography.fontSize.sm, fontWeight: typography.fontWeight.medium, color: logo.background_type === 'dark' ? '#fff' : colours.neutral[900] }}>{logo.variant_name}</div>
+                <div style={{ fontSize: typography.fontSize.sm, fontWeight: typography.fontWeight.medium, color: logo.background_type === 'dark' ? '#ffffff' : colours.neutral[900] }}>{logo.variant_name}</div>
                 <div style={{ fontSize: typography.fontSize.xs, color: logo.background_type === 'dark' ? '#a3a3a3' : colours.neutral[500] }}>{logo.logo_type} / {logo.background_type}</div>
               </div>
             ))}

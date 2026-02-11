@@ -35,19 +35,20 @@ const Textarea = ({
     width: '100%',
     padding: spacing[3],
     borderRadius: radii.md,
-    border: `1px solid ${error ? colours.neutral[700] : isFocused ? colours.neutral[900] : colours.neutral[300]}`,
+    border: `1px solid ${error ? '#ff4444' : isFocused ? '#444' : colours.neutral[300]}`,
     backgroundColor: disabled ? colours.neutral[50] : colours.white,
     color: colours.neutral[900],
     transition: `all ${transitions.normal}`,
     outline: 'none',
     resize: 'vertical',
     lineHeight: typography.lineHeight.normal,
+    boxShadow: isFocused ? '0 0 8px rgba(255, 255, 255, 0.06)' : 'none',
   }
 
   const errorStyles = {
     fontFamily: typography.fontFamily.sans,
     fontSize: typography.fontSize.xs,
-    color: colours.neutral[700],
+    color: '#ff4444',
   }
 
   const charCountStyles = {

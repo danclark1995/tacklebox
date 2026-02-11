@@ -236,9 +236,9 @@ export default function AIAssistantPanel({ task, brandProfile, onAttachmentAdded
 
   const selectStyle = {
     width: '100%',
-    padding: `${spacing[2]} ${spacing[3]}`,
-    backgroundColor: colours.neutral[100],
-    border: `1px solid ${colours.neutral[200]}`,
+    padding: '10px 14px',
+    backgroundColor: '#111111',
+    border: '1px solid #2a2a2a',
     borderRadius: radii.md,
     color: colours.neutral[900],
     fontSize: typography.fontSize.sm,
