@@ -6,7 +6,7 @@ import {
 import { Cpu, Sparkles } from 'lucide-react'
 import useAuth from '@/hooks/useAuth'
 import useToast from '@/hooks/useToast'
-import { Card, Select, DatePicker, EmberLoader, PageHeader, DataTable, Button } from '@/components/ui'
+import { GlowCard, Select, DatePicker, EmberLoader, PageHeader, DataTable, Button } from '@/components/ui'
 import StatCard from '@/components/features/analytics/StatCard'
 import { apiEndpoint } from '@/config/env'
 import { getAuthHeaders } from '@/services/auth'
@@ -89,7 +89,7 @@ function ChartTooltip({ active, payload, label }) {
 // ── Section wrapper ───────────────────────────────────────────────
 function Section({ title, children }) {
   return (
-    <Card padding="md">
+    <GlowCard padding="24px">
       <h3 style={{
         fontFamily: typography.fontFamily.sans,
         fontSize: typography.fontSize.lg,
@@ -101,7 +101,7 @@ function Section({ title, children }) {
         {title}
       </h3>
       {children}
-    </Card>
+    </GlowCard>
   )
 }
 
@@ -451,7 +451,7 @@ export default function AdminAnalytics() {
       />
 
       {/* ── Filters Bar ──────────────────────────────────────── */}
-      <Card padding="md">
+      <GlowCard padding="24px">
         <div style={filtersBarStyles}>
           <DatePicker
             label="Date From"
@@ -519,7 +519,7 @@ export default function AdminAnalytics() {
             Apply Filters
           </Button>
         </div>
-      </Card>
+      </GlowCard>
 
       <div style={{ height: spacing[6] }} />
 

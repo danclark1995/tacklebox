@@ -1,4 +1,5 @@
-import { Card, Button } from '@/components/ui'
+import { GlowCard, Button } from '@/components/ui'
+import { FileText, Paperclip } from 'lucide-react'
 import { formatDateTime } from '@/utils/formatters'
 import { colours, spacing } from '@/config/tokens'
 import useAuth from '@/hooks/useAuth'
@@ -28,7 +29,7 @@ export default function BrandGuideCard({ guide, onView, onDelete }) {
           justifyContent: 'center',
           borderRadius: '8px 8px 0 0',
         }}>
-          <span style={{ fontSize: '48px', color: colours.neutral[700] }}>📄</span>
+          <FileText size={48} color={colours.neutral[700]} strokeWidth={1.5} />
         </div>
       )
     } else if (fileType.includes('image')) {
@@ -55,29 +56,18 @@ export default function BrandGuideCard({ guide, onView, onDelete }) {
           justifyContent: 'center',
           borderRadius: '8px 8px 0 0',
         }}>
-          <span style={{ fontSize: '48px', color: colours.neutral[500] }}>📎</span>
+          <Paperclip size={48} color={colours.neutral[500]} strokeWidth={1.5} />
         </div>
       )
     }
   }
 
   return (
-    <Card
+    <GlowCard
       className="brand-guide-card"
-      style={{
-        overflow: 'hidden',
-        transition: 'all 150ms ease',
-      }}
-      onMouseEnter={(e) => {
-        e.currentTarget.style.boxShadow = '0 4px 16px rgba(255, 255, 255, 0.05)'
-        e.currentTarget.style.borderColor = '#333'
-        e.currentTarget.style.transform = 'translateY(-2px)'
-      }}
-      onMouseLeave={(e) => {
-        e.currentTarget.style.boxShadow = 'none'
-        e.currentTarget.style.borderColor = ''
-        e.currentTarget.style.transform = 'translateY(0)'
-      }}
+      glowOnHover
+      padding="0"
+      style={{ overflow: 'hidden' }}
     >
       {/* Thumbnail/Icon */}
       {getFileIcon(guide.file_type)}
@@ -126,7 +116,7 @@ export default function BrandGuideCard({ guide, onView, onDelete }) {
           </Button>
           {isAdmin && onDelete && (
             <Button
-              variant="error"
+              variant="danger"
               size="sm"
               onClick={() => {
                 if (window.confirm('Are you sure you want to delete this brand guide?')) {
@@ -140,6 +130,6 @@ export default function BrandGuideCard({ guide, onView, onDelete }) {
           )}
         </div>
       </div>
-    </Card>
+    </GlowCard>
   )
 }

@@ -1,4 +1,3 @@
-import { Card } from '@/components/ui'
 import { colours, spacing, typography, radii } from '@/config/tokens'
 
 /**

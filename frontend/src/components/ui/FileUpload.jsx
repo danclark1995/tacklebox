@@ -1,5 +1,6 @@
 import React, { useState, useRef, useCallback } from 'react'
 import PropTypes from 'prop-types'
+import { File, FileText, Image as ImageIcon, Video, Music, Archive, Table, Monitor } from 'lucide-react'
 import { colours, spacing, radii, typography, transitions } from '@/config/tokens'
 import WaveProgressBar from './WaveProgressBar'
 
@@ -15,16 +16,17 @@ const formatFileSize = (size) => `${(size / 1024 / 1024).toFixed(2)} MB`
  * Return a simple icon character based on MIME type.
  */
 const getFileTypeIcon = (mimeType) => {
-  if (!mimeType) return '📄'
-  if (mimeType.startsWith('image/')) return '🖼'
-  if (mimeType.startsWith('video/')) return '🎬'
-  if (mimeType.startsWith('audio/')) return '🎵'
-  if (mimeType.includes('pdf')) return '📕'
-  if (mimeType.includes('zip') || mimeType.includes('compressed') || mimeType.includes('archive')) return '📦'
-  if (mimeType.includes('spreadsheet') || mimeType.includes('excel') || mimeType.includes('csv')) return '📊'
-  if (mimeType.includes('presentation') || mimeType.includes('powerpoint')) return '📽'
-  if (mimeType.includes('document') || mimeType.includes('word') || mimeType.includes('text')) return '📝'
-  return '📄'
+  const iconProps = { size: 16, strokeWidth: 1.5 }
+  if (!mimeType) return <File {...iconProps} />
+  if (mimeType.startsWith('image/')) return <ImageIcon {...iconProps} />
+  if (mimeType.startsWith('video/')) return <Video {...iconProps} />
+  if (mimeType.startsWith('audio/')) return <Music {...iconProps} />
+  if (mimeType.includes('pdf')) return <FileText {...iconProps} />
+  if (mimeType.includes('zip') || mimeType.includes('compressed') || mimeType.includes('archive')) return <Archive {...iconProps} />
+  if (mimeType.includes('spreadsheet') || mimeType.includes('excel') || mimeType.includes('csv')) return <Table {...iconProps} />
+  if (mimeType.includes('presentation') || mimeType.includes('powerpoint')) return <Monitor {...iconProps} />
+  if (mimeType.includes('document') || mimeType.includes('word') || mimeType.includes('text')) return <FileText {...iconProps} />
+  return <File {...iconProps} />
 }
 
 const FileUpload = ({

@@ -1,4 +1,4 @@
-import { Card, Badge, StatusBadge, Avatar, TaskProgressTracker } from '@/components/ui'
+import { GlowCard, Badge, StatusBadge, Avatar, TaskProgressTracker } from '@/components/ui'
 import { PRIORITIES, TASK_STATUS_LABELS } from '@/config/constants'
 import { formatDate, getInitials } from '@/utils/formatters'
 import { colours } from '@/config/tokens'
@@ -22,23 +22,14 @@ export default function TaskCard({ task, onClick }) {
   const priorityVariant = priorityVariantMap[task.priority] || 'neutral'
 
   return (
-    <Card
+    <GlowCard
       className="task-card"
       onClick={onClick}
+      glowOnHover
+      padding="0"
       style={{
         cursor: 'pointer',
-        transition: 'all 150ms ease',
         borderLeft: `4px solid ${colours.neutral[900]}`,
-      }}
-      onMouseEnter={(e) => {
-        e.currentTarget.style.boxShadow = '0 4px 16px rgba(255, 255, 255, 0.05)'
-        e.currentTarget.style.borderColor = '#333'
-        e.currentTarget.style.transform = 'translateY(-2px)'
-      }}
-      onMouseLeave={(e) => {
-        e.currentTarget.style.boxShadow = 'none'
-        e.currentTarget.style.borderColor = ''
-        e.currentTarget.style.transform = 'translateY(0)'
       }}
     >
       <div style={{ padding: '16px' }}>
@@ -161,6 +152,6 @@ export default function TaskCard({ task, onClick }) {
           <TaskProgressTracker status={task.status} />
         </div>
       </div>
-    </Card>
+    </GlowCard>
   )
 }

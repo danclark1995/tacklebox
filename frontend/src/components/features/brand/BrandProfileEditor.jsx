@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Input, Textarea, Button, Card, Dropdown } from '@/components/ui'
+import { Input, Textarea, Button, Dropdown, EmberLoader } from '@/components/ui'
 import { colours, spacing, typography, radii, transitions } from '@/config/tokens'
 
 const SECTIONS = [
@@ -517,10 +517,8 @@ export default function BrandProfileEditor({ profile, clientId, onSaveSection, o
             <div style={{ padding: spacing[5] }}>
               {extracting ? (
                 <div style={{ textAlign: 'center', padding: spacing[8] }}>
-                  <div style={{ width: 32, height: 32, border: `3px solid ${colours.neutral[200]}`, borderTopColor: colours.neutral[900], borderRadius: '50%', animation: 'spin 1s linear infinite', margin: '0 auto', marginBottom: spacing[3] }} />
-                  <p style={{ color: colours.neutral[700], fontSize: typography.fontSize.base, fontWeight: typography.fontWeight.medium }}>Analyzing brand guide...</p>
-                  <p style={{ color: colours.neutral[500], fontSize: typography.fontSize.sm, marginTop: spacing[1] }}>Extracting brand profile data with AI</p>
-                  <style>{`@keyframes spin { to { transform: rotate(360deg) } }`}</style>
+                  <EmberLoader size="md" text="Analyzing brand guide..." />
+                  <p style={{ color: colours.neutral[500], fontSize: typography.fontSize.sm, marginTop: spacing[2] }}>Extracting brand profile data with AI</p>
                 </div>
               ) : (
                 <>
@@ -669,12 +667,3 @@ const dynamicRowStyle = {
   paddingRight: spacing[8],
 }
 
-const selectStyle = {
-  padding: `${spacing[2]} ${spacing[3]}`,
-  backgroundColor: colours.white,
-  color: colours.neutral[900],
-  border: `1px solid ${colours.neutral[300]}`,
-  borderRadius: radii.md,
-  fontSize: typography.fontSize.sm,
-  fontFamily: typography.fontFamily.sans,
-}
