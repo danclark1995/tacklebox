@@ -9,6 +9,7 @@
 
 import { jsonResponse } from '../index.js'
 import { requireAuth, requireRole } from '../middleware/auth.js'
+import { notifyTaskStatusChange } from '../services/notifications.js'
 
 // Task state machine transitions
 const TRANSITIONS = {
@@ -185,6 +186,63 @@ export async function handleTasks(request, env, auth, path, method) {
     } catch (err) {
       console.error('Claim task error:', err)
       return jsonResponse({ success: false, error: 'Failed to claim task' }, 500)
+    }
+  }
+
+  // POST /tasks/:id/pass - contractor passes on an assigned task
+  const passMatch = path.match(/^\/tasks\/([^\/]+)\/pass$/)
+  if (passMatch && method === 'POST') {
+    const taskId = passMatch[1]
+    const authCheck = requireAuth(auth)
+    if (!authCheck.authorized) {
+      return jsonResponse({ success: false, error: authCheck.error }, authCheck.status)
+    }
+    if (auth.user.role !== 'contractor') {
+      return jsonResponse({ success: false, error: 'Only campers can pass on tasks' }, 403)
+    }
+    try {
+      const task = await env.DB.prepare(
+        'SELECT * FROM tasks WHERE id = ?'
+      ).bind(taskId).first()
+      if (!task) {
+        return jsonResponse({ success: false, error: 'Task not found' }, 404)
+      }
+      if (task.contractor_id !== auth.user.id) {
+        return jsonResponse({ success: false, error: 'This task is not assigned to you' }, 403)
+      }
+      if (task.status !== 'assigned') {
+        return jsonResponse({ success: false, error: 'You can only pass on tasks that have not been started' }, 400)
+      }
+      await env.DB.prepare(`
+        UPDATE tasks SET contractor_id = NULL, status = 'submitted', campfire_eligible = 1, updated_at = datetime("now") WHERE id = ?
+      `).bind(taskId).run()
+      await env.DB.prepare(`
+        INSERT INTO task_history (id, task_id, changed_by, from_status, to_status, note)
+        VALUES (?, ?, ?, 'assigned', 'submitted', 'Passed — returned to campfire')
+      `).bind(crypto.randomUUID(), taskId, auth.user.id).run()
+      const updated = await env.DB.prepare(`
+        SELECT t.*, c.display_name as client_name, con.display_name as contractor_name,
+          cat.name as category_name, p.name as project_name
+        FROM tasks t
+        LEFT JOIN users c ON t.client_id = c.id
+        LEFT JOIN users con ON t.contractor_id = con.id
+        LEFT JOIN task_categories cat ON t.category_id = cat.id
+        LEFT JOIN projects p ON t.project_id = p.id
+        WHERE t.id = ?
+      `).bind(taskId).first()
+      // Non-blocking notification
+      try {
+        const recipients = []
+        if (task.client_id) {
+          const client = await env.DB.prepare('SELECT id, email, display_name FROM users WHERE id = ?').bind(task.client_id).first()
+          if (client) recipients.push(client)
+        }
+        if (recipients.length > 0) notifyTaskStatusChange(updated, 'submitted', recipients)
+      } catch (e) { /* notification errors are non-critical */ }
+      return jsonResponse({ success: true, data: updated })
+    } catch (err) {
+      console.error('Pass task error:', err)
+      return jsonResponse({ success: false, error: 'Failed to pass on task' }, 500)
     }
   }
 

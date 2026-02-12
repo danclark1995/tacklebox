@@ -29,7 +29,6 @@ export default function TaskCard({ task, onClick }) {
       padding="0"
       style={{
         cursor: 'pointer',
-        borderLeft: `4px solid ${colours.neutral[900]}`,
       }}
     >
       <div style={{ padding: '16px' }}>

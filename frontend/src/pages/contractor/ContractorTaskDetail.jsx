@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
-import { X } from 'lucide-react'
+import { X, Undo2 } from 'lucide-react'
 import useToast from '@/hooks/useToast'
 import EmberLoader from '@/components/ui/EmberLoader'
 import Button from '@/components/ui/Button'
@@ -32,6 +32,8 @@ export default function ContractorTaskDetail() {
   const [brandLogos, setBrandLogos] = useState([])
   const [loadingBrandProfile, setLoadingBrandProfile] = useState(false)
   const [uploading, setUploading] = useState(false)
+  const [confirmingPass, setConfirmingPass] = useState(false)
+  const [passing, setPassing] = useState(false)
 
   // Auto-fetch brand profile for AI panel
   useEffect(() => {
@@ -313,6 +315,29 @@ export default function ContractorTaskDetail() {
     setAttachments(prev => [...prev, newAttachment])
   }
 
+  const handlePass = async () => {
+    setPassing(true)
+    try {
+      const res = await fetch(apiEndpoint(`/tasks/${id}/pass`), {
+        method: 'POST',
+        headers: { ...getAuthHeaders() },
+      })
+      const json = await res.json()
+      if (json.success) {
+        addToast('Task returned to the campfire', 'success')
+        navigate('/camper/tasks')
+      } else {
+        addToast(json.error || 'Failed to pass on task', 'error')
+        setConfirmingPass(false)
+      }
+    } catch (err) {
+      addToast(err.message, 'error')
+      setConfirmingPass(false)
+    } finally {
+      setPassing(false)
+    }
+  }
+
   const handleViewBrandProfile = async () => {
     if (!task?.client_id) return
 
@@ -375,9 +400,54 @@ export default function ContractorTaskDetail() {
     return (
       <div style={actionsStyle}>
         {task.status === 'assigned' && (
-          <Button onClick={() => handleStatusChange('in_progress')}>
-            Start Work
-          </Button>
+          <>
+            <Button onClick={() => handleStatusChange('in_progress')}>
+              Start Work
+            </Button>
+            {!confirmingPass ? (
+              <Button variant="secondary" onClick={() => setConfirmingPass(true)} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                <Undo2 size={14} />
+                Pass
+              </Button>
+            ) : (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{ fontSize: '13px', color: colours.neutral[500] }}>Return this task to the campfire?</span>
+                <button
+                  onClick={handlePass}
+                  disabled={passing}
+                  style={{
+                    backgroundColor: '#ffffff',
+                    color: '#111111',
+                    border: 'none',
+                    borderRadius: '6px',
+                    fontWeight: 600,
+                    fontSize: '12px',
+                    padding: '6px 16px',
+                    cursor: passing ? 'wait' : 'pointer',
+                    fontFamily: 'inherit',
+                    opacity: passing ? 0.7 : 1,
+                  }}
+                >
+                  {passing ? 'Passing...' : 'Confirm'}
+                </button>
+                <button
+                  onClick={() => setConfirmingPass(false)}
+                  style={{
+                    backgroundColor: 'transparent',
+                    color: colours.neutral[500],
+                    border: '1px solid #333',
+                    borderRadius: '6px',
+                    fontSize: '12px',
+                    padding: '6px 16px',
+                    cursor: 'pointer',
+                    fontFamily: 'inherit',
+                  }}
+                >
+                  Cancel
+                </button>
+              </div>
+            )}
+          </>
         )}
 
         {task.status === 'in_progress' && (

@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
 import { Info, Lightbulb } from 'lucide-react'
 
 const TIPS = {
@@ -39,29 +39,49 @@ const TIPS = {
 export default function PromptTips({ contentType }) {
   const [open, setOpen] = useState(false)
   const ref = useRef(null)
+  const iconRef = useRef(null)
+  const [pos, setPos] = useState({ top: 0, left: 0 })
+
+  const updatePosition = useCallback(() => {
+    if (!iconRef.current) return
+    const rect = iconRef.current.getBoundingClientRect()
+    setPos({
+      top: rect.top - 8,
+      left: rect.left - 8,
+    })
+  }, [])
 
   useEffect(() => {
     if (!open) return
+    updatePosition()
     function handleClick(e) {
-      if (ref.current && !ref.current.contains(e.target)) setOpen(false)
+      if (ref.current && !ref.current.contains(e.target) && !iconRef.current.contains(e.target)) {
+        setOpen(false)
+      }
     }
     document.addEventListener('mousedown', handleClick)
-    return () => document.removeEventListener('mousedown', handleClick)
-  }, [open])
+    window.addEventListener('scroll', updatePosition, true)
+    return () => {
+      document.removeEventListener('mousedown', handleClick)
+      window.removeEventListener('scroll', updatePosition, true)
+    }
+  }, [open, updatePosition])
 
   const data = TIPS[contentType]
   if (!data) return null
 
   return (
-    <span ref={ref} style={{ position: 'relative', display: 'inline-flex', verticalAlign: 'middle', marginLeft: '6px' }}>
-      <Info
-        size={14}
-        color="#666"
-        style={{ cursor: 'pointer' }}
-        onClick={() => setOpen(v => !v)}
-      />
+    <span style={{ position: 'relative', display: 'inline-flex', verticalAlign: 'middle', marginLeft: '6px' }}>
+      <span ref={iconRef}>
+        <Info
+          size={14}
+          color="#666"
+          style={{ cursor: 'pointer' }}
+          onClick={() => setOpen(v => !v)}
+        />
+      </span>
       {open && (
-        <div style={popoverStyle}>
+        <div ref={ref} style={{ ...popoverStyle, top: pos.top, left: pos.left }}>
           <div style={{ fontSize: '13px', fontWeight: 600, color: '#ffffff', marginBottom: '10px' }}>Tips</div>
           {data.tips.map((tip, i) => (
             <div key={i} style={{ display: 'flex', gap: '8px', marginBottom: '8px', fontSize: '12px', color: '#ccc' }}>
@@ -73,6 +93,8 @@ export default function PromptTips({ contentType }) {
             <div style={{ fontSize: '11px', color: '#888', marginBottom: '4px' }}>Example</div>
             <div style={{ fontSize: '12px', color: '#aaa' }}>{data.example}</div>
           </div>
+          {/* Arrow pointing down */}
+          <div style={arrowStyle} />
         </div>
       )}
     </span>
@@ -80,9 +102,8 @@ export default function PromptTips({ contentType }) {
 }
 
 const popoverStyle = {
-  position: 'absolute',
-  top: '24px',
-  left: '-8px',
+  position: 'fixed',
+  transform: 'translateY(-100%)',
   zIndex: 100,
   backgroundColor: '#1a1a1a',
   border: '1px solid #2a2a2a',
@@ -90,7 +111,20 @@ const popoverStyle = {
   padding: '16px',
   maxWidth: '360px',
   minWidth: '280px',
+  maxHeight: '300px',
+  overflowY: 'auto',
   boxShadow: '0 8px 24px rgba(0,0,0,0.4)',
+}
+
+const arrowStyle = {
+  position: 'absolute',
+  bottom: '-6px',
+  left: '16px',
+  width: 0,
+  height: 0,
+  borderLeft: '6px solid transparent',
+  borderRight: '6px solid transparent',
+  borderTop: '6px solid #1a1a1a',
 }
 
 const exampleBlockStyle = {
