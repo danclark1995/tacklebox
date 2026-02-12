@@ -59,7 +59,7 @@ export default function ClientTaskNew() {
       const json = await res.json()
 
       if (json.success) {
-        addToast('Task created successfully', 'success')
+        addToast('Task submitted! We\'ll get started soon.', 'success')
         navigate(`/client/tasks/${json.data.id}`)
       } else {
         addToast(json.message || 'Failed to create task', 'error')

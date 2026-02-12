@@ -7,7 +7,6 @@ import Button from '@/components/ui/Button'
 import EmberLoader from '@/components/ui/EmberLoader'
 import EmptyState from '@/components/ui/EmptyState'
 import TaskProgressTracker from '@/components/ui/TaskProgressTracker'
-import ProjectList from '@/components/features/projects/ProjectList'
 import TaskList from '@/components/features/tasks/TaskList'
 import { apiEndpoint } from '@/config/env'
 import { getAuthHeaders } from '@/services/auth'
@@ -18,23 +17,15 @@ export default function ClientDashboard() {
   const { addToast } = useToast()
   const navigate = useNavigate()
   const [tasks, setTasks] = useState([])
-  const [projects, setProjects] = useState([])
   const [loading, setLoading] = useState(true)
   const [taskFilter, setTaskFilter] = useState(null)
 
   useEffect(() => {
     async function load() {
       try {
-        const [tasksRes, projectsRes] = await Promise.all([
-          fetch(apiEndpoint('/tasks'), { headers: { ...getAuthHeaders() } }),
-          fetch(apiEndpoint('/projects'), { headers: { ...getAuthHeaders() } })
-        ])
-
-        const tasksJson = await tasksRes.json()
-        const projectsJson = await projectsRes.json()
-
-        if (tasksJson.success) setTasks(tasksJson.data)
-        if (projectsJson.success) setProjects(projectsJson.data)
+        const res = await fetch(apiEndpoint('/tasks'), { headers: { ...getAuthHeaders() } })
+        const json = await res.json()
+        if (json.success) setTasks(json.data)
       } catch (err) {
         addToast(err.message, 'error')
       } finally {
@@ -53,12 +44,12 @@ export default function ClientDashboard() {
   }
 
   const activeTasks = tasks.filter(t => ['submitted', 'assigned', 'in_progress'].includes(t.status))
-  const awaitingFeedback = tasks.filter(t => t.status === 'review')
-  const recentlyCompleted = tasks.filter(t => ['approved', 'closed'].includes(t.status)).slice(0, 5)
+  const pendingReview = tasks.filter(t => t.status === 'review')
+  const completedTasks = tasks.filter(t => ['approved', 'closed'].includes(t.status))
 
   const filteredTasks = taskFilter === 'active' ? activeTasks :
-                        taskFilter === 'feedback' ? awaitingFeedback :
-                        taskFilter === 'completed' ? recentlyCompleted :
+                        taskFilter === 'review' ? pendingReview :
+                        taskFilter === 'completed' ? completedTasks :
                         tasks.slice(0, 10)
 
   const headerStyle = {
@@ -137,19 +128,19 @@ export default function ClientDashboard() {
         </GlowCard>
 
         <GlowCard
-          style={summaryCardStyle(taskFilter === 'feedback')}
-          onClick={() => setTaskFilter(taskFilter === 'feedback' ? null : 'feedback')}
+          style={summaryCardStyle(taskFilter === 'review')}
+          onClick={() => setTaskFilter(taskFilter === 'review' ? null : 'review')}
         >
-          <div style={summaryLabelStyle}>Awaiting Feedback</div>
-          <div style={summaryValueStyle}>{awaitingFeedback.length}</div>
+          <div style={summaryLabelStyle}>Pending Review</div>
+          <div style={summaryValueStyle}>{pendingReview.length}</div>
         </GlowCard>
 
         <GlowCard
           style={summaryCardStyle(taskFilter === 'completed')}
           onClick={() => setTaskFilter(taskFilter === 'completed' ? null : 'completed')}
         >
-          <div style={summaryLabelStyle}>Recently Completed</div>
-          <div style={summaryValueStyle}>{recentlyCompleted.length}</div>
+          <div style={summaryLabelStyle}>Completed Tasks</div>
+          <div style={summaryValueStyle}>{completedTasks.length}</div>
         </GlowCard>
       </div>
 
@@ -170,25 +161,13 @@ export default function ClientDashboard() {
         </div>
       )}
 
-      {projects.length > 0 && (
-        <div style={sectionStyle}>
-          <div style={sectionHeaderStyle}>
-            <h2 style={sectionTitleStyle}>My Projects</h2>
-          </div>
-          <ProjectList
-            projects={projects}
-            onProjectClick={(project) => navigate(`/projects/${project.id}`)}
-          />
-        </div>
-      )}
-
       <div style={sectionStyle}>
         <div style={sectionHeaderStyle}>
           <h2 style={sectionTitleStyle}>
             {taskFilter === 'active' ? 'Active Tasks' :
-             taskFilter === 'feedback' ? 'Awaiting Feedback' :
-             taskFilter === 'completed' ? 'Recently Completed' :
-             'Recent Tasks'}
+             taskFilter === 'review' ? 'Pending Review' :
+             taskFilter === 'completed' ? 'Completed Tasks' :
+             'Your Tasks'}
           </h2>
           <Button onClick={() => navigate('/client/tasks/new')}>New Task</Button>
         </div>

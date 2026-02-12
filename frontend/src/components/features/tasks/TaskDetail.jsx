@@ -27,7 +27,8 @@ function formatRelativeTime(dateStr) {
   return `${Math.floor(days / 7)}w ago`
 }
 
-const ROLE_LABELS = { admin: 'Admin', contractor: 'Camper', client: 'Client' }
+const ROLE_LABELS_DEFAULT = { admin: 'Admin', contractor: 'Camper', client: 'Client' }
+const ROLE_LABELS_CLIENT = { admin: 'Team', contractor: 'Designer', client: 'Client' }
 
 export default function TaskDetail({
   task,
@@ -67,13 +68,14 @@ export default function TaskDetail({
       seen.add(task.client_id)
     }
     if (task?.contractor_name && task?.contractor_id && !seen.has(task.contractor_id)) {
-      users.push({ id: task.contractor_id, name: task.contractor_name, role: 'Camper' })
+      users.push({ id: task.contractor_id, name: task.contractor_name, role: isClient ? 'Designer' : 'Camper' })
       seen.add(task.contractor_id)
     }
     comments.forEach(c => {
       if (c.user_id && !seen.has(c.user_id)) {
         seen.add(c.user_id)
-        users.push({ id: c.user_id, name: c.user_name, role: ROLE_LABELS[c.user_role] || c.user_role })
+        const labels = isClient ? ROLE_LABELS_CLIENT : ROLE_LABELS_DEFAULT
+        users.push({ id: c.user_id, name: c.user_name, role: labels[c.user_role] || c.user_role })
       }
     })
     return users
@@ -87,6 +89,7 @@ export default function TaskDetail({
   const isAdmin = hasRole('admin')
   const isClient = hasRole('client')
   const isAssignedContractor = isContractor && task.contractor_id === user?.id
+  const roleLabels = isClient ? ROLE_LABELS_CLIENT : ROLE_LABELS_DEFAULT
 
   const priorityVariantMap = {
     [PRIORITIES.URGENT]: 'error',
@@ -244,9 +247,11 @@ export default function TaskDetail({
   const tabs = [
     { key: 'overview', label: 'Overview' },
     { key: 'attachments', label: `Attachments (${attachments.length})` },
-    { key: 'time-log', label: 'Time Log' },
-    { key: 'reviews', label: 'Reviews' },
-    { key: 'history', label: 'History' },
+    ...(!isClient ? [
+      { key: 'time-log', label: 'Time Log' },
+      { key: 'reviews', label: 'Reviews' },
+      { key: 'history', label: 'History' },
+    ] : []),
   ]
 
   return (
@@ -309,7 +314,7 @@ export default function TaskDetail({
             <div style={{ display: 'flex', flexDirection: 'column', gap: spacing[4] }}>
               <InfoCard label="Project" value={task.project_name} />
               <InfoCard label="Client" value={task.client_name} />
-              {task.contractor_name && <InfoCard label="Camper" value={task.contractor_name} />}
+              {task.contractor_name && <InfoCard label={isClient ? "Your designer" : "Camper"} value={task.contractor_name} />}
               {task.deadline && <InfoCard label="Deadline" value={formatDate(task.deadline)} />}
               <InfoCard label="Created" value={formatDateTime(task.created_at)} />
             </div>
@@ -396,7 +401,7 @@ export default function TaskDetail({
             </div>
           ) : (
             comments.map((comment, i) => (
-              <DiscussionComment key={comment.id} comment={comment} index={i} />
+              <DiscussionComment key={comment.id} comment={comment} index={i} roleLabels={roleLabels} />
             ))
           )}
 
@@ -572,7 +577,7 @@ function renderMentions(text) {
   return parts.length > 0 ? parts : text
 }
 
-function DiscussionComment({ comment, index }) {
+function DiscussionComment({ comment, index, roleLabels = ROLE_LABELS_DEFAULT }) {
   const isInternal = comment.visibility === COMMENT_VISIBILITY.INTERNAL
 
   return (
@@ -593,7 +598,7 @@ function DiscussionComment({ comment, index }) {
           textTransform: 'uppercase',
           letterSpacing: '0.5px',
         }}>
-          {ROLE_LABELS[comment.user_role] || comment.user_role}
+          {roleLabels[comment.user_role] || comment.user_role}
         </span>
         <span style={{ fontSize: '12px', color: colours.neutral[500], marginLeft: 'auto' }}>
           {formatRelativeTime(comment.created_at)}

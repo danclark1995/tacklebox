@@ -117,7 +117,7 @@ export default function ClientProfile() {
 
         <div style={fieldStyle}>
           <div style={labelStyle}>Role</div>
-          <div style={valueStyle}>{user?.role}</div>
+          <div style={valueStyle}>Client</div>
         </div>
 
         <div style={actionsStyle}>

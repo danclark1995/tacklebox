@@ -2,6 +2,7 @@ import { GlowCard, Badge, StatusBadge, Avatar, TaskProgressTracker } from '@/com
 import { PRIORITIES, TASK_STATUS_LABELS } from '@/config/constants'
 import { formatDate, getInitials } from '@/utils/formatters'
 import { colours } from '@/config/tokens'
+import useAuth from '@/hooks/useAuth'
 
 /**
  * TaskCard
@@ -10,6 +11,9 @@ import { colours } from '@/config/tokens'
  * Shows: title, status badge, priority badge, category name, deadline, assigned contractor.
  */
 export default function TaskCard({ task, onClick }) {
+  const { hasRole } = useAuth()
+  const isClient = hasRole('client')
+
   if (!task) return null
 
   const priorityVariantMap = {
@@ -43,7 +47,7 @@ export default function TaskCard({ task, onClick }) {
           <Badge variant={priorityVariant}>
             {task.priority?.toUpperCase()}
           </Badge>
-          {task.complexity_level != null && (
+          {!isClient && task.complexity_level != null && (
             <span style={{
               fontSize: '11px',
               padding: '2px 6px',
@@ -120,7 +124,7 @@ export default function TaskCard({ task, onClick }) {
           })()}
         </div>
 
-        {/* Contractor info */}
+        {/* Assigned person */}
         {task.contractor_name && (
           <div style={{
             marginTop: '12px',
@@ -140,7 +144,7 @@ export default function TaskCard({ task, onClick }) {
               color: colours.neutral[700],
               fontWeight: 500,
             }}>
-              {task.contractor_name}
+              {isClient ? `Assigned to: ${task.contractor_name}` : task.contractor_name}
             </span>
           </div>
         )}

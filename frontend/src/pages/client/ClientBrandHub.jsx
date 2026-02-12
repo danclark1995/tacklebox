@@ -82,8 +82,8 @@ export default function ClientBrandHub() {
           <BrandProfileView profile={brandProfile} clientName={user.display_name} companyName={user.company} logos={logos} />
         ) : (
           <EmptyState
-            title="Your brand profile hasn't been set up yet."
-            message="Contact your account manager to set up your brand profile."
+            title="Your brand profile is being set up"
+            message="Contact support if you have questions."
           />
         )}
       </div>

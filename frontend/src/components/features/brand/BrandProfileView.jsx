@@ -52,7 +52,7 @@ export default function BrandProfileView({ profile, clientName, companyName, log
       {/* Mission */}
       {profile.mission_statement && (
         <Section title="Mission">
-          <div style={{ padding: spacing[5], backgroundColor: colours.neutral[100], borderLeft: `4px solid ${colours.neutral[900]}`, borderRadius: radii.lg }}>
+          <div style={{ padding: spacing[5], backgroundColor: colours.neutral[100], borderRadius: radii.lg }}>
             <p style={{ fontSize: '17px', lineHeight: 1.8, color: colours.neutral[800], fontStyle: 'italic' }}>{profile.mission_statement}</p>
           </div>
           {profile.target_audience && (
@@ -233,7 +233,7 @@ export default function BrandProfileView({ profile, clientName, companyName, log
               <h4 style={subHeadStyle}>Templates</h4>
               <div style={{ display: 'flex', flexDirection: 'column', gap: spacing[3] }}>
                 {imagery.template_descriptions.map((desc, i) => (
-                  <div key={i} style={{ padding: spacing[3], backgroundColor: colours.neutral[100], borderRadius: radii.md, fontSize: typography.fontSize.sm, lineHeight: 1.7, color: colours.neutral[700], borderLeft: `3px solid ${colours.neutral[300]}` }}>{desc}</div>
+                  <div key={i} style={{ padding: spacing[3], backgroundColor: colours.neutral[100], borderRadius: radii.md, fontSize: typography.fontSize.sm, lineHeight: 1.7, color: colours.neutral[700], border: `1px solid ${colours.neutral[200]}` }}>{desc}</div>
                 ))}
               </div>
             </div>
