@@ -41,10 +41,11 @@ const FlameIcon = ({
     height: `${px + 8}px`,
     borderRadius: '50%',
     boxShadow: glowShadow,
+    animation: animated ? 'flameGlow 3s ease-in-out infinite' : 'none',
   }
 
   const iconStyle = {
-    animation: animated ? `flicker ${duration} ease-in-out infinite` : 'none',
+    animation: animated ? `flameShimmer ${duration} ease-in-out infinite` : 'none',
     display: 'flex',
   }
 

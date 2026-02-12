@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from 'react'
+import { useState, useRef, useMemo } from 'react'
 import { MessageSquare, Send, Lock } from 'lucide-react'
 import { Tabs, Button, Badge, StatusBadge, Avatar, Modal, Select, Textarea, FileUpload, EmptyState, TaskProgressTracker, Toggle } from '@/components/ui'
 import TaskHistory from './TaskHistory'
@@ -55,6 +55,29 @@ export default function TaskDetail({
   const [commentInternal, setCommentInternal] = useState(false)
   const [selectedContractor, setSelectedContractor] = useState('')
   const textareaRef = useRef(null)
+  const [showMentions, setShowMentions] = useState(false)
+  const [mentionFilter, setMentionFilter] = useState('')
+  const [selectedMentionIdx, setSelectedMentionIdx] = useState(0)
+
+  const taskParticipants = useMemo(() => {
+    const users = []
+    const seen = new Set()
+    if (task?.client_name && task?.client_id) {
+      users.push({ id: task.client_id, name: task.client_name, role: 'Client' })
+      seen.add(task.client_id)
+    }
+    if (task?.contractor_name && task?.contractor_id && !seen.has(task.contractor_id)) {
+      users.push({ id: task.contractor_id, name: task.contractor_name, role: 'Camper' })
+      seen.add(task.contractor_id)
+    }
+    comments.forEach(c => {
+      if (c.user_id && !seen.has(c.user_id)) {
+        seen.add(c.user_id)
+        users.push({ id: c.user_id, name: c.user_name, role: ROLE_LABELS[c.user_role] || c.user_role })
+      }
+    })
+    return users
+  }, [task?.client_id, task?.client_name, task?.contractor_id, task?.contractor_name, comments])
 
   if (!task) {
     return <EmptyState title="Task not found" description="The task you're looking for doesn't exist." />
@@ -92,7 +115,48 @@ export default function TaskDetail({
     }
   }
 
+  const insertMention = (mentionUser) => {
+    const cursorPos = textareaRef.current?.selectionStart || commentText.length
+    const textBefore = commentText.substring(0, cursorPos)
+    const textAfter = commentText.substring(cursorPos)
+    const atIndex = textBefore.lastIndexOf('@')
+    const newText = textBefore.substring(0, atIndex) + `@${mentionUser.name} ` + textAfter
+    setCommentText(newText)
+    setShowMentions(false)
+    setTimeout(() => {
+      if (textareaRef.current) {
+        const pos = atIndex + mentionUser.name.length + 2
+        textareaRef.current.focus()
+        textareaRef.current.setSelectionRange(pos, pos)
+      }
+    }, 0)
+  }
+
   const handleKeyDown = (e) => {
+    if (showMentions) {
+      const filtered = taskParticipants.filter(u =>
+        u.name.toLowerCase().includes(mentionFilter)
+      )
+      if (e.key === 'ArrowDown') {
+        e.preventDefault()
+        setSelectedMentionIdx(prev => Math.min(prev + 1, filtered.length - 1))
+        return
+      }
+      if (e.key === 'ArrowUp') {
+        e.preventDefault()
+        setSelectedMentionIdx(prev => Math.max(prev - 1, 0))
+        return
+      }
+      if (e.key === 'Enter') {
+        e.preventDefault()
+        if (filtered[selectedMentionIdx]) insertMention(filtered[selectedMentionIdx])
+        return
+      }
+      if (e.key === 'Escape') {
+        setShowMentions(false)
+        return
+      }
+    }
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault()
       handleSubmitComment()
@@ -100,7 +164,19 @@ export default function TaskDetail({
   }
 
   const handleTextareaInput = (e) => {
-    setCommentText(e.target.value)
+    const value = e.target.value
+    setCommentText(value)
+    // Detect @mention trigger
+    const cursorPos = e.target.selectionStart
+    const textBefore = value.substring(0, cursorPos)
+    const atMatch = textBefore.match(/@(\w*)$/)
+    if (atMatch) {
+      setMentionFilter(atMatch[1].toLowerCase())
+      setShowMentions(true)
+      setSelectedMentionIdx(0)
+    } else {
+      setShowMentions(false)
+    }
     // Auto-grow
     const el = e.target
     el.style.height = 'auto'
@@ -329,7 +405,49 @@ export default function TaskDetail({
             borderTop: '1px solid #222',
             padding: '12px 16px',
             backgroundColor: '#0f0f0f',
+            position: 'relative',
           }}>
+            {showMentions && (() => {
+              const filtered = taskParticipants.filter(u =>
+                u.name.toLowerCase().includes(mentionFilter)
+              )
+              if (filtered.length === 0) return null
+              return (
+                <div style={{
+                  position: 'absolute',
+                  bottom: '100%',
+                  left: 0,
+                  right: 0,
+                  backgroundColor: '#111',
+                  border: '1px solid #2a2a2a',
+                  borderRadius: '6px',
+                  marginBottom: '4px',
+                  maxHeight: '200px',
+                  overflowY: 'auto',
+                  zIndex: 10,
+                }}>
+                  {filtered.map((mentionUser, i) => (
+                    <div
+                      key={mentionUser.id}
+                      onClick={() => insertMention(mentionUser)}
+                      onMouseEnter={() => setSelectedMentionIdx(i)}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                        padding: '8px 12px',
+                        cursor: 'pointer',
+                        backgroundColor: i === selectedMentionIdx ? '#1a1a1a' : 'transparent',
+                      }}
+                    >
+                      <Avatar name={mentionUser.name} size="sm" />
+                      <span style={{ fontSize: '14px', fontWeight: 500, color: '#fff' }}>{mentionUser.name}</span>
+                      <span style={{ fontSize: '11px', color: '#666', marginLeft: 'auto' }}>{mentionUser.role}</span>
+                    </div>
+                  ))}
+                </div>
+              )
+            })()}
             <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-end' }}>
               <textarea
                 ref={textareaRef}
@@ -439,6 +557,21 @@ function InfoCard({ label, value }) {
   )
 }
 
+function renderMentions(text) {
+  if (!text) return text
+  const regex = /@([A-Za-z]+(?:\s[A-Za-z]+)*)/g
+  const parts = []
+  let lastIdx = 0
+  let m
+  while ((m = regex.exec(text)) !== null) {
+    if (m.index > lastIdx) parts.push(text.substring(lastIdx, m.index))
+    parts.push(<strong key={m.index} style={{ color: '#ffffff', fontWeight: 700 }}>{m[0]}</strong>)
+    lastIdx = m.index + m[0].length
+  }
+  if (lastIdx < text.length) parts.push(text.substring(lastIdx))
+  return parts.length > 0 ? parts : text
+}
+
 function DiscussionComment({ comment, index }) {
   const isInternal = comment.visibility === COMMENT_VISIBILITY.INTERNAL
 
@@ -479,7 +612,7 @@ function DiscussionComment({ comment, index }) {
         whiteSpace: 'pre-wrap',
         paddingLeft: '36px',
       }}>
-        {comment.content}
+        {renderMentions(comment.content)}
       </div>
     </div>
   )

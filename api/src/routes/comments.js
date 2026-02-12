@@ -6,7 +6,7 @@
 
 import { jsonResponse } from '../index.js'
 import { requireAuth } from '../middleware/auth.js'
-import { notifyNewComment } from '../services/notifications.js'
+import { notifyNewComment, notifyMention } from '../services/notifications.js'
 
 export async function handleComments(request, env, auth, path, method) {
   // GET /comments?task_id= - list comments for a task
@@ -131,7 +131,7 @@ export async function handleComments(request, env, auth, path, method) {
 
       // Verify task exists and user has access
       const task = await env.DB.prepare(
-        'SELECT id, client_id, contractor_id FROM tasks WHERE id = ?'
+        'SELECT id, title, client_id, contractor_id FROM tasks WHERE id = ?'
       ).bind(task_id).first()
 
       if (!task) {
@@ -187,6 +187,24 @@ export async function handleComments(request, env, auth, path, method) {
           notifyNewComment(task, newComment, recipients)
         }
       } catch (e) { /* notification errors are non-critical */ }
+
+      // Parse @mentions and send notifications
+      // TODO: Send real email/push notification for @mentions when email service is configured
+      try {
+        const mentions = content.match(/@([A-Za-z]+(?:\s[A-Za-z]+)*)/g)
+        if (mentions && mentions.length > 0) {
+          const mentionNames = mentions.map(m => m.substring(1))
+          const placeholders = mentionNames.map(() => '?').join(',')
+          const mentionedUsers = await env.DB.prepare(
+            `SELECT id, email, display_name FROM users WHERE display_name IN (${placeholders})`
+          ).bind(...mentionNames).all()
+          if (mentionedUsers.results?.length > 0) {
+            for (const mentioned of mentionedUsers.results) {
+              notifyMention(task, mentioned, auth.user, content)
+            }
+          }
+        }
+      } catch (e) { /* mention notification errors are non-critical */ }
 
       return jsonResponse(
         {

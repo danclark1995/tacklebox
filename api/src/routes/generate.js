@@ -381,3 +381,44 @@ export async function handleGenerate(request, env, auth, path, method) {
 
   return jsonResponse({ success: false, error: 'Route not found' }, 404)
 }
+
+/**
+ * Public content serving for generated content (no auth required).
+ * Content is accessed by generation UUID which is not guessable.
+ * GET /generate/content/:id          - inline preview
+ * GET /generate/content/:id/download - file download
+ */
+export async function handleGenerateContent(request, env, path) {
+  const match = path.match(/^\/generate\/content\/([a-f0-9-]+)(\/download)?$/)
+  if (!match) return jsonResponse({ success: false, error: 'Not found' }, 404)
+
+  const genId = match[1]
+  const isDownload = match[2] === '/download'
+
+  try {
+    const gen = await env.DB.prepare(
+      'SELECT result_path, result_type FROM generations WHERE id = ?'
+    ).bind(genId).first()
+
+    if (!gen || !gen.result_path) {
+      return new Response('Not found', { status: 404 })
+    }
+
+    const object = await env.tacklebox_storage.get(gen.result_path)
+    if (!object) {
+      return new Response('Not found', { status: 404 })
+    }
+
+    const filename = gen.result_path.split('/').pop() || 'download'
+    const headers = new Headers()
+    headers.set('Content-Type', gen.result_type || object.httpMetadata?.contentType || 'application/octet-stream')
+    headers.set('Content-Disposition', isDownload ? `attachment; filename="${filename}"` : 'inline')
+    headers.set('Cache-Control', 'public, max-age=3600')
+    if (object.size) headers.set('Content-Length', String(object.size))
+
+    return new Response(object.body, { headers })
+  } catch (err) {
+    console.error('Serve generated content error:', err)
+    return new Response('Internal error', { status: 500 })
+  }
+}

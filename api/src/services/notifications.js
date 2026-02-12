@@ -22,3 +22,10 @@ export function notifySupportMessage(message, adminEmails) {
     `[NOTIFICATION] New support message: '${message.subject}' from user ${message.user_id}. Admins: ${adminEmails.join(', ')}`
   )
 }
+
+// TODO: Send real email/push notification for @mentions when email service is configured
+export function notifyMention(task, mentionedUser, commenter, commentContent) {
+  console.log(
+    `[NOTIFICATION] @mention: ${mentionedUser.display_name} was mentioned by ${commenter.display_name || commenter.id} on task '${task.title}'`
+  )
+}

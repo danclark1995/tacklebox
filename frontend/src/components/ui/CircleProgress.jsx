@@ -39,8 +39,8 @@ const CircleProgress = ({
     : Array.from({ length: 12 }, (_, i) => ({ level: i + 1, name: `Level ${i + 1}` }))
 
   return (
-    <div className={className} style={{ position: 'relative', width: size, height: size }}>
-      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+    <div className={className} style={{ position: 'relative', width: '100%', maxWidth: `${size}px`, margin: '0 auto' }}>
+      <svg width="100%" viewBox={`0 0 ${size} ${size}`} style={{ display: 'block' }}>
         {/* Glow filter */}
         <defs>
           <filter id="glow-soft" x="-50%" y="-50%" width="200%" height="200%">
@@ -179,10 +179,10 @@ const CircleProgress = ({
       }}>
         <div style={{
           borderRadius: '50%',
-          boxShadow: '0 0 40px rgba(255,255,255,0.08)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
+          animation: 'flameGlow 3s ease-in-out infinite',
         }}>
           <FlameIcon level={currentLevel} size="lg" animated />
         </div>

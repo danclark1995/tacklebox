@@ -156,14 +156,14 @@ export default function CamperJourney() {
       </section>
 
       {/* ── SECTION 3: BADGES & STATS ────────────────────── */}
-      <section style={bottomSectionStyle}>
+      <section style={bottomSectionStyle} className="journey-bottom">
         {/* Badge Grid */}
-        <div style={badgeColumnStyle}>
+        <div style={badgeColumnStyle} className="journey-badge-col">
           <h2 style={sectionTitleStyle}>
             <Compass size={18} style={{ marginRight: '8px', verticalAlign: 'middle' }} />
             Trail Badges
           </h2>
-          <div style={badgeGridStyle}>
+          <div style={badgeGridStyle} className="journey-badge-grid">
             {badges.map(badge => {
               const IconComponent = resolveIcon(badge.icon_name)
               const earned = badge.earned
@@ -218,7 +218,7 @@ export default function CamperJourney() {
         </div>
 
         {/* Stats */}
-        <div style={statsColumnStyle}>
+        <div style={statsColumnStyle} className="journey-stats-col">
           <h2 style={sectionTitleStyle}>
             <BarChart3 size={18} style={{ marginRight: '8px', verticalAlign: 'middle' }} />
             Your Stats
@@ -246,11 +246,9 @@ export default function CamperJourney() {
       {/* Responsive overrides */}
       <style>{`
         @media (max-width: 768px) {
-          .journey-circle { transform: scale(${260 / 340}); transform-origin: top center; }
           .journey-bottom { flex-direction: column !important; }
           .journey-badge-col { width: 100% !important; }
           .journey-stats-col { width: 100% !important; }
-          .journey-badge-grid { grid-template-columns: repeat(2, 1fr) !important; }
         }
       `}</style>
     </div>
@@ -287,8 +285,9 @@ function StatRow({ label, value }) {
 
 const pageStyle = {
   fontFamily: typography.fontFamily.sans,
-  maxWidth: '960px',
+  maxWidth: '900px',
   margin: '0 auto',
+  padding: '0 24px',
 }
 
 const circleSectionStyle = {
@@ -356,7 +355,7 @@ const statsColumnStyle = {
 
 const badgeGridStyle = {
   display: 'grid',
-  gridTemplateColumns: 'repeat(3, 1fr)',
+  gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))',
   gap: spacing[3],
 }
 

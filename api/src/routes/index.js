@@ -21,7 +21,7 @@ import { handleGamification } from './gamification.js'
 import { handleAnalytics } from './analytics.js'
 import { handleSearch } from './search.js'
 import { handleAI } from './ai.js'
-import { handleGenerate } from './generate.js'
+import { handleGenerate, handleGenerateContent } from './generate.js'
 import { handleSupport } from './support.js'
 import { handleTools } from './tools.js'
 
@@ -45,6 +45,11 @@ export async function handleApiRequest(request, env, ctx) {
   // Auth routes (no auth required for login)
   if (path.startsWith('/auth')) {
     return handleAuth(request, env, path, method)
+  }
+
+  // Public generated content serving (no auth, accessed by UUID)
+  if (path.startsWith('/generate/content/')) {
+    return handleGenerateContent(request, env, path)
   }
 
   // All other routes require authentication

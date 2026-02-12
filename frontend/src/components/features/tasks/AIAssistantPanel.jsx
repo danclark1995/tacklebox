@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Download, Maximize2 } from 'lucide-react'
 import useToast from '@/hooks/useToast'
 import Button from '@/components/ui/Button'
 import Dropdown from '@/components/ui/Dropdown'
@@ -92,6 +93,7 @@ export default function AIAssistantPanel({ task, brandProfile, onAttachmentAdded
   const [attaching, setAttaching] = useState(false)
   const [result, setResult] = useState(null)
   const [error, setError] = useState('')
+  const [showFullSize, setShowFullSize] = useState(false)
 
   // Social state
   const [platform, setPlatform] = useState('instagram')
@@ -499,19 +501,21 @@ export default function AIAssistantPanel({ task, brandProfile, onAttachmentAdded
       )
     }
 
-    if (result && result.result_path) {
+    if (result && result.id) {
       const isImage = result.result_type === 'image/png'
+      const contentUrl = apiEndpoint(`/generate/content/${result.id}`)
+      const downloadUrl = apiEndpoint(`/generate/content/${result.id}/download`)
       return (
         <div style={previewStyle}>
           {isImage ? (
             <img
-              src={apiEndpoint(`/storage/${result.result_path}`)}
+              src={contentUrl}
               alt="Generated content"
               style={{ maxWidth: '100%', maxHeight: '400px', borderRadius: radii.lg, objectFit: 'contain' }}
             />
           ) : (
             <iframe
-              src={apiEndpoint(`/storage/${result.result_path}`)}
+              src={contentUrl}
               style={{ width: '100%', minHeight: '350px', border: 'none', borderRadius: radii.lg }}
               title="Generated content"
             />
@@ -519,6 +523,18 @@ export default function AIAssistantPanel({ task, brandProfile, onAttachmentAdded
           <div style={actionRowStyle}>
             <Button size="sm" variant="primary" onClick={handleAttachToTask} disabled={attaching}>
               {attaching ? 'Attaching...' : 'Attach to Task'}
+            </Button>
+            <Button size="sm" variant="secondary" onClick={() => window.open(downloadUrl, '_blank')}>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                <Download size={14} />
+                Download
+              </span>
+            </Button>
+            <Button size="sm" variant="secondary" onClick={() => setShowFullSize(true)}>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                <Maximize2 size={14} />
+                View Full Size
+              </span>
             </Button>
             <Button size="sm" variant="secondary" onClick={handleGenerate} disabled={generating}>
               Regenerate
@@ -532,6 +548,34 @@ export default function AIAssistantPanel({ task, brandProfile, onAttachmentAdded
   }
 
   return (
+    <>
+    {showFullSize && result && (
+      <div
+        onClick={() => setShowFullSize(false)}
+        style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          backgroundColor: 'rgba(0,0,0,0.92)', zIndex: 1000,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          cursor: 'pointer', padding: '20px',
+        }}
+      >
+        {result.result_type === 'image/png' ? (
+          <img
+            src={apiEndpoint(`/generate/content/${result.id}`)}
+            alt="Full size"
+            style={{ maxWidth: '95vw', maxHeight: '95vh', objectFit: 'contain' }}
+            onClick={e => e.stopPropagation()}
+          />
+        ) : (
+          <iframe
+            src={apiEndpoint(`/generate/content/${result.id}`)}
+            style={{ width: '90vw', height: '90vh', border: 'none', borderRadius: '8px', backgroundColor: '#fff' }}
+            title="Full size"
+            onClick={e => e.stopPropagation()}
+          />
+        )}
+      </div>
+    )}
     <div style={panelStyle}>
       <div style={headerStyle} onClick={() => setExpanded(!expanded)}>
         <div style={headerLeftStyle}>
@@ -589,5 +633,6 @@ export default function AIAssistantPanel({ task, brandProfile, onAttachmentAdded
         </div>
       )}
     </div>
+    </>
   )
 }
