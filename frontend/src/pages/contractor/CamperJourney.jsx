@@ -285,9 +285,6 @@ function StatRow({ label, value }) {
 
 const pageStyle = {
   fontFamily: typography.fontFamily.sans,
-  maxWidth: '900px',
-  margin: '0 auto',
-  padding: '0 24px',
 }
 
 const circleSectionStyle = {

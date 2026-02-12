@@ -4,6 +4,7 @@ import useToast from '@/hooks/useToast'
 import Button from '@/components/ui/Button'
 import Dropdown from '@/components/ui/Dropdown'
 import EmberLoader from '@/components/ui/EmberLoader'
+import PromptTips from '@/components/features/PromptTips'
 import { apiEndpoint } from '@/config/env'
 import { getAuthHeaders } from '@/services/auth'
 import { colours, spacing, typography, radii, transitions } from '@/config/tokens'
@@ -368,9 +369,9 @@ export default function AIAssistantPanel({ task, brandProfile, onAttachmentAdded
         </div>
       </div>
       <div style={{ marginTop: spacing[3] }}>
-        <label style={labelStyle}>Prompt</label>
+        <label style={labelStyle}>Prompt<PromptTips contentType="social_image" /></label>
         <textarea style={textareaStyle} value={prompt} onChange={e => setPrompt(e.target.value)}
-          placeholder="Describe the image to generate..." />
+          placeholder="Describe the image you want to generate..." />
       </div>
     </>
   )
@@ -387,9 +388,9 @@ export default function AIAssistantPanel({ task, brandProfile, onAttachmentAdded
         />
       </div>
       <div>
-        <label style={labelStyle}>Prompt</label>
+        <label style={labelStyle}>Prompt<PromptTips contentType="document" /></label>
         <textarea style={textareaStyle} value={prompt} onChange={e => setPrompt(e.target.value)}
-          placeholder="Describe the document content..." />
+          placeholder="Describe the document you need..." />
       </div>
       <div>
         <label style={labelStyle}>Key Points (optional)</label>
@@ -402,9 +403,9 @@ export default function AIAssistantPanel({ task, brandProfile, onAttachmentAdded
   const renderPresentationForm = () => (
     <>
       <div>
-        <label style={labelStyle}>Topic</label>
+        <label style={labelStyle}>Topic<PromptTips contentType="presentation" /></label>
         <textarea style={{ ...textareaStyle, minHeight: '60px' }} value={topic} onChange={e => setTopic(e.target.value)}
-          placeholder="What is the presentation about?" />
+          placeholder="Describe the presentation slides and content..." />
       </div>
       <div style={rowStyle}>
         <div>
@@ -462,9 +463,9 @@ export default function AIAssistantPanel({ task, brandProfile, onAttachmentAdded
         </div>
       </div>
       <div style={{ marginTop: spacing[3] }}>
-        <label style={labelStyle}>Image Prompt (optional)</label>
+        <label style={labelStyle}>Image Prompt (optional)<PromptTips contentType="ad_creative" /></label>
         <textarea style={textareaStyle} value={prompt} onChange={e => setPrompt(e.target.value)}
-          placeholder="Describe the background image..." />
+          placeholder="Describe the ad visual and copy..." />
       </div>
     </>
   )

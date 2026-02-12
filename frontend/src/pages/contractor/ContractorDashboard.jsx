@@ -1,10 +1,9 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
-import { Flame, Tag, Building2, Wrench, ChevronDown } from 'lucide-react'
+import { Flame, Wrench, ChevronDown } from 'lucide-react'
 import useAuth from '@/hooks/useAuth'
 import useToast from '@/hooks/useToast'
 import GlowCard from '@/components/ui/GlowCard'
-import Button from '@/components/ui/Button'
 import EmberLoader from '@/components/ui/EmberLoader'
 import EmptyState from '@/components/ui/EmptyState'
 import TaskList from '@/components/features/tasks/TaskList'
@@ -123,7 +122,7 @@ export default function ContractorDashboard() {
           setCampfireTasks(prev => prev.filter(t => t.id !== taskId))
           setFadingOut(null)
           setConfirmingClaim(null)
-          addToast('Task claimed! Check your tasks.', 'success')
+          addToast('Task claimed!', 'success')
           // Refresh own tasks
           fetch(apiEndpoint('/tasks'), { headers: { ...getAuthHeaders() } })
             .then(r => r.json())
@@ -312,11 +311,7 @@ export default function ContractorDashboard() {
             </div>
           </GlowCard>
         ) : (
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(2, 1fr)',
-            gap: spacing[4],
-          }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
             {campfireTasks.map(task => {
               const isFading = fadingOut === task.id
               const isConfirming = confirmingClaim === task.id
@@ -326,125 +321,106 @@ export default function ContractorDashboard() {
                 <GlowCard
                   key={task.id}
                   glowOnHover
-                  padding="20px"
+                  padding="16px 20px"
                   style={{
-                    background: 'radial-gradient(ellipse at center, rgba(255,255,255,0.02) 0%, #111111 70%)',
                     transition: 'all 400ms ease',
                     opacity: isFading ? 0 : 1,
-                    transform: isFading ? 'scale(0.95)' : 'scale(1)',
+                    transform: isFading ? 'scale(0.98)' : 'scale(1)',
                   }}
                 >
-                  <div style={{ fontSize: '15px', fontWeight: 600, color: '#ffffff', marginBottom: '8px' }}>
-                    {task.title}
-                  </div>
-
-                  {task.category_name && (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: colours.neutral[500], marginBottom: '4px' }}>
-                      <Tag size={12} />
-                      {task.category_name}
-                    </div>
-                  )}
-
-                  {task.client_name && (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: colours.neutral[500], marginBottom: '8px' }}>
-                      <Building2 size={12} />
-                      {task.client_name}
-                    </div>
-                  )}
-
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
-                    {task.priority && (
-                      <span style={{
-                        fontSize: '11px',
-                        color: '#ffffff',
-                        backgroundColor: '#222',
-                        padding: '2px 8px',
-                        borderRadius: '4px',
-                        border: '1px solid #333',
-                      }}>
-                        {task.priority}
-                      </span>
-                    )}
-                    {task.complexity_level != null && (
-                      <span style={{
-                        fontSize: '11px',
-                        padding: '2px 6px',
-                        borderRadius: '4px',
-                        border: '1px solid #333',
-                        backgroundColor: '#111',
-                        color: task.complexity_level === 0 ? '#ffffff' : colours.neutral[500],
-                        boxShadow: task.complexity_level === 0 ? '0 0 6px rgba(255,255,255,0.3)' : 'none',
-                        fontWeight: 600,
-                      }}>
-                        L{task.complexity_level}
-                      </span>
-                    )}
-                    <span style={{ fontSize: '11px', color: colours.neutral[500] }}>
-                      {formatRelativeTime(task.created_at)}
-                    </span>
-                  </div>
-
-                  {!isConfirming ? (
-                    <Button
-                      variant="primary"
-                      size="sm"
-                      style={{
-                        width: '100%',
-                        backgroundColor: '#ffffff',
-                        color: '#111111',
-                        border: 'none',
-                        borderRadius: '6px',
-                        fontWeight: 600,
-                      }}
-                      onClick={() => setConfirmingClaim(task.id)}
-                    >
-                      Pick Up
-                    </Button>
-                  ) : (
-                    <div>
-                      <div style={{ fontSize: '13px', color: colours.neutral[500], marginBottom: '8px', textAlign: 'center' }}>
-                        Claim this task?
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                    {/* Left: title + meta */}
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: '15px', fontWeight: 600, color: '#ffffff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {task.title}
                       </div>
-                      <div style={{ display: 'flex', gap: '8px' }}>
-                        <Button
-                          variant="primary"
-                          size="sm"
+                      <div style={{ fontSize: '12px', color: colours.neutral[500], marginTop: '2px' }}>
+                        {[task.category_name, task.client_name].filter(Boolean).join(' \u00b7 ')}
+                      </div>
+                    </div>
+
+                    {/* Middle: priority + time */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
+                      {task.priority && (
+                        <span style={{
+                          fontSize: '11px',
+                          color: '#ffffff',
+                          backgroundColor: '#222',
+                          padding: '2px 8px',
+                          borderRadius: '4px',
+                          border: '1px solid #333',
+                        }}>
+                          {task.priority}
+                        </span>
+                      )}
+                      <span style={{ fontSize: '12px', color: colours.neutral[500] }}>
+                        {formatRelativeTime(task.created_at)}
+                      </span>
+                    </div>
+
+                    {/* Right: action button(s) */}
+                    <div style={{ flexShrink: 0, display: 'flex', gap: '6px' }}>
+                      {!isConfirming ? (
+                        <button
+                          onClick={() => setConfirmingClaim(task.id)}
                           style={{
-                            flex: 1,
                             backgroundColor: '#ffffff',
                             color: '#111111',
                             border: 'none',
                             borderRadius: '6px',
                             fontWeight: 600,
+                            fontSize: '12px',
+                            padding: '6px 16px',
+                            cursor: 'pointer',
+                            fontFamily: 'inherit',
                           }}
-                          onClick={() => handleClaim(task.id)}
-                          disabled={isClaiming}
                         >
-                          {isClaiming ? 'Claiming...' : 'Confirm'}
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          style={{ flex: 1, borderRadius: '6px' }}
-                          onClick={() => setConfirmingClaim(null)}
-                        >
-                          Cancel
-                        </Button>
-                      </div>
+                          Pick Up
+                        </button>
+                      ) : (
+                        <>
+                          <button
+                            onClick={() => handleClaim(task.id)}
+                            disabled={isClaiming}
+                            style={{
+                              backgroundColor: '#ffffff',
+                              color: '#111111',
+                              border: 'none',
+                              borderRadius: '6px',
+                              fontWeight: 600,
+                              fontSize: '12px',
+                              padding: '6px 16px',
+                              cursor: isClaiming ? 'wait' : 'pointer',
+                              fontFamily: 'inherit',
+                              opacity: isClaiming ? 0.7 : 1,
+                            }}
+                          >
+                            {isClaiming ? 'Claiming...' : 'Confirm'}
+                          </button>
+                          <button
+                            onClick={() => setConfirmingClaim(null)}
+                            style={{
+                              backgroundColor: 'transparent',
+                              color: colours.neutral[500],
+                              border: '1px solid #333',
+                              borderRadius: '6px',
+                              fontSize: '12px',
+                              padding: '6px 16px',
+                              cursor: 'pointer',
+                              fontFamily: 'inherit',
+                            }}
+                          >
+                            Cancel
+                          </button>
+                        </>
+                      )}
                     </div>
-                  )}
+                  </div>
                 </GlowCard>
               )
             })}
           </div>
         )}
-
-        {/* Responsive override */}
-        <style>{`
-          @media (max-width: 768px) {
-            .campfire-grid { grid-template-columns: 1fr !important; }
-          }
-        `}</style>
       </div>
 
       <div style={sectionStyle}>

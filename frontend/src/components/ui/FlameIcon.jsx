@@ -10,10 +10,10 @@ const SIZES = {
 }
 
 const getAnimationDuration = (level) => {
-  if (level >= 10) return '1s'
-  if (level >= 7) return '1.5s'
-  if (level >= 4) return '2s'
-  return '3s'
+  if (level >= 10) return '3s'
+  if (level >= 7) return '3.5s'
+  if (level >= 4) return '4s'
+  return '5s'
 }
 
 const getGlow = (level) => {
@@ -41,7 +41,7 @@ const FlameIcon = ({
     height: `${px + 8}px`,
     borderRadius: '50%',
     boxShadow: glowShadow,
-    animation: animated ? 'flameGlow 3s ease-in-out infinite' : 'none',
+    animation: animated ? 'flameGlow 6s ease-in-out infinite' : 'none',
   }
 
   const iconStyle = {

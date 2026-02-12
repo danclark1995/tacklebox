@@ -44,25 +44,18 @@
   100% { background-position: -200% -200%; }
 }
 
-/* Flame shimmer — realistic fire movement */
+/* Flame shimmer — slow organic fire movement */
 @keyframes flameShimmer {
-  0% { opacity: 0.85; transform: scaleY(1) scaleX(1) rotate(0deg); filter: brightness(1); }
-  10% { opacity: 0.95; transform: scaleY(1.04) scaleX(0.97) rotate(-1deg); filter: brightness(1.15); }
-  20% { opacity: 0.80; transform: scaleY(0.96) scaleX(1.02) rotate(0.5deg); filter: brightness(0.95); }
-  30% { opacity: 1; transform: scaleY(1.06) scaleX(0.98) rotate(-0.5deg); filter: brightness(1.2); }
-  40% { opacity: 0.88; transform: scaleY(0.97) scaleX(1.01) rotate(1deg); filter: brightness(1.05); }
-  50% { opacity: 0.92; transform: scaleY(1.03) scaleX(0.99) rotate(-0.8deg); filter: brightness(1.1); }
-  60% { opacity: 0.82; transform: scaleY(0.98) scaleX(1.03) rotate(0.3deg); filter: brightness(0.98); }
-  70% { opacity: 0.97; transform: scaleY(1.05) scaleX(0.97) rotate(-0.3deg); filter: brightness(1.18); }
-  80% { opacity: 0.86; transform: scaleY(0.99) scaleX(1.01) rotate(0.7deg); filter: brightness(1.02); }
-  90% { opacity: 0.93; transform: scaleY(1.02) scaleX(0.98) rotate(-0.6deg); filter: brightness(1.12); }
-  100% { opacity: 0.85; transform: scaleY(1) scaleX(1) rotate(0deg); filter: brightness(1); }
+  0%, 100% { opacity: 0.92; transform: scaleY(1) scaleX(1); filter: brightness(1); }
+  16% { opacity: 0.96; transform: scaleY(1.02) scaleX(0.99); filter: brightness(1.05); }
+  33% { opacity: 0.90; transform: scaleY(0.98) scaleX(1.01); filter: brightness(0.97); }
+  50% { opacity: 0.97; transform: scaleY(1.03) scaleX(0.98); filter: brightness(1.08); }
+  66% { opacity: 0.91; transform: scaleY(0.99) scaleX(1.02); filter: brightness(1.0); }
+  83% { opacity: 0.95; transform: scaleY(1.01) scaleX(0.99); filter: brightness(1.04); }
 }
 
-/* Flame glow — shimmer behind flame */
+/* Flame glow — slow pulse behind flame */
 @keyframes flameGlow {
-  0%, 100% { box-shadow: 0 0 20px rgba(255,255,255,0.05), 0 0 40px rgba(255,255,255,0.03); }
-  25% { box-shadow: 0 0 30px rgba(255,255,255,0.10), 0 0 60px rgba(255,255,255,0.05); }
-  50% { box-shadow: 0 0 25px rgba(255,255,255,0.07), 0 0 50px rgba(255,255,255,0.04); }
-  75% { box-shadow: 0 0 35px rgba(255,255,255,0.12), 0 0 70px rgba(255,255,255,0.06); }
+  0%, 100% { box-shadow: 0 0 20px rgba(255,255,255,0.04), 0 0 40px rgba(255,255,255,0.02); }
+  50% { box-shadow: 0 0 30px rgba(255,255,255,0.08), 0 0 60px rgba(255,255,255,0.04); }
 }
