@@ -195,9 +195,9 @@ export async function handleUsers(request, env, auth, path, method) {
     try {
       const body = await request.json()
 
-      // Non-admin users can only update display_name and avatar_url
+      // Non-admin users can only update display_name, company, and avatar_url
       if (!isAdmin) {
-        const allowedFields = ['display_name', 'avatar_url']
+        const allowedFields = ['display_name', 'company', 'avatar_url']
         const requestedFields = Object.keys(body)
         const invalidFields = requestedFields.filter(f => !allowedFields.includes(f))
 
@@ -221,6 +221,10 @@ export async function handleUsers(request, env, auth, path, method) {
         updates.push('avatar_url = ?')
         bindings.push(body.avatar_url)
       }
+      if (body.company !== undefined) {
+        updates.push('company = ?')
+        bindings.push(body.company)
+      }
 
       // Admin-only fields
       if (isAdmin) {
@@ -237,10 +241,6 @@ export async function handleUsers(request, env, auth, path, method) {
           }
           updates.push('role = ?')
           bindings.push(body.role)
-        }
-        if (body.company !== undefined) {
-          updates.push('company = ?')
-          bindings.push(body.company)
         }
         if (body.is_active !== undefined) {
           updates.push('is_active = ?')

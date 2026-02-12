@@ -17,7 +17,7 @@ export default function ClientProfile() {
   const { user } = useAuth()
   const { addToast } = useToast()
   const [isEditing, setIsEditing] = useState(false)
-  const [displayName, setDisplayName] = useState(user?.display_name || user?.name || '')
+  const [displayName, setDisplayName] = useState(user?.display_name || '')
   const [company, setCompany] = useState(user?.company || '')
   const [saving, setSaving] = useState(false)
 
@@ -89,10 +89,10 @@ export default function ClientProfile() {
 
       <GlowCard style={cardStyle}>
         <div style={profileHeaderStyle}>
-          <Avatar name={user?.name} size="lg" />
+          <Avatar name={user?.display_name} size="lg" />
           <div>
             <div style={{ ...valueStyle, fontWeight: typography.fontWeight.semibold }}>
-              {user?.display_name || user?.name}
+              {user?.display_name}
             </div>
             <div style={{ fontSize: typography.fontSize.sm, color: colours.neutral[600] }}>
               {user?.email}
@@ -102,7 +102,7 @@ export default function ClientProfile() {
 
         <div style={fieldStyle}>
           <div style={labelStyle}>Display Name</div>
-          <div style={valueStyle}>{user?.display_name || user?.name}</div>
+          <div style={valueStyle}>{user?.display_name}</div>
         </div>
 
         <div style={fieldStyle}>

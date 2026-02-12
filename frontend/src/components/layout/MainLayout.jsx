@@ -181,8 +181,8 @@ export default function MainLayout({ children }) {
             />
           </div>
           <div style={userInfoStyle}>
-            <span style={userNameStyle}>{user?.name}</span>
-            <Avatar name={user?.name} size="sm" />
+            <span style={userNameStyle}>{user?.display_name}</span>
+            <Avatar name={user?.display_name} size="sm" />
           </div>
         </header>
         <div style={contentStyle}>

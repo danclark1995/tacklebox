@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef, useCallback } from 'react'
 import { Check, X } from 'lucide-react'
 import useAuth from '@/hooks/useAuth'
 import useToast from '@/hooks/useToast'
@@ -15,33 +15,23 @@ export default function ContractorProfile() {
   const [editingField, setEditingField] = useState(null)
   const [editValue, setEditValue] = useState('')
   const [saving, setSaving] = useState(false)
-
-  // Local state for optimistic updates
   const [localOverrides, setLocalOverrides] = useState({})
+  const savingRef = useRef(false)
 
   const getValue = (field) => {
     if (localOverrides[field] !== undefined) return localOverrides[field]
-    if (field === 'display_name') return user?.display_name || user?.name || ''
+    if (field === 'display_name') return user?.display_name || ''
     if (field === 'company') return user?.company || ''
     return ''
   }
 
-  const startEditing = (field) => {
-    setEditingField(field)
-    setEditValue(getValue(field))
-  }
-
-  const cancelEditing = () => {
-    setEditingField(null)
-    setEditValue('')
-  }
-
-  const saveField = async () => {
-    if (!editingField) return
+  const saveFieldValue = useCallback(async (field, value) => {
+    if (!field || savingRef.current) return
+    savingRef.current = true
     setSaving(true)
     try {
       const body = {}
-      body[editingField] = editValue
+      body[field] = value
 
       const res = await fetch(apiEndpoint(`/users/${user.id}`), {
         method: 'PUT',
@@ -55,22 +45,50 @@ export default function ContractorProfile() {
       const json = await res.json()
 
       if (json.success) {
-        setLocalOverrides(prev => ({ ...prev, [editingField]: editValue }))
+        setLocalOverrides(prev => ({ ...prev, [field]: value }))
         addToast('Updated', 'success')
-        setEditingField(null)
-        setEditValue('')
       } else {
-        addToast(json.message || 'Failed to update', 'error')
+        addToast(json.error || 'Failed to update', 'error')
       }
     } catch (err) {
       addToast(err.message, 'error')
     } finally {
       setSaving(false)
+      savingRef.current = false
+    }
+  }, [user?.id, addToast])
+
+  const startEditing = (field) => {
+    // If already editing another field, save it first
+    if (editingField && editingField !== field) {
+      saveFieldValue(editingField, editValue)
+    }
+    setEditingField(field)
+    setEditValue(getValue(field))
+  }
+
+  const cancelEditing = () => {
+    setEditingField(null)
+    setEditValue('')
+  }
+
+  const handleSave = () => {
+    if (editingField) {
+      saveFieldValue(editingField, editValue)
+      setEditingField(null)
+      setEditValue('')
     }
   }
 
+  const handleBlur = (e) => {
+    // Don't save if clicking on the save/cancel buttons
+    const relatedTarget = e.relatedTarget
+    if (relatedTarget && relatedTarget.dataset.action) return
+    handleSave()
+  }
+
   const handleKeyDown = (e) => {
-    if (e.key === 'Enter') saveField()
+    if (e.key === 'Enter') handleSave()
     if (e.key === 'Escape') cancelEditing()
   }
 
@@ -94,14 +112,14 @@ export default function ContractorProfile() {
           paddingBottom: spacing[6],
           borderBottom: `1px solid ${colours.neutral[200]}`,
         }}>
-          <Avatar name={user?.name} size="lg" />
+          <Avatar name={user?.display_name} size="lg" />
           <div>
             <div style={{
               fontSize: typography.fontSize.lg,
               fontWeight: typography.fontWeight.semibold,
               color: colours.neutral[900],
             }}>
-              {getValue('display_name') || user?.name}
+              {getValue('display_name') || user?.display_name}
             </div>
             <div style={{
               fontSize: typography.fontSize.sm,
@@ -144,7 +162,7 @@ export default function ContractorProfile() {
                     fontSize: typography.fontSize.xs,
                     fontWeight: typography.fontWeight.medium,
                     color: colours.neutral[500],
-                    marginBottom: '2px',
+                    marginBottom: '4px',
                     textTransform: 'uppercase',
                     letterSpacing: '0.05em',
                   }}>
@@ -158,21 +176,23 @@ export default function ContractorProfile() {
                         value={editValue}
                         onChange={(e) => setEditValue(e.target.value)}
                         onKeyDown={handleKeyDown}
+                        onBlur={handleBlur}
                         autoFocus
                         style={{
                           flex: 1,
-                          background: 'none',
-                          border: 'none',
-                          borderBottom: `2px solid ${colours.neutral[900]}`,
+                          backgroundColor: '#111',
+                          border: '1px solid #2a2a2a',
+                          borderRadius: '6px',
                           color: colours.neutral[900],
                           fontSize: typography.fontSize.base,
                           fontFamily: 'inherit',
-                          padding: '2px 0',
+                          padding: '10px 14px',
                           outline: 'none',
                         }}
                       />
                       <button
-                        onClick={(e) => { e.stopPropagation(); saveField() }}
+                        data-action="save"
+                        onClick={(e) => { e.stopPropagation(); handleSave() }}
                         disabled={saving}
                         style={{
                           background: 'none',
@@ -186,6 +206,7 @@ export default function ContractorProfile() {
                         <Check size={16} />
                       </button>
                       <button
+                        data-action="cancel"
                         onClick={(e) => { e.stopPropagation(); cancelEditing() }}
                         style={{
                           background: 'none',

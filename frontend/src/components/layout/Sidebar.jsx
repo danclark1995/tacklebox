@@ -283,9 +283,9 @@ export default function Sidebar() {
 
         <div style={footerStyle}>
           <div style={userInfoStyle}>
-            <Avatar name={user.name} size="md" />
+            <Avatar name={user.display_name} size="md" />
             <div style={userDetailsStyle}>
-              <div style={userNameStyle}>{user.name}</div>
+              <div style={userNameStyle}>{user.display_name}</div>
               <div style={roleBadgeStyle}>{ROLE_DISPLAY[user.role]}</div>
             </div>
           </div>
