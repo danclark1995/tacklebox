@@ -107,6 +107,25 @@ export default function AdminCategories() {
     }
   }
 
+  const handleDeleteCategory = async (category) => {
+    if (!confirm(`Delete category "${category.name}"?`)) return
+    try {
+      const res = await fetch(apiEndpoint(`/categories/${category.id}`), {
+        method: 'DELETE',
+        headers: { ...getAuthHeaders() },
+      })
+      const json = await res.json()
+      if (json.success) {
+        addToast('Category deleted', 'success')
+        loadCategories()
+      } else {
+        addToast(json.error || 'Failed to delete category', 'error')
+      }
+    } catch (err) {
+      addToast(err.message, 'error')
+    }
+  }
+
   const handleDeactivateCategory = async (categoryId) => {
     if (!confirm('Are you sure you want to deactivate this category?')) return
 
@@ -184,6 +203,9 @@ export default function AdminCategories() {
               Deactivate
             </Button>
           )}
+          <Button size="sm" variant="outline" onClick={() => handleDeleteCategory(category)}>
+            Delete
+          </Button>
         </div>
       )
     }

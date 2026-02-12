@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react'
-import { MessageSquare, Check, ChevronDown, ChevronUp } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
+import { Settings, Users, MessageSquare, Check, ChevronDown, ChevronUp } from 'lucide-react'
 import PageHeader from '@/components/ui/PageHeader'
 import GlowCard from '@/components/ui/GlowCard'
 import Button from '@/components/ui/Button'
 import Badge from '@/components/ui/Badge'
+import Input from '@/components/ui/Input'
 import EmptyState from '@/components/ui/EmptyState'
 import EmberLoader from '@/components/ui/EmberLoader'
 import useToast from '@/hooks/useToast'
@@ -14,30 +16,34 @@ import { formatDateTime } from '@/utils/formatters'
 
 export default function AdminSettings() {
   const { addToast } = useToast()
+  const navigate = useNavigate()
   const [messages, setMessages] = useState([])
+  const [users, setUsers] = useState([])
   const [loading, setLoading] = useState(true)
   const [expandedId, setExpandedId] = useState(null)
   const [resolving, setResolving] = useState(null)
+  const [companyName, setCompanyName] = useState('TackleBox')
+  const [tagline, setTagline] = useState('Creative project management')
 
   useEffect(() => {
-    fetchMessages()
-  }, [])
-
-  const fetchMessages = async () => {
-    try {
-      const res = await fetch(apiEndpoint('/support'), {
-        headers: getAuthHeaders(),
-      })
-      const json = await res.json()
-      if (json.success) {
-        setMessages(json.data || [])
+    async function loadAll() {
+      try {
+        const [msgRes, usersRes] = await Promise.all([
+          fetch(apiEndpoint('/support'), { headers: getAuthHeaders() }),
+          fetch(apiEndpoint('/users'), { headers: getAuthHeaders() }),
+        ])
+        const msgJson = await msgRes.json()
+        const usersJson = await usersRes.json()
+        if (msgJson.success) setMessages(msgJson.data || [])
+        if (usersJson.success) setUsers(usersJson.data || [])
+      } catch (err) {
+        addToast('Failed to load settings data', 'error')
+      } finally {
+        setLoading(false)
       }
-    } catch (err) {
-      addToast('Failed to load support messages', 'error')
-    } finally {
-      setLoading(false)
     }
-  }
+    loadAll()
+  }, [addToast])
 
   const handleResolve = async (id) => {
     setResolving(id)
@@ -62,6 +68,36 @@ export default function AdminSettings() {
   }
 
   const openCount = messages.filter(m => m.status === 'open').length
+  const totalUsers = users.length
+  const activeCampers = users.filter(u => (u.role === 'contractor' || u.role === 'admin') && u.is_active).length
+  const activeClients = users.filter(u => u.role === 'client' && u.is_active).length
+
+  const sectionTitleStyle = {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+    fontSize: typography.fontSize.lg,
+    fontWeight: typography.fontWeight.semibold,
+    color: colours.neutral[900],
+    marginBottom: spacing[4],
+  }
+
+  const statCardStyle = {
+    padding: spacing[5],
+    textAlign: 'center',
+  }
+
+  const statLabelStyle = {
+    fontSize: typography.fontSize.sm,
+    color: colours.neutral[600],
+    marginBottom: spacing[2],
+  }
+
+  const statValueStyle = {
+    fontSize: typography.fontSize['3xl'],
+    fontWeight: typography.fontWeight.bold,
+    color: colours.neutral[900],
+  }
 
   if (loading) {
     return (
@@ -78,16 +114,82 @@ export default function AdminSettings() {
     <div>
       <PageHeader title="Settings" />
 
-      <div style={{ marginBottom: spacing[6] }}>
-        <h2 style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: '8px',
-          fontSize: typography.fontSize.lg,
-          fontWeight: typography.fontWeight.semibold,
-          color: colours.neutral[900],
+      {/* Section 1: Platform Settings */}
+      <div style={{ marginBottom: spacing[8] }}>
+        <h2 style={sectionTitleStyle}>
+          <Settings size={18} />
+          Platform Settings
+        </h2>
+        <GlowCard style={{ padding: spacing[5] }}>
+          <div style={{ marginBottom: spacing[4] }}>
+            <Input
+              label="Company Name"
+              value={companyName}
+              onChange={(e) => setCompanyName(e.target.value)}
+            />
+          </div>
+          <div style={{ marginBottom: spacing[5] }}>
+            <Input
+              label="Tagline"
+              value={tagline}
+              onChange={(e) => setTagline(e.target.value)}
+            />
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: spacing[4] }}>
+            <Button onClick={() => addToast('Settings saved', 'success')}>Save</Button>
+            <span style={{ fontSize: typography.fontSize.sm, color: colours.neutral[500] }}>
+              More settings coming soon
+            </span>
+          </div>
+        </GlowCard>
+      </div>
+
+      {/* Section 2: User Management */}
+      <div style={{ marginBottom: spacing[8] }}>
+        <h2 style={sectionTitleStyle}>
+          <Users size={18} />
+          User Management
+        </h2>
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(3, 1fr)',
+          gap: spacing[4],
           marginBottom: spacing[4],
         }}>
+          <GlowCard style={statCardStyle}>
+            <div style={statLabelStyle}>Total Users</div>
+            <div style={statValueStyle}>{totalUsers}</div>
+          </GlowCard>
+          <GlowCard style={statCardStyle}>
+            <div style={statLabelStyle}>Active Campers</div>
+            <div style={statValueStyle}>{activeCampers}</div>
+          </GlowCard>
+          <GlowCard style={statCardStyle}>
+            <div style={statLabelStyle}>Active Clients</div>
+            <div style={statValueStyle}>{activeClients}</div>
+          </GlowCard>
+        </div>
+        <button
+          onClick={() => navigate('/admin/users')}
+          style={{
+            background: 'none',
+            border: 'none',
+            color: '#ffffff',
+            cursor: 'pointer',
+            fontSize: typography.fontSize.sm,
+            fontWeight: typography.fontWeight.medium,
+            fontFamily: 'inherit',
+            textDecoration: 'underline',
+            padding: 0,
+          }}
+        >
+          Manage Users
+        </button>
+      </div>
+
+      {/* Section 3: Support Messages */}
+      <div style={{ marginBottom: spacing[6] }}>
+        <h2 style={sectionTitleStyle}>
           <MessageSquare size={18} />
           Support Messages
           {openCount > 0 && (

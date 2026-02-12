@@ -224,5 +224,34 @@ export async function handleCategories(request, env, auth, path, method) {
     }
   }
 
+  // DELETE /categories/:id - delete category (admin only)
+  const deleteMatch = path.match(/^\/categories\/([^\/]+)$/)
+  if (deleteMatch && method === 'DELETE') {
+    const categoryId = deleteMatch[1]
+    const authCheck = requireAuth(auth)
+    if (!authCheck.authorized) {
+      return jsonResponse({ success: false, error: authCheck.error }, authCheck.status)
+    }
+    const roleCheck = requireRole(auth, ['admin'])
+    if (!roleCheck.authorized) {
+      return jsonResponse({ success: false, error: roleCheck.error }, roleCheck.status)
+    }
+    try {
+      const category = await env.DB.prepare('SELECT id FROM task_categories WHERE id = ?').bind(categoryId).first()
+      if (!category) {
+        return jsonResponse({ success: false, error: 'Category not found' }, 404)
+      }
+      const taskCount = await env.DB.prepare('SELECT COUNT(*) as count FROM tasks WHERE category_id = ?').bind(categoryId).first()
+      if (taskCount && taskCount.count > 0) {
+        return jsonResponse({ success: false, error: `Cannot delete — ${taskCount.count} tasks use this category` }, 400)
+      }
+      await env.DB.prepare('DELETE FROM task_categories WHERE id = ?').bind(categoryId).run()
+      return jsonResponse({ success: true })
+    } catch (err) {
+      console.error('Delete category error:', err)
+      return jsonResponse({ success: false, error: 'Failed to delete category' }, 500)
+    }
+  }
+
   return jsonResponse({ success: false, error: 'Route not found' }, 404)
 }

@@ -102,17 +102,22 @@ export default function TaskCard({ task, onClick }) {
             </div>
           )}
 
-          {task.deadline && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <span style={{
-                width: '4px',
-                height: '4px',
-                borderRadius: '50%',
-                backgroundColor: colours.neutral[700]
-              }} />
-              <span>Due: {formatDate(task.deadline)}</span>
-            </div>
-          )}
+          {task.deadline && (() => {
+            const isOverdue = new Date(task.deadline) < new Date() && !['closed', 'approved', 'cancelled'].includes(task.status)
+            return (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <span style={{
+                  width: '4px',
+                  height: '4px',
+                  borderRadius: '50%',
+                  backgroundColor: isOverdue ? '#ff4444' : colours.neutral[700]
+                }} />
+                <span style={{ color: isOverdue ? '#ff4444' : undefined }}>
+                  {isOverdue ? 'Overdue' : `Due: ${formatDate(task.deadline)}`}
+                </span>
+              </div>
+            )
+          })()}
         </div>
 
         {/* Contractor info */}

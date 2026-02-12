@@ -4,8 +4,6 @@ import useToast from '@/hooks/useToast'
 import useAuth from '@/hooks/useAuth'
 import GlowCard from '@/components/ui/GlowCard'
 import EmberLoader from '@/components/ui/EmberLoader'
-import Select from '@/components/ui/Select'
-import TaskList from '@/components/features/tasks/TaskList'
 import Leaderboard from '@/components/features/gamification/Leaderboard'
 import { apiEndpoint } from '@/config/env'
 import { getAuthHeaders } from '@/services/auth'
@@ -19,9 +17,6 @@ export default function AdminDashboard() {
   const [users, setUsers] = useState([])
   const [leaderboard, setLeaderboard] = useState([])
   const [loading, setLoading] = useState(true)
-  const [statusFilter, setStatusFilter] = useState('')
-  const [clientFilter, setClientFilter] = useState('')
-  const [contractorFilter, setContractorFilter] = useState('')
 
   useEffect(() => {
     async function load() {
@@ -68,13 +63,6 @@ export default function AdminDashboard() {
   const activeClients = users.filter(u => u.role === 'client' && u.active)
   const activeContractors = users.filter(u => u.role === 'contractor' && u.active)
 
-  const filteredTasks = tasks.filter(task => {
-    if (statusFilter && task.status !== statusFilter) return false
-    if (clientFilter && task.client_id !== clientFilter) return false
-    if (contractorFilter && task.contractor_id !== contractorFilter) return false
-    return true
-  })
-
   const headerStyle = {
     marginBottom: spacing[6],
   }
@@ -106,13 +94,6 @@ export default function AdminDashboard() {
     fontSize: typography.fontSize['3xl'],
     fontWeight: typography.fontWeight.bold,
     color: colours.neutral[900],
-  }
-
-  const filtersStyle = {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-    gap: spacing[4],
-    marginBottom: spacing[6],
   }
 
   const sectionStyle = {
@@ -175,56 +156,57 @@ export default function AdminDashboard() {
       )}
 
       <div style={sectionStyle}>
-        <h2 style={sectionTitleStyle}>All Tasks</h2>
-
-        <div style={filtersStyle}>
-          <Select
-            label="Status"
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            options={[
-              { value: '', label: 'All Statuses' },
-              { value: 'submitted', label: 'Submitted' },
-              { value: 'assigned', label: 'Assigned' },
-              { value: 'in_progress', label: 'In Progress' },
-              { value: 'review', label: 'Review' },
-              { value: 'revision', label: 'Revision' },
-              { value: 'approved', label: 'Approved' },
-              { value: 'closed', label: 'Closed' }
-            ]}
-          />
-
-          <Select
-            label="Client"
-            value={clientFilter}
-            onChange={(e) => setClientFilter(e.target.value)}
-            options={[
-              { value: '', label: 'All Clients' },
-              ...users.filter(u => u.role === 'client').map(u => ({
-                value: u.id,
-                label: u.display_name || u.name
-              }))
-            ]}
-          />
-
-          <Select
-            label="Camper"
-            value={contractorFilter}
-            onChange={(e) => setContractorFilter(e.target.value)}
-            options={[
-              { value: '', label: 'All Campers' },
-              ...users.filter(u => u.role === 'contractor').map(u => ({
-                value: u.id,
-                label: u.display_name || u.name
-              }))
-            ]}
-          />
+        <h2 style={sectionTitleStyle}>Recent Tasks</h2>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: spacing[3] }}>
+          {tasks.slice(0, 5).map(task => (
+            <GlowCard
+              key={task.id}
+              glowOnHover
+              padding="16px 20px"
+              style={{ cursor: 'pointer' }}
+              onClick={() => navigate(`/admin/tasks/${task.id}`)}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: '15px', fontWeight: 600, color: '#ffffff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    {task.title}
+                  </div>
+                  <div style={{ fontSize: '12px', color: colours.neutral[500], marginTop: '2px' }}>
+                    {[task.category_name, task.client_name].filter(Boolean).join(' \u00b7 ')}
+                  </div>
+                </div>
+                <span style={{
+                  fontSize: '11px',
+                  color: '#ffffff',
+                  backgroundColor: '#222',
+                  padding: '2px 8px',
+                  borderRadius: '4px',
+                  border: '1px solid #333',
+                  flexShrink: 0,
+                }}>
+                  {task.status}
+                </span>
+              </div>
+            </GlowCard>
+          ))}
         </div>
-
-        <TaskList
-          tasks={filteredTasks}
-          onTaskClick={(task) => navigate(`/admin/tasks/${task.id}`)}
-        />
+        <button
+          onClick={() => navigate('/admin/tasks')}
+          style={{
+            background: 'none',
+            border: 'none',
+            color: '#ffffff',
+            cursor: 'pointer',
+            fontSize: typography.fontSize.sm,
+            fontWeight: typography.fontWeight.medium,
+            fontFamily: 'inherit',
+            marginTop: spacing[3],
+            textDecoration: 'underline',
+            padding: 0,
+          }}
+        >
+          View all tasks
+        </button>
       </div>
     </div>
   )

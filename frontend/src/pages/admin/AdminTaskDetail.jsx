@@ -37,6 +37,8 @@ export default function AdminTaskDetail() {
   const [aiLoading, setAiLoading] = useState(false)
   const [brandProfile, setBrandProfile] = useState(null)
   const [complexityLevel, setComplexityLevel] = useState(null)
+  const [confirmingDelete, setConfirmingDelete] = useState(false)
+  const [deleting, setDeleting] = useState(false)
 
   const complexityOptions = [
     { value: '', label: 'Not set' },
@@ -140,6 +142,29 @@ export default function AdminTaskDetail() {
 
   const handleAIAttachmentAdded = (newAttachment) => {
     setAttachments(prev => [...prev, newAttachment])
+  }
+
+  const handleDeleteTask = async () => {
+    setDeleting(true)
+    try {
+      const res = await fetch(apiEndpoint(`/tasks/${id}`), {
+        method: 'DELETE',
+        headers: { ...getAuthHeaders() },
+      })
+      const json = await res.json()
+      if (json.success) {
+        addToast('Task deleted', 'success')
+        navigate('/admin/tasks')
+      } else {
+        addToast(json.error || 'Failed to delete task', 'error')
+        setConfirmingDelete(false)
+      }
+    } catch (err) {
+      addToast(err.message, 'error')
+      setConfirmingDelete(false)
+    } finally {
+      setDeleting(false)
+    }
   }
 
   const handleAssign = async () => {
@@ -576,7 +601,7 @@ export default function AdminTaskDetail() {
       })()}
 
       {(aiAnalysis || task.ai_metadata) && (
-        <GlowCard style={{ marginBottom: spacing[4], padding: spacing[4], borderLeft: `4px solid ${colours.neutral[700]}` }}>
+        <GlowCard style={{ marginBottom: spacing[4], padding: spacing[4] }}>
           <h3 style={{ fontSize: '16px', fontWeight: 600, marginBottom: spacing[3], color: colours.neutral[800] }}>
             AI Brief Analysis
           </h3>
@@ -672,6 +697,67 @@ export default function AdminTaskDetail() {
           </div>
         </Modal>
       )}
+
+      {/* Delete Task */}
+      <div style={{ marginTop: spacing[8], paddingTop: spacing[6], borderTop: '1px solid #1a1a1a' }}>
+        {!confirmingDelete ? (
+          <button
+            onClick={() => setConfirmingDelete(true)}
+            style={{
+              background: 'transparent',
+              color: '#ff4444',
+              border: '1px solid #ff4444',
+              borderRadius: '6px',
+              fontSize: '13px',
+              padding: '8px 20px',
+              cursor: 'pointer',
+              fontFamily: 'inherit',
+              fontWeight: 500,
+            }}
+          >
+            Delete Task
+          </button>
+        ) : (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <span style={{ fontSize: '13px', color: colours.neutral[500] }}>
+              Delete this task? This cannot be undone.
+            </span>
+            <button
+              onClick={handleDeleteTask}
+              disabled={deleting}
+              style={{
+                backgroundColor: '#ff4444',
+                color: '#ffffff',
+                border: 'none',
+                borderRadius: '6px',
+                fontSize: '12px',
+                padding: '6px 16px',
+                cursor: deleting ? 'wait' : 'pointer',
+                fontFamily: 'inherit',
+                fontWeight: 600,
+                opacity: deleting ? 0.7 : 1,
+              }}
+            >
+              {deleting ? 'Deleting...' : 'Confirm'}
+            </button>
+            <button
+              onClick={() => setConfirmingDelete(false)}
+              style={{
+                backgroundColor: 'transparent',
+                color: colours.neutral[500],
+                border: '1px solid #333',
+                borderRadius: '6px',
+                fontSize: '12px',
+                padding: '6px 16px',
+                cursor: 'pointer',
+                fontFamily: 'inherit',
+              }}
+            >
+              Cancel
+            </button>
+          </div>
+        )}
+      </div>
     </div>
   )
 }

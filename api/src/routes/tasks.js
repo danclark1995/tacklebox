@@ -854,5 +854,35 @@ export async function handleTasks(request, env, auth, path, method) {
     }
   }
 
+  // DELETE /tasks/:id - delete task (admin only)
+  const deleteMatch = path.match(/^\/tasks\/([^\/]+)$/)
+  if (deleteMatch && method === 'DELETE') {
+    const taskId = deleteMatch[1]
+    const authCheck = requireAuth(auth)
+    if (!authCheck.authorized) {
+      return jsonResponse({ success: false, error: authCheck.error }, authCheck.status)
+    }
+    const roleCheck = requireRole(auth, ['admin'])
+    if (!roleCheck.authorized) {
+      return jsonResponse({ success: false, error: roleCheck.error }, roleCheck.status)
+    }
+    try {
+      const task = await env.DB.prepare('SELECT id FROM tasks WHERE id = ?').bind(taskId).first()
+      if (!task) {
+        return jsonResponse({ success: false, error: 'Task not found' }, 404)
+      }
+      // Delete related records first
+      await env.DB.prepare('DELETE FROM task_comments WHERE task_id = ?').bind(taskId).run()
+      await env.DB.prepare('DELETE FROM task_history WHERE task_id = ?').bind(taskId).run()
+      await env.DB.prepare('DELETE FROM time_entries WHERE task_id = ?').bind(taskId).run()
+      await env.DB.prepare('DELETE FROM reviews WHERE task_id = ?').bind(taskId).run()
+      await env.DB.prepare('DELETE FROM tasks WHERE id = ?').bind(taskId).run()
+      return jsonResponse({ success: true })
+    } catch (err) {
+      console.error('Delete task error:', err)
+      return jsonResponse({ success: false, error: 'Failed to delete task' }, 500)
+    }
+  }
+
   return jsonResponse({ success: false, error: 'Route not found' }, 404)
 }

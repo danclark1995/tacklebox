@@ -288,5 +288,30 @@ export async function handleTemplates(request, env, auth, path, method) {
     }
   }
 
+  // DELETE /templates/:id - delete template (admin only)
+  const deleteMatch = path.match(/^\/templates\/([^\/]+)$/)
+  if (deleteMatch && method === 'DELETE') {
+    const templateId = deleteMatch[1]
+    const authCheck = requireAuth(auth)
+    if (!authCheck.authorized) {
+      return jsonResponse({ success: false, error: authCheck.error }, authCheck.status)
+    }
+    const roleCheck = requireRole(auth, ['admin'])
+    if (!roleCheck.authorized) {
+      return jsonResponse({ success: false, error: roleCheck.error }, roleCheck.status)
+    }
+    try {
+      const template = await env.DB.prepare('SELECT id FROM task_templates WHERE id = ?').bind(templateId).first()
+      if (!template) {
+        return jsonResponse({ success: false, error: 'Template not found' }, 404)
+      }
+      await env.DB.prepare('DELETE FROM task_templates WHERE id = ?').bind(templateId).run()
+      return jsonResponse({ success: true })
+    } catch (err) {
+      console.error('Delete template error:', err)
+      return jsonResponse({ success: false, error: 'Failed to delete template' }, 500)
+    }
+  }
+
   return jsonResponse({ success: false, error: 'Route not found' }, 404)
 }

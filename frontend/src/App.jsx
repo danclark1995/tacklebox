@@ -30,6 +30,7 @@ import AdminBrandProfiles from '@/pages/admin/AdminBrandProfiles'
 import AdminBrandProfileEdit from '@/pages/admin/AdminBrandProfileEdit'
 import AdminToolsPage from '@/pages/admin/AdminToolsPage'
 import AdminSettings from '@/pages/admin/AdminSettings'
+import AdminTaskNew from '@/pages/admin/AdminTaskNew'
 
 // Create pages (used within AdminToolsPage)
 import CreateSocial from '@/pages/create/CreateSocial'
@@ -85,6 +86,7 @@ function App() {
             }>
               <Route path="/admin" element={<AdminDashboard />} />
               <Route path="/admin/tasks" element={<AdminTasksPage />} />
+              <Route path="/admin/tasks/new" element={<AdminTaskNew />} />
               <Route path="/admin/tasks/:id" element={<AdminTaskDetail />} />
               <Route path="/admin/campers" element={<AdminUsers />} />
               <Route path="/admin/brands" element={<AdminBrandProfiles />} />

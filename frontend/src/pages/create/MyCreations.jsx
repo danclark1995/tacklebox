@@ -221,13 +221,13 @@ export default function MyCreations() {
                 <div style={cardPreviewStyle}>
                   {gen.result_type === 'image/png' ? (
                     <img
-                      src={apiEndpoint(`/storage/${gen.result_path}`)}
+                      src={apiEndpoint(`/generate/content/${gen.id}`)}
                       alt=""
                       style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                     />
                   ) : gen.result_type === 'text/html' ? (
                     <iframe
-                      src={apiEndpoint(`/storage/${gen.result_path}`)}
+                      src={apiEndpoint(`/generate/content/${gen.id}`)}
                       style={{ width: '100%', height: '100%', border: 'none', pointerEvents: 'none' }}
                       title=""
                     />

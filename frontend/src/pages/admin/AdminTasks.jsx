@@ -71,7 +71,7 @@ export default function AdminTasks() {
       <PageHeader
         title="All Tasks"
         actions={
-          <Button onClick={() => navigate('/client/tasks/new')}>Create Task</Button>
+          <Button onClick={() => navigate('/admin/tasks/new')}>Create Task</Button>
         }
       />
 

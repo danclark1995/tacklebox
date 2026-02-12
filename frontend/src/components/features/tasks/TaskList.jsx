@@ -1,5 +1,4 @@
-import { useState } from 'react'
-import { Select, EmptyState, Skeleton } from '@/components/ui'
+import { EmptyState, Skeleton } from '@/components/ui'
 import TaskCard from './TaskCard'
 import { TASK_STATUSES, TASK_STATUS_LABELS, PRIORITIES, PRIORITY_LABELS } from '@/config/constants'
 import { colours, spacing } from '@/config/tokens'
@@ -55,73 +54,6 @@ export default function TaskList({
 
   return (
     <div className="task-list">
-      {/* Filter Bar */}
-      <div style={{
-        display: 'flex',
-        gap: spacing[4],
-        marginBottom: spacing[6],
-        padding: spacing[4],
-        backgroundColor: colours.neutral[50],
-        borderRadius: '8px',
-        flexWrap: 'wrap',
-      }}>
-        <div style={{ flex: '1 1 200px', minWidth: '200px' }}>
-          <label style={{
-            display: 'block',
-            fontSize: '13px',
-            fontWeight: 500,
-            color: colours.neutral[700],
-            marginBottom: spacing[2],
-          }}>
-            Status
-          </label>
-          <Select
-            value={filters.status || ''}
-            onChange={(e) => handleFilterChange('status', e.target.value)}
-            options={statusOptions}
-          />
-        </div>
-
-        <div style={{ flex: '1 1 200px', minWidth: '200px' }}>
-          <label style={{
-            display: 'block',
-            fontSize: '13px',
-            fontWeight: 500,
-            color: colours.neutral[700],
-            marginBottom: spacing[2],
-          }}>
-            Priority
-          </label>
-          <Select
-            value={filters.priority || ''}
-            onChange={(e) => handleFilterChange('priority', e.target.value)}
-            options={priorityOptions}
-          />
-        </div>
-
-        {filters.categoryOptions && filters.categoryOptions.length > 0 && (
-          <div style={{ flex: '1 1 200px', minWidth: '200px' }}>
-            <label style={{
-              display: 'block',
-              fontSize: '13px',
-              fontWeight: 500,
-              color: colours.neutral[700],
-              marginBottom: spacing[2],
-            }}>
-              Category
-            </label>
-            <Select
-              value={filters.category || ''}
-              onChange={(e) => handleFilterChange('category', e.target.value)}
-              options={[
-                { value: '', label: 'All Categories' },
-                ...filters.categoryOptions,
-              ]}
-            />
-          </div>
-        )}
-      </div>
-
       {/* Task List */}
       {tasks.length === 0 ? (
         <EmptyState

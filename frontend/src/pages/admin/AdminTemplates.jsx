@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { Trash2 } from 'lucide-react'
 import useToast from '@/hooks/useToast'
 import PageHeader from '@/components/ui/PageHeader'
 import Button from '@/components/ui/Button'
@@ -177,6 +178,25 @@ export default function AdminTemplates() {
     }
   }
 
+  const handleDeleteTemplate = async (template) => {
+    if (!confirm(`Delete template "${template.name}"?`)) return
+    try {
+      const res = await fetch(apiEndpoint(`/templates/${template.id}`), {
+        method: 'DELETE',
+        headers: { ...getAuthHeaders() },
+      })
+      const json = await res.json()
+      if (json.success) {
+        addToast('Template deleted', 'success')
+        loadTemplates()
+      } else {
+        addToast(json.error || 'Failed to delete template', 'error')
+      }
+    } catch (err) {
+      addToast(err.message, 'error')
+    }
+  }
+
   const handleToggleActive = async (template) => {
     const newActive = !template.is_active
     try {
@@ -292,7 +312,7 @@ export default function AdminTemplates() {
       key: 'actions',
       label: 'Actions',
       render: (_, row) => (
-        <div style={{ display: 'flex', gap: spacing[2] }}>
+        <div style={{ display: 'flex', gap: spacing[2], alignItems: 'center' }}>
           <Button
             size="sm"
             variant="outline"
@@ -313,6 +333,24 @@ export default function AdminTemplates() {
           >
             {row.is_active ? 'Deactivate' : 'Activate'}
           </Button>
+          <button
+            onClick={(e) => {
+              e.stopPropagation()
+              handleDeleteTemplate(row)
+            }}
+            style={{
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+              padding: '4px',
+              display: 'flex',
+              alignItems: 'center',
+              color: colours.neutral[500],
+            }}
+            title="Delete template"
+          >
+            <Trash2 size={16} />
+          </button>
         </div>
       ),
     },
