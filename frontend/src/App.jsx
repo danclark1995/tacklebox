@@ -31,6 +31,8 @@ import AdminBrandProfileEdit from '@/pages/admin/AdminBrandProfileEdit'
 import AdminToolsPage from '@/pages/admin/AdminToolsPage'
 import AdminSettings from '@/pages/admin/AdminSettings'
 import AdminTaskNew from '@/pages/admin/AdminTaskNew'
+import AdminJourney from '@/pages/admin/AdminJourney'
+import BrandOnboarding from '@/components/features/BrandOnboarding'
 
 // Create pages (used within AdminToolsPage)
 import CreateSocial from '@/pages/create/CreateSocial'
@@ -90,7 +92,9 @@ function App() {
               <Route path="/admin/tasks/:id" element={<AdminTaskDetail />} />
               <Route path="/admin/campers" element={<AdminUsers />} />
               <Route path="/admin/brands" element={<AdminBrandProfiles />} />
+              <Route path="/admin/brands/new" element={<BrandOnboarding />} />
               <Route path="/admin/brands/:clientId/edit" element={<AdminBrandProfileEdit />} />
+              <Route path="/admin/journey" element={<AdminJourney />} />
               <Route path="/admin/tools" element={<AdminToolsPage />} />
               <Route path="/admin/tools/social" element={<CreateSocial />} />
               <Route path="/admin/tools/document" element={<CreateDocument />} />

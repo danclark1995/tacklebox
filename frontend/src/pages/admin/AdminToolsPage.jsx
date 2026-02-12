@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react'
 import { Plus } from 'lucide-react'
 import SubNav from '@/components/ui/SubNav'
-import CreateHub from '@/pages/create/CreateHub'
 import MyCreations from '@/pages/create/MyCreations'
 import AdminAnalytics from './AdminAnalytics'
+import AdminGuidance from './AdminGuidance'
 import ToolboxGrid from '@/components/features/ToolboxGrid'
 import Button from '@/components/ui/Button'
 import Modal from '@/components/ui/Modal'
@@ -16,9 +16,9 @@ import { getAuthHeaders } from '@/services/auth'
 import { spacing, typography, colours } from '@/config/tokens'
 
 const TABS = [
-  { key: 'assistant', label: 'AI Assistant' },
   { key: 'generations', label: 'Generations' },
   { key: 'analytics', label: 'Analytics' },
+  { key: 'guidance', label: 'Guidance' },
   { key: 'toolbox', label: 'Toolbox' },
 ]
 
@@ -43,7 +43,7 @@ const ICON_OPTIONS = [
 
 export default function AdminToolsPage() {
   const { addToast } = useToast()
-  const [activeTab, setActiveTab] = useState('assistant')
+  const [activeTab, setActiveTab] = useState('generations')
   const [tools, setTools] = useState([])
   const [loading, setLoading] = useState(false)
   const [showModal, setShowModal] = useState(false)
@@ -158,9 +158,9 @@ export default function AdminToolsPage() {
   return (
     <div>
       <SubNav tabs={TABS} activeTab={activeTab} onChange={setActiveTab} />
-      {activeTab === 'assistant' && <CreateHub />}
       {activeTab === 'generations' && <MyCreations />}
       {activeTab === 'analytics' && <AdminAnalytics />}
+      {activeTab === 'guidance' && <AdminGuidance />}
       {activeTab === 'toolbox' && (
         <div style={{ padding: `${spacing[6]} 0` }}>
           <div style={{

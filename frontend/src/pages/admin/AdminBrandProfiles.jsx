@@ -72,7 +72,10 @@ export default function AdminBrandProfiles() {
 
   return (
     <div>
-      <PageHeader title="Brand Profiles" />
+      <PageHeader
+        title="Brand Profiles"
+        actions={<Button onClick={() => navigate('/admin/brands/new')}>Create Brand Profile</Button>}
+      />
 
       {clients.length > 0 ? (
         <div style={clientsGridStyle}>

@@ -31,6 +31,7 @@ const navItemsByRole = {
     { path: '/admin/tasks', label: 'Tasks', icon: <CheckSquare size={ICON_SIZE} /> },
     { path: '/admin/campers', label: 'Campers', icon: <Users size={ICON_SIZE} /> },
     { path: '/admin/brands', label: 'Brands', icon: <Palette size={ICON_SIZE} /> },
+    { path: '/admin/journey', label: 'Journey', icon: <Compass size={ICON_SIZE} /> },
     { path: '/admin/tools', label: 'Tools', icon: <Wrench size={ICON_SIZE} /> },
     { path: '/admin/settings', label: 'Settings', icon: <Settings size={ICON_SIZE} /> },
   ],

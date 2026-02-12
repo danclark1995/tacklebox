@@ -104,6 +104,25 @@ export async function handleGamification(request, env, auth, path, method) {
       `).bind(userId).first()
       const categoriesWorked = categoriesResult?.count ?? 0
 
+      // Admin-specific stats
+      let adminStats = {}
+      if (auth.user.role === 'admin') {
+        const tasksCreated = await env.DB.prepare(
+          'SELECT COUNT(*) as count FROM tasks'
+        ).first()
+        const tasksReviewed = await env.DB.prepare(
+          'SELECT COUNT(*) as count FROM task_reviews WHERE reviewer_id = ?'
+        ).bind(userId).first()
+        const campersManaged = await env.DB.prepare(
+          "SELECT COUNT(*) as count FROM users WHERE role = 'contractor' AND is_active = 1"
+        ).first()
+        adminStats = {
+          tasks_created: tasksCreated?.count ?? 0,
+          tasks_reviewed: tasksReviewed?.count ?? 0,
+          campers_managed: campersManaged?.count ?? 0,
+        }
+      }
+
       return jsonResponse({
         success: true,
         data: {
@@ -121,6 +140,7 @@ export async function handleGamification(request, env, auth, path, method) {
           categories_worked: categoriesWorked,
           badges,
           levels,
+          ...adminStats,
         },
       })
     } catch (err) {
