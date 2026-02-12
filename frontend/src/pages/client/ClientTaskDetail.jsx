@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useParams, useNavigate, Link } from 'react-router-dom'
+import { useParams, Link } from 'react-router-dom'
 import useToast from '@/hooks/useToast'
 import EmberLoader from '@/components/ui/EmberLoader'
 import TaskDetail from '@/components/features/tasks/TaskDetail'
@@ -9,41 +9,28 @@ import { spacing, colours, typography } from '@/config/tokens'
 
 export default function ClientTaskDetail() {
   const { id } = useParams()
-  const navigate = useNavigate()
   const { addToast } = useToast()
   const [task, setTask] = useState(null)
   const [comments, setComments] = useState([])
   const [attachments, setAttachments] = useState([])
-  const [timeEntries, setTimeEntries] = useState([])
-  const [totalTimeMinutes, setTotalTimeMinutes] = useState(0)
-  const [history, setHistory] = useState([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     async function load() {
       try {
-        const [taskRes, commentsRes, attachmentsRes, timeEntriesRes, totalTimeRes, historyRes] = await Promise.all([
+        const [taskRes, commentsRes, attachmentsRes] = await Promise.all([
           fetch(apiEndpoint(`/tasks/${id}`), { headers: { ...getAuthHeaders() } }),
           fetch(apiEndpoint(`/comments?task_id=${id}`), { headers: { ...getAuthHeaders() } }),
           fetch(apiEndpoint(`/attachments?task_id=${id}`), { headers: { ...getAuthHeaders() } }),
-          fetch(apiEndpoint(`/time-entries?task_id=${id}`), { headers: { ...getAuthHeaders() } }),
-          fetch(apiEndpoint(`/time-entries/total?task_id=${id}`), { headers: { ...getAuthHeaders() } }),
-          fetch(apiEndpoint(`/task-history?task_id=${id}`), { headers: { ...getAuthHeaders() } }),
         ])
 
         const taskJson = await taskRes.json()
         const commentsJson = await commentsRes.json()
         const attachmentsJson = await attachmentsRes.json()
-        const timeEntriesJson = await timeEntriesRes.json()
-        const totalTimeJson = await totalTimeRes.json()
-        const historyJson = await historyRes.json()
 
         if (taskJson.success) setTask(taskJson.data)
         if (commentsJson.success) setComments(commentsJson.data)
         if (attachmentsJson.success) setAttachments(attachmentsJson.data)
-        if (timeEntriesJson.success) setTimeEntries(timeEntriesJson.data)
-        if (totalTimeJson.success) setTotalTimeMinutes(totalTimeJson.data.total_minutes)
-        if (historyJson.success) setHistory(historyJson.data)
       } catch (err) {
         addToast(err.message, 'error')
       } finally {
@@ -63,7 +50,7 @@ export default function ClientTaskDetail() {
         },
         body: JSON.stringify({
           task_id: id,
-          text: commentData.text,
+          text: commentData.content,
           visibility: 'all'
         })
       })
@@ -117,9 +104,6 @@ export default function ClientTaskDetail() {
         task={task}
         comments={comments}
         attachments={attachments}
-        timeEntries={timeEntries}
-        totalTimeMinutes={totalTimeMinutes}
-        history={history}
         onComment={handleAddComment}
         loading={false}
       />

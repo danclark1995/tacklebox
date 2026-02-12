@@ -330,16 +330,18 @@ export default function TaskForm({
         />
       </div>
 
-      {/* Campfire */}
-      <div>
-        <Toggle
-          checked={formData.campfire_eligible}
-          onChange={(val) => handleChange('campfire_eligible', val)}
-          label="Send to Campfire"
-          helperText="Available tasks appear at the campfire for campers to pick up"
-          disabled={loading}
-        />
-      </div>
+      {/* Campfire (admin only) */}
+      {isAdmin && (
+        <div>
+          <Toggle
+            checked={formData.campfire_eligible}
+            onChange={(val) => handleChange('campfire_eligible', val)}
+            label="Send to Campfire"
+            helperText="Available tasks appear at the campfire for campers to pick up"
+            disabled={loading}
+          />
+        </div>
+      )}
 
       {/* Attachments */}
       <div>

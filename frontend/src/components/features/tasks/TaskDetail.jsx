@@ -60,6 +60,10 @@ export default function TaskDetail({
   const [mentionFilter, setMentionFilter] = useState('')
   const [selectedMentionIdx, setSelectedMentionIdx] = useState(0)
 
+  const isContractor = hasRole('contractor')
+  const isAdmin = hasRole('admin')
+  const isClient = hasRole('client')
+
   const taskParticipants = useMemo(() => {
     const users = []
     const seen = new Set()
@@ -79,15 +83,11 @@ export default function TaskDetail({
       }
     })
     return users
-  }, [task?.client_id, task?.client_name, task?.contractor_id, task?.contractor_name, comments])
+  }, [task?.client_id, task?.client_name, task?.contractor_id, task?.contractor_name, comments, isClient])
 
   if (!task) {
     return <EmptyState title="Task not found" description="The task you're looking for doesn't exist." />
   }
-
-  const isContractor = hasRole('contractor')
-  const isAdmin = hasRole('admin')
-  const isClient = hasRole('client')
   const isAssignedContractor = isContractor && task.contractor_id === user?.id
   const roleLabels = isClient ? ROLE_LABELS_CLIENT : ROLE_LABELS_DEFAULT
 
