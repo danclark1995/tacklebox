@@ -1,13 +1,12 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { BookOpen, FileText } from 'lucide-react'
+import { FileText } from 'lucide-react'
 import useToast from '@/hooks/useToast'
 import PageHeader from '@/components/ui/PageHeader'
 import Button from '@/components/ui/Button'
 import GlowCard from '@/components/ui/GlowCard'
 import EmberLoader from '@/components/ui/EmberLoader'
 import EmptyState from '@/components/ui/EmptyState'
-import BrandBooklet from '@/components/features/brand/BrandBooklet'
 import BrandGuidePDFViewer from '@/components/features/brand/BrandGuidePDFViewer'
 import { apiEndpoint } from '@/config/env'
 import { getAuthHeaders } from '@/services/auth'
@@ -18,30 +17,7 @@ export default function AdminBrandProfiles() {
   const navigate = useNavigate()
   const [clients, setClients] = useState([])
   const [loading, setLoading] = useState(true)
-  const [viewingProfile, setViewingProfile] = useState(null)
-  const [viewingLogos, setViewingLogos] = useState([])
-  const [viewingClient, setViewingClient] = useState(null)
   const [pdfViewerClientId, setPdfViewerClientId] = useState(null)
-
-  const handleViewProfile = async (client) => {
-    try {
-      const res = await fetch(apiEndpoint(`/brand-profiles/${client.id}`), { headers: { ...getAuthHeaders() } })
-      const json = await res.json()
-      if (json.success && json.data) {
-        setViewingProfile(json.data)
-        setViewingClient(client)
-        try {
-          const logosRes = await fetch(apiEndpoint(`/brand-profiles/${client.id}/logos`), { headers: { ...getAuthHeaders() } })
-          const logosJson = await logosRes.json()
-          if (logosJson.success) setViewingLogos(logosJson.data || [])
-        } catch { /* logos may not exist */ }
-      } else {
-        addToast('No brand profile found for this client', 'info')
-      }
-    } catch (err) {
-      addToast(err.message, 'error')
-    }
-  }
 
   useEffect(() => {
     async function load() {
@@ -99,15 +75,6 @@ export default function AdminBrandProfiles() {
 
   return (
     <div>
-      {viewingProfile && (
-        <BrandBooklet
-          brandProfile={viewingProfile}
-          clientName={viewingClient?.display_name || viewingClient?.name}
-          companyName={viewingClient?.company}
-          logos={viewingLogos}
-          onClose={() => { setViewingProfile(null); setViewingLogos([]); setViewingClient(null) }}
-        />
-      )}
       {pdfViewerClientId && (
         <BrandGuidePDFViewer
           clientId={pdfViewerClientId}
@@ -127,15 +94,6 @@ export default function AdminBrandProfiles() {
               {client.company && <div style={clientCompanyStyle}>{client.company}</div>}
               <div style={clientEmailStyle}>{client.email}</div>
               <div style={{ display: 'flex', gap: spacing[2], flexWrap: 'wrap' }}>
-                <Button
-                  size="sm"
-                  variant="secondary"
-                  onClick={() => handleViewProfile(client)}
-                  style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
-                >
-                  <BookOpen size={14} />
-                  View
-                </Button>
                 <Button
                   size="sm"
                   variant="secondary"

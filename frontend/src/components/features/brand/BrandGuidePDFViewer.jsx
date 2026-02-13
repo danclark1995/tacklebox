@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { Document, Page, pdfjs } from 'react-pdf'
 import { ChevronLeft, ChevronRight, X } from 'lucide-react'
 import EmberLoader from '@/components/ui/EmberLoader'
@@ -12,7 +12,7 @@ import 'react-pdf/dist/Page/TextLayer.css'
 pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`
 
 /**
- * BrandGuidePDFViewer — Full-screen PDF booklet viewer.
+ * BrandGuidePDFViewer — Full-screen PDF booklet viewer with crossfade transitions.
  *
  * Props:
  *   clientId  – client ID to fetch the brand guide for
@@ -21,10 +21,12 @@ pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/b
 export default function BrandGuidePDFViewer({ clientId, onClose }) {
   const [pdfData, setPdfData] = useState(null)
   const [numPages, setNumPages] = useState(null)
-  const [currentPage, setCurrentPage] = useState(1)
+  const [activePage, setActivePage] = useState(1)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [pageWidth, setPageWidth] = useState(600)
+  const prevPageRef = useRef(1)
+  const transitionTimer = useRef(null)
 
   // Calculate page width based on viewport
   useEffect(() => {
@@ -39,6 +41,7 @@ export default function BrandGuidePDFViewer({ clientId, onClose }) {
 
   // Fetch PDF from API
   useEffect(() => {
+    let blobUrl = null
     async function fetchPDF() {
       try {
         const res = await fetch(apiEndpoint(`/brand-profiles/${clientId}/guide-pdf`), {
@@ -50,8 +53,8 @@ export default function BrandGuidePDFViewer({ clientId, onClose }) {
           return
         }
         const blob = await res.blob()
-        const url = URL.createObjectURL(blob)
-        setPdfData(url)
+        blobUrl = URL.createObjectURL(blob)
+        setPdfData(blobUrl)
       } catch {
         setError('Failed to load brand guide')
       } finally {
@@ -60,17 +63,24 @@ export default function BrandGuidePDFViewer({ clientId, onClose }) {
     }
     fetchPDF()
     return () => {
-      if (pdfData) URL.revokeObjectURL(pdfData)
+      if (blobUrl) URL.revokeObjectURL(blobUrl)
+      if (transitionTimer.current) clearTimeout(transitionTimer.current)
     }
   }, [clientId])
 
-  const goNext = useCallback(() => {
-    setCurrentPage(p => Math.min(p + 1, numPages || 1))
-  }, [numPages])
+  const navigateTo = useCallback((pageNum) => {
+    if (!numPages || pageNum < 1 || pageNum > numPages || pageNum === activePage) return
+    prevPageRef.current = activePage
+    setActivePage(pageNum)
+    // Clear prev page ref after crossfade completes
+    if (transitionTimer.current) clearTimeout(transitionTimer.current)
+    transitionTimer.current = setTimeout(() => {
+      prevPageRef.current = pageNum
+    }, 400)
+  }, [numPages, activePage])
 
-  const goPrev = useCallback(() => {
-    setCurrentPage(p => Math.max(p - 1, 1))
-  }, [])
+  const goNext = useCallback(() => navigateTo(activePage + 1), [navigateTo, activePage])
+  const goPrev = useCallback(() => navigateTo(activePage - 1), [navigateTo, activePage])
 
   // Keyboard navigation
   useEffect(() => {
@@ -93,64 +103,21 @@ export default function BrandGuidePDFViewer({ clientId, onClose }) {
     setNumPages(total)
   }
 
-  const overlayStyle = {
-    position: 'fixed',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(0, 0, 0, 0.9)',
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    justifyContent: 'center',
-    zIndex: zIndex.modal + 10,
-  }
+  // Build set of pages to keep rendered for smooth crossfade
+  const pagesToRender = new Set()
+  pagesToRender.add(prevPageRef.current)
+  if (activePage > 1) pagesToRender.add(activePage - 1)
+  pagesToRender.add(activePage)
+  if (numPages && activePage < numPages) pagesToRender.add(activePage + 1)
 
-  const closeButtonStyle = {
-    position: 'absolute',
-    top: '16px',
-    right: '16px',
-    background: 'none',
-    border: 'none',
-    color: colours.neutral[500],
-    cursor: 'pointer',
-    padding: '8px',
-    borderRadius: '8px',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    transition: 'color 0.2s',
-    zIndex: 10,
-  }
-
-  const navButtonStyle = (disabled) => ({
-    background: 'none',
-    border: 'none',
-    color: disabled ? 'rgba(255,255,255,0.15)' : 'rgba(255,255,255,0.5)',
-    cursor: disabled ? 'default' : 'pointer',
-    padding: '12px',
-    borderRadius: '50%',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    transition: 'color 0.2s, background-color 0.2s',
-    flexShrink: 0,
-  })
-
-  const pageContainerStyle = {
-    borderRadius: '8px',
-    overflow: 'hidden',
-    boxShadow: '0 4px 24px rgba(0, 0, 0, 0.5)',
-    backgroundColor: '#ffffff',
-    maxHeight: 'calc(100vh - 140px)',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-  }
+  const estimatedHeight = Math.round(pageWidth * 1.414)
 
   return (
     <div style={overlayStyle} onClick={(e) => { if (e.target === e.currentTarget) onClose() }}>
+      <style>{`
+        .pdf-page-layer { transition: opacity 300ms ease; }
+      `}</style>
+
       {/* Close button */}
       <button
         style={closeButtonStyle}
@@ -198,42 +165,65 @@ export default function BrandGuidePDFViewer({ clientId, onClose }) {
           <div style={{ display: 'flex', alignItems: 'center', gap: spacing[4], maxWidth: '100%' }}>
             {/* Left arrow */}
             <button
-              style={navButtonStyle(currentPage <= 1)}
+              style={navButtonStyle(activePage <= 1)}
               onClick={goPrev}
-              disabled={currentPage <= 1}
-              onMouseEnter={(e) => { if (currentPage > 1) e.currentTarget.style.color = 'rgba(255,255,255,0.9)' }}
-              onMouseLeave={(e) => { if (currentPage > 1) e.currentTarget.style.color = 'rgba(255,255,255,0.5)' }}
+              disabled={activePage <= 1}
+              onMouseEnter={(e) => { if (activePage > 1) e.currentTarget.style.color = 'rgba(255,255,255,0.9)' }}
+              onMouseLeave={(e) => { if (activePage > 1) e.currentTarget.style.color = 'rgba(255,255,255,0.5)' }}
             >
               <ChevronLeft size={32} />
             </button>
 
-            {/* Page */}
-            <div style={pageContainerStyle}>
+            {/* Page container — stacked layers for crossfade */}
+            <div style={{
+              borderRadius: '8px',
+              overflow: 'hidden',
+              boxShadow: '0 4px 24px rgba(0, 0, 0, 0.5)',
+              backgroundColor: '#ffffff',
+              position: 'relative',
+              width: pageWidth,
+              height: estimatedHeight,
+              maxHeight: 'calc(100vh - 140px)',
+            }}>
               <Document
                 file={pdfData}
                 onLoadSuccess={onDocumentLoadSuccess}
                 loading={
-                  <div style={{ width: pageWidth, height: pageWidth * 1.4, display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#fff' }}>
+                  <div style={{ width: pageWidth, height: estimatedHeight, display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#fff' }}>
                     <EmberLoader size="md" />
                   </div>
                 }
               >
-                <Page
-                  pageNumber={currentPage}
-                  width={pageWidth}
-                  renderTextLayer={false}
-                  renderAnnotationLayer={false}
-                />
+                {[...pagesToRender].map(pageNum => (
+                  <div
+                    key={pageNum}
+                    className="pdf-page-layer"
+                    style={{
+                      position: 'absolute',
+                      top: 0,
+                      left: 0,
+                      opacity: pageNum === activePage ? 1 : 0,
+                      pointerEvents: pageNum === activePage ? 'auto' : 'none',
+                    }}
+                  >
+                    <Page
+                      pageNumber={pageNum}
+                      width={pageWidth}
+                      renderTextLayer={false}
+                      renderAnnotationLayer={false}
+                    />
+                  </div>
+                ))}
               </Document>
             </div>
 
             {/* Right arrow */}
             <button
-              style={navButtonStyle(currentPage >= numPages)}
+              style={navButtonStyle(activePage >= numPages)}
               onClick={goNext}
-              disabled={currentPage >= numPages}
-              onMouseEnter={(e) => { if (currentPage < numPages) e.currentTarget.style.color = 'rgba(255,255,255,0.9)' }}
-              onMouseLeave={(e) => { if (currentPage < numPages) e.currentTarget.style.color = 'rgba(255,255,255,0.5)' }}
+              disabled={activePage >= numPages}
+              onMouseEnter={(e) => { if (activePage < numPages) e.currentTarget.style.color = 'rgba(255,255,255,0.9)' }}
+              onMouseLeave={(e) => { if (activePage < numPages) e.currentTarget.style.color = 'rgba(255,255,255,0.5)' }}
             >
               <ChevronRight size={32} />
             </button>
@@ -243,26 +233,28 @@ export default function BrandGuidePDFViewer({ clientId, onClose }) {
           {numPages && (
             <div style={{ marginTop: spacing[4], display: 'flex', flexDirection: 'column', alignItems: 'center', gap: spacing[3] }}>
               <span style={{ fontSize: typography.fontSize.sm, color: colours.neutral[600] }}>
-                Page {currentPage} of {numPages}
+                Page {activePage} of {numPages}
               </span>
-              <div style={{ display: 'flex', gap: '6px' }}>
-                {Array.from({ length: numPages }, (_, i) => (
-                  <button
-                    key={i}
-                    onClick={() => setCurrentPage(i + 1)}
-                    style={{
-                      width: currentPage === i + 1 ? '20px' : '8px',
-                      height: '8px',
-                      borderRadius: '4px',
-                      border: 'none',
-                      backgroundColor: currentPage === i + 1 ? '#fff' : 'rgba(255,255,255,0.25)',
-                      cursor: 'pointer',
-                      padding: 0,
-                      transition: 'all 0.2s',
-                    }}
-                  />
-                ))}
-              </div>
+              {numPages <= 20 && (
+                <div style={{ display: 'flex', gap: '6px' }}>
+                  {Array.from({ length: numPages }, (_, i) => (
+                    <button
+                      key={i}
+                      onClick={() => navigateTo(i + 1)}
+                      style={{
+                        width: activePage === i + 1 ? '20px' : '8px',
+                        height: '8px',
+                        borderRadius: '4px',
+                        border: 'none',
+                        backgroundColor: activePage === i + 1 ? '#fff' : 'rgba(255,255,255,0.25)',
+                        cursor: 'pointer',
+                        padding: 0,
+                        transition: 'all 0.2s',
+                      }}
+                    />
+                  ))}
+                </div>
+              )}
             </div>
           )}
         </>
@@ -270,3 +262,50 @@ export default function BrandGuidePDFViewer({ clientId, onClose }) {
     </div>
   )
 }
+
+// Styles defined outside component to avoid recreation on each render
+
+const overlayStyle = {
+  position: 'fixed',
+  top: 0,
+  left: 0,
+  right: 0,
+  bottom: 0,
+  backgroundColor: 'rgba(0, 0, 0, 0.9)',
+  display: 'flex',
+  flexDirection: 'column',
+  alignItems: 'center',
+  justifyContent: 'center',
+  zIndex: zIndex.modal + 10,
+}
+
+const closeButtonStyle = {
+  position: 'absolute',
+  top: '16px',
+  right: '16px',
+  background: 'none',
+  border: 'none',
+  color: colours.neutral[500],
+  cursor: 'pointer',
+  padding: '8px',
+  borderRadius: '8px',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  transition: 'color 0.2s',
+  zIndex: 10,
+}
+
+const navButtonStyle = (disabled) => ({
+  background: 'none',
+  border: 'none',
+  color: disabled ? 'rgba(255,255,255,0.15)' : 'rgba(255,255,255,0.5)',
+  cursor: disabled ? 'default' : 'pointer',
+  padding: '12px',
+  borderRadius: '50%',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  transition: 'color 0.2s, background-color 0.2s',
+  flexShrink: 0,
+})
