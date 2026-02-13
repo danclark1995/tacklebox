@@ -116,8 +116,10 @@ export default function TaskCard({ task, onClick }) {
                   borderRadius: '50%',
                   backgroundColor: isOverdue ? '#ff4444' : colours.neutral[700]
                 }} />
-                <span style={{ color: isOverdue ? '#ff4444' : undefined }}>
-                  {isOverdue ? 'Overdue' : `Due: ${formatDate(task.deadline)}`}
+                <span style={{ color: isOverdue ? '#ff4444' : undefined, fontWeight: isOverdue ? 600 : undefined }}>
+                  {isOverdue
+                    ? `Overdue: ${new Date(task.deadline).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}`
+                    : `Due: ${formatDate(task.deadline)}`}
                 </span>
               </div>
             )

@@ -211,7 +211,7 @@ export default function AdminDashboard() {
                         flexShrink: 0,
                         whiteSpace: 'nowrap',
                       }}>
-                        Due: {new Date(task.deadline).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}
+                        {isOverdue ? 'Overdue' : 'Due'}: {new Date(task.deadline).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}
                       </span>
                     )}
                     <StatusBadge status={task.status} />
