@@ -1,5 +1,7 @@
 # CLAUDE.md -- TackleBox Project Guide
 
+**Read this file before every coding session.** It contains critical rules that prevent common bugs.
+
 ## Project Overview
 
 TackleBox is a creative design consultancy platform connecting admins, clients, and contractors (called "Campers" in the UI). It manages brand profiles, task workflows, AI content generation, gamification, and time tracking. The platform is deployed on Cloudflare infrastructure.
@@ -227,11 +229,14 @@ tacklebox/
 6. **File uploads:** Use FormData, not JSON. R2 key pattern: `attachments/{taskId}/{uuid}_{filename}`.
 7. **Task state machine:** Transitions are strictly validated. See `TRANSITIONS` object in `tasks.js`.
 8. **Comment visibility:** `'all'` = everyone sees it. `'internal'` = admin + contractor only. Clients cannot post internal comments.
+9. **Login credentials:** The camper test user is camper@tacklebox.app (NOT contractor@tacklebox.app). See credentials table below.
 
 ## Login Credentials (Dev/Prod)
+
+Display names: Admin = Alice Admin, Client = R Studios, Camper = Gil Scales
 
 | Role | Email | Password |
 |------|-------|----------|
 | Admin | admin@tacklebox.app | Admin123! |
 | Client | client@tacklebox.app | Client123! |
-| Contractor | contractor@tacklebox.app | Contractor123! |
+| Contractor (Camper) | camper@tacklebox.app | Camper123! |
