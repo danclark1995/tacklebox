@@ -10,6 +10,7 @@ import Select from '@/components/ui/Select'
 import EmberLoader from '@/components/ui/EmberLoader'
 import DataTable from '@/components/ui/DataTable'
 import Badge from '@/components/ui/Badge'
+import ConfirmAction from '@/components/ui/ConfirmAction'
 import { apiEndpoint } from '@/config/env'
 import { getAuthHeaders } from '@/services/auth'
 import { colours, spacing, typography, radii, transitions } from '@/config/tokens'
@@ -179,7 +180,6 @@ export default function AdminTemplates() {
   }
 
   const handleDeleteTemplate = async (template) => {
-    if (!confirm(`Delete template "${template.name}"?`)) return
     try {
       const res = await fetch(apiEndpoint(`/templates/${template.id}`), {
         method: 'DELETE',
@@ -315,7 +315,7 @@ export default function AdminTemplates() {
         <div style={{ display: 'flex', gap: spacing[2], alignItems: 'center' }}>
           <Button
             size="sm"
-            variant="outline"
+            variant="secondary"
             onClick={(e) => {
               e.stopPropagation()
               handleEditTemplate(row)
@@ -333,17 +333,12 @@ export default function AdminTemplates() {
           >
             {row.is_active ? 'Deactivate' : 'Activate'}
           </Button>
-          <Button
-            size="sm"
-            variant="danger"
-            onClick={(e) => {
-              e.stopPropagation()
-              handleDeleteTemplate(row)
-            }}
-            icon={<Trash2 size={14} />}
-          >
-            Delete
-          </Button>
+          <ConfirmAction
+            trigger={<Button size="sm" variant="danger" icon={<Trash2 size={14} />}>Delete</Button>}
+            onConfirm={() => handleDeleteTemplate(row)}
+            confirmVariant="danger"
+            message={`Delete "${row.name}"?`}
+          />
         </div>
       ),
     },

@@ -148,9 +148,9 @@ export default function AdminUsers() {
       ),
     },
     { key: 'email', label: 'Email', render: (_, row) => <span style={{ fontSize: '13px', color: colours.neutral[600] }}>{row.email}</span> },
-    { key: 'level', label: 'Level', render: (_, row) => <span style={{ color: colours.neutral[900] }}>{row.current_level || '-'}</span> },
-    { key: 'xp', label: 'XP', render: (_, row) => <span style={{ color: colours.neutral[900] }}>{row.total_xp || 0}</span> },
-    { key: 'task_count', label: 'Tasks', render: (_, row) => <span style={{ color: colours.neutral[900] }}>{row.task_count || 0}</span> },
+    { key: 'level', label: 'Level', render: (_, row) => <span style={{ color: colours.neutral[900] }}>{row.current_level ? `L${row.current_level}` : '-'}{row.level_name ? ` · ${row.level_name}` : ''}</span> },
+    { key: 'xp', label: 'XP', render: (_, row) => <span style={{ color: colours.neutral[900] }}>{(row.total_xp || 0).toLocaleString()}</span> },
+    { key: 'tasks_completed', label: 'Tasks', render: (_, row) => <span style={{ color: colours.neutral[900] }}>{row.tasks_completed || 0}</span> },
     {
       key: 'status',
       label: 'Status',

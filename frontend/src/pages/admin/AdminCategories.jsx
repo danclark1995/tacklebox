@@ -9,6 +9,7 @@ import Select from '@/components/ui/Select'
 import EmberLoader from '@/components/ui/EmberLoader'
 import DataTable from '@/components/ui/DataTable'
 import Badge from '@/components/ui/Badge'
+import ConfirmAction from '@/components/ui/ConfirmAction'
 import { apiEndpoint } from '@/config/env'
 import { getAuthHeaders } from '@/services/auth'
 import { spacing } from '@/config/tokens'
@@ -108,7 +109,6 @@ export default function AdminCategories() {
   }
 
   const handleDeleteCategory = async (category) => {
-    if (!confirm(`Delete category "${category.name}"?`)) return
     try {
       const res = await fetch(apiEndpoint(`/categories/${category.id}`), {
         method: 'DELETE',
@@ -127,8 +127,6 @@ export default function AdminCategories() {
   }
 
   const handleDeactivateCategory = async (categoryId) => {
-    if (!confirm('Are you sure you want to deactivate this category?')) return
-
     try {
       const res = await fetch(apiEndpoint(`/categories/${categoryId}/deactivate`), {
         method: 'PATCH',
@@ -199,13 +197,19 @@ export default function AdminCategories() {
             Edit
           </Button>
           {category.active && (
-            <Button size="sm" variant="danger" onClick={() => handleDeactivateCategory(category.id)}>
-              Deactivate
-            </Button>
+            <ConfirmAction
+              trigger={<Button size="sm" variant="danger">Deactivate</Button>}
+              onConfirm={() => handleDeactivateCategory(category.id)}
+              confirmVariant="danger"
+              message="Deactivate this category?"
+            />
           )}
-          <Button size="sm" variant="outline" onClick={() => handleDeleteCategory(category)}>
-            Delete
-          </Button>
+          <ConfirmAction
+            trigger={<Button size="sm" variant="danger">Delete</Button>}
+            onConfirm={() => handleDeleteCategory(category)}
+            confirmVariant="danger"
+            message={`Delete "${category.name}"?`}
+          />
         </div>
       )
     }

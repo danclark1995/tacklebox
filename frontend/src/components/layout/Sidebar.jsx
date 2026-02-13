@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { NavLink } from 'react-router-dom'
+import { NavLink, useNavigate } from 'react-router-dom'
 import { Home, CheckSquare, Users, Palette, Wrench, Settings, BookOpen, User, Compass, Menu, Flame } from 'lucide-react'
 import useAuth from '@/hooks/useAuth'
 import Avatar from '@/components/ui/Avatar'
@@ -33,7 +33,6 @@ const navItemsByRole = {
     { path: '/admin/brands', label: 'Brands', icon: <Palette size={ICON_SIZE} /> },
     { path: '/admin/journey', label: 'Journey', icon: <Compass size={ICON_SIZE} /> },
     { path: '/admin/tools', label: 'Tools', icon: <Wrench size={ICON_SIZE} /> },
-    { path: '/admin/settings', label: 'Settings', icon: <Settings size={ICON_SIZE} /> },
   ],
 }
 
@@ -45,16 +44,17 @@ const ROLE_DISPLAY = {
 
 export default function Sidebar() {
   const { user, logout } = useAuth()
+  const navigate = useNavigate()
   const [isOpen, setIsOpen] = useState(false)
 
   const [xpData, setXpData] = useState(null)
   const [supportCount, setSupportCount] = useState(0)
 
   useEffect(() => {
-    if (user?.role !== 'contractor' || !user?.id) return
+    if (!user?.id || user?.role === 'client') return
     async function loadXP() {
       try {
-        const res = await fetch(apiEndpoint(`/gamification/xp/${user.id}`), {
+        const res = await fetch(apiEndpoint('/gamification/me'), {
           headers: { ...getAuthHeaders() },
         })
         const json = await res.json()
@@ -268,16 +268,6 @@ export default function Sidebar() {
             >
               <span style={iconBoxStyle}>{item.icon}</span>
               <span>{item.label}</span>
-              {item.path === '/admin/settings' && supportCount > 0 && (
-                <span style={{
-                  width: '8px',
-                  height: '8px',
-                  borderRadius: '50%',
-                  backgroundColor: colours.neutral[900],
-                  marginLeft: 'auto',
-                  flexShrink: 0,
-                }} />
-              )}
             </NavLink>
           ))}
         </nav>
@@ -289,11 +279,32 @@ export default function Sidebar() {
               <div style={userNameStyle}>{user.display_name}</div>
               <div style={roleBadgeStyle}>{ROLE_DISPLAY[user.role]}</div>
             </div>
+            {(user.role === 'admin' || user.role === 'contractor') && (
+              <button
+                onClick={() => navigate(user.role === 'admin' ? '/admin/settings' : '/camper/profile')}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  color: colours.neutral[600],
+                  padding: spacing[1],
+                  borderRadius: radii.sm,
+                  display: 'flex',
+                  alignItems: 'center',
+                  flexShrink: 0,
+                }}
+              >
+                <Settings size={16} />
+              </button>
+            )}
           </div>
-          {user.role === 'contractor' && xpData && (
+          {user.role !== 'client' && xpData && (
             <div style={{ marginBottom: spacing[2] }}>
-              <div style={{ fontSize: '11px', color: '#666', marginBottom: '4px' }}>
-                Level {xpData.current_level || 1} · {(xpData.total_xp || 0).toLocaleString()} XP
+              <div style={{ fontSize: '11px', color: colours.neutral[500], marginBottom: '4px' }}>
+                Level {xpData.current_level || 1} · {xpData.current_level_details?.name || 'Volunteer'}
+              </div>
+              <div style={{ fontSize: '11px', color: colours.neutral[600], marginBottom: '4px' }}>
+                {(xpData.total_xp || 0).toLocaleString()} XP
               </div>
               <WaveProgressBar progress={xpProgress} size="sm" />
             </div>

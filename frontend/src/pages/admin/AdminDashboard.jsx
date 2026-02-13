@@ -4,11 +4,20 @@ import useToast from '@/hooks/useToast'
 import useAuth from '@/hooks/useAuth'
 import GlowCard from '@/components/ui/GlowCard'
 import Button from '@/components/ui/Button'
+import StatusBadge from '@/components/ui/StatusBadge'
 import EmberLoader from '@/components/ui/EmberLoader'
 import Leaderboard from '@/components/features/gamification/Leaderboard'
 import { apiEndpoint } from '@/config/env'
 import { getAuthHeaders } from '@/services/auth'
 import { colours, spacing, typography } from '@/config/tokens'
+
+const STATUS_FILTERS = [
+  { value: '', label: 'All' },
+  { value: 'submitted', label: 'Submitted' },
+  { value: 'assigned', label: 'Assigned' },
+  { value: 'in_progress', label: 'In Progress' },
+  { value: 'review', label: 'Review' },
+]
 
 export default function AdminDashboard() {
   const { addToast } = useToast()
@@ -18,6 +27,7 @@ export default function AdminDashboard() {
   const [users, setUsers] = useState([])
   const [leaderboard, setLeaderboard] = useState([])
   const [loading, setLoading] = useState(true)
+  const [statusFilter, setStatusFilter] = useState('')
 
   useEffect(() => {
     async function load() {
@@ -158,38 +168,57 @@ export default function AdminDashboard() {
 
       <div style={sectionStyle}>
         <h2 style={sectionTitleStyle}>Recent Tasks</h2>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: spacing[3] }}>
-          {tasks.slice(0, 5).map(task => (
-            <GlowCard
-              key={task.id}
-              glowOnHover
-              padding="16px 20px"
-              style={{ cursor: 'pointer' }}
-              onClick={() => navigate(`/admin/tasks/${task.id}`)}
+        <div style={{ display: 'flex', gap: spacing[2], marginBottom: spacing[4], flexWrap: 'wrap' }}>
+          {STATUS_FILTERS.map(f => (
+            <Button
+              key={f.value}
+              variant={statusFilter === f.value ? 'primary' : 'secondary'}
+              size="sm"
+              onClick={() => setStatusFilter(f.value)}
             >
-              <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: '15px', fontWeight: 600, color: '#ffffff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                    {task.title}
-                  </div>
-                  <div style={{ fontSize: '12px', color: colours.neutral[500], marginTop: '2px' }}>
-                    {[task.category_name, task.client_name].filter(Boolean).join(' \u00b7 ')}
-                  </div>
-                </div>
-                <span style={{
-                  fontSize: '11px',
-                  color: '#ffffff',
-                  backgroundColor: '#222',
-                  padding: '2px 8px',
-                  borderRadius: '4px',
-                  border: '1px solid #333',
-                  flexShrink: 0,
-                }}>
-                  {task.status}
-                </span>
-              </div>
-            </GlowCard>
+              {f.label}
+            </Button>
           ))}
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: spacing[3] }}>
+          {tasks
+            .filter(t => !statusFilter || t.status === statusFilter)
+            .slice(0, 10)
+            .map(task => {
+              const isOverdue = task.deadline && new Date(task.deadline) < new Date()
+              return (
+                <GlowCard
+                  key={task.id}
+                  glowOnHover
+                  padding="16px 20px"
+                  style={{ cursor: 'pointer' }}
+                  onClick={() => navigate(`/admin/tasks/${task.id}`)}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: '15px', fontWeight: 600, color: colours.neutral[900], whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {task.title}
+                      </div>
+                      <div style={{ fontSize: '12px', color: colours.neutral[500], marginTop: '2px' }}>
+                        {[task.category_name, task.client_name].filter(Boolean).join(' \u00b7 ')}
+                      </div>
+                    </div>
+                    {task.deadline && (
+                      <span style={{
+                        fontSize: '12px',
+                        color: isOverdue ? '#ff4444' : colours.neutral[600],
+                        fontWeight: isOverdue ? 600 : 400,
+                        flexShrink: 0,
+                        whiteSpace: 'nowrap',
+                      }}>
+                        Due: {new Date(task.deadline).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}
+                      </span>
+                    )}
+                    <StatusBadge status={task.status} />
+                  </div>
+                </GlowCard>
+              )
+            })}
         </div>
         <Button variant="ghost" size="sm" onClick={() => navigate('/admin/tasks')} style={{ marginTop: spacing[3], textDecoration: 'underline', padding: 0 }}>
           View all tasks

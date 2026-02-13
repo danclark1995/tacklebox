@@ -26,15 +26,20 @@ export async function handleUsers(request, env, auth, path, method) {
       const url = new URL(request.url)
       const roleFilter = url.searchParams.get('role')
 
-      let query = 'SELECT id, email, role, display_name, company, avatar_url, is_active, created_at FROM users'
+      let query = `SELECT u.id, u.email, u.role, u.display_name, u.company, u.avatar_url, u.is_active, u.created_at,
+        cx.total_xp, cx.current_level, cx.tasks_completed,
+        xl.name as level_name
+        FROM users u
+        LEFT JOIN contractor_xp cx ON u.id = cx.user_id
+        LEFT JOIN xp_levels xl ON cx.current_level = xl.level`
       const bindings = []
 
       if (roleFilter) {
-        query += ' WHERE role = ?'
+        query += ' WHERE u.role = ?'
         bindings.push(roleFilter)
       }
 
-      query += ' ORDER BY created_at DESC'
+      query += ' ORDER BY u.created_at DESC'
 
       const stmt = env.DB.prepare(query)
       const result = bindings.length > 0 ? await stmt.bind(...bindings).all() : await stmt.all()

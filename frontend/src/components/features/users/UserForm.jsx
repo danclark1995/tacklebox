@@ -194,36 +194,35 @@ export default function UserForm({
         />
       </div>
 
-      {/* Password */}
-      <div>
-        <label style={{
-          display: 'block',
-          fontSize: '14px',
-          fontWeight: 500,
-          color: colours.neutral[700],
-          marginBottom: spacing[2],
-        }}>
-          Password {!isEditMode && <span style={{ color: colours.neutral[700] }}>*</span>}
-          {isEditMode && ' (leave blank to keep current)'}
-        </label>
-        <Input
-          type="password"
-          value={formData.password}
-          onChange={(e) => handleChange('password', e.target.value)}
-          placeholder={isEditMode ? 'Leave blank to keep current password' : 'Enter password'}
-          disabled={loading}
-        />
-        {!isEditMode && (
+      {/* Password — only show when creating new user */}
+      {!isEditMode && (
+        <div>
+          <label style={{
+            display: 'block',
+            fontSize: '14px',
+            fontWeight: 500,
+            color: colours.neutral[700],
+            marginBottom: spacing[2],
+          }}>
+            Password <span style={{ color: colours.neutral[700] }}>*</span>
+          </label>
+          <Input
+            type="password"
+            value={formData.password}
+            onChange={(e) => handleChange('password', e.target.value)}
+            placeholder="Enter password"
+            disabled={loading}
+          />
           <span style={{ fontSize: '12px', color: colours.neutral[500], marginTop: spacing[1], display: 'block' }}>
             Must be at least 8 characters with uppercase, lowercase, and number
           </span>
-        )}
-        {errors.password && (
-          <span style={{ color: colours.neutral[700], fontSize: '13px', marginTop: spacing[1], display: 'block' }}>
-            {errors.password}
-          </span>
-        )}
-      </div>
+          {errors.password && (
+            <span style={{ color: colours.neutral[700], fontSize: '13px', marginTop: spacing[1], display: 'block' }}>
+              {errors.password}
+            </span>
+          )}
+        </div>
+      )}
 
       {/* Submit Button */}
       <div style={{ marginTop: spacing[2] }}>
