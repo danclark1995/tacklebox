@@ -19,7 +19,6 @@ const Button = ({
     fontFamily: typography.fontFamily.sans,
     fontWeight: typography.fontWeight.medium,
     borderRadius: radii.md,
-    border: 'none',
     cursor: disabled || loading ? 'not-allowed' : 'pointer',
     transition: `all ${transitions.normal}`,
     display: 'inline-flex',
@@ -53,7 +52,7 @@ const Button = ({
     primary: {
       backgroundColor: '#ffffff',
       color: '#0a0a0a',
-      border: 'none',
+      border: '1px solid transparent',
     },
     secondary: {
       backgroundColor: 'transparent',
@@ -68,7 +67,7 @@ const Button = ({
     ghost: {
       backgroundColor: 'transparent',
       color: '#999',
-      border: 'none',
+      border: '1px solid transparent',
     },
     danger: {
       backgroundColor: 'transparent',
@@ -79,10 +78,10 @@ const Button = ({
 
   const hoverStyles = {
     primary: { boxShadow: '0 0 12px rgba(255, 255, 255, 0.15)', filter: 'brightness(0.95)' },
-    secondary: { borderColor: '#555', boxShadow: '0 0 8px rgba(255, 255, 255, 0.06)' },
-    outline: { borderColor: '#555', boxShadow: '0 0 8px rgba(255, 255, 255, 0.06)' },
+    secondary: { border: '1px solid #555', boxShadow: '0 0 8px rgba(255, 255, 255, 0.06)' },
+    outline: { border: '1px solid #555', boxShadow: '0 0 8px rgba(255, 255, 255, 0.06)' },
     ghost: { color: '#fff', backgroundColor: 'rgba(255,255,255,0.05)' },
-    danger: { backgroundColor: 'rgba(255, 68, 68, 0.1)', borderColor: 'rgba(255, 68, 68, 0.5)' },
+    danger: { backgroundColor: 'rgba(255, 68, 68, 0.1)', border: '1px solid rgba(255, 68, 68, 0.5)' },
   }
 
   const [isHovered, setIsHovered] = React.useState(false)
