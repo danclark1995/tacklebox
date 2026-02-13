@@ -1,52 +1,70 @@
 import { useState, useEffect } from 'react'
 import { useParams, Link } from 'react-router-dom'
+import { FileText, Check, Upload, X } from 'lucide-react'
 import useToast from '@/hooks/useToast'
+import useAuth from '@/hooks/useAuth'
 import PageHeader from '@/components/ui/PageHeader'
 import Button from '@/components/ui/Button'
+import GlowCard from '@/components/ui/GlowCard'
 import EmberLoader from '@/components/ui/EmberLoader'
-import EmptyState from '@/components/ui/EmptyState'
 import BrandProfileEditor from '@/components/features/brand/BrandProfileEditor'
-import BrandGuideCard from '@/components/features/brand/BrandGuideCard'
-import FileUpload from '@/components/ui/FileUpload'
 import { apiEndpoint } from '@/config/env'
 import { getAuthHeaders } from '@/services/auth'
-import { spacing, colours, typography } from '@/config/tokens'
+import { spacing, colours, typography, radii, transitions } from '@/config/tokens'
 
 export default function AdminBrandProfileEdit() {
   const { clientId } = useParams()
   const { addToast } = useToast()
+  const { user } = useAuth()
   const [brandProfile, setBrandProfile] = useState(null)
-  const [brandGuides, setBrandGuides] = useState([])
   const [logos, setLogos] = useState([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [extracting, setExtracting] = useState(false)
-  const [uploading, setUploading] = useState(false)
+  const [uploadingPdf, setUploadingPdf] = useState(false)
+  const [uploadProgress, setUploadProgress] = useState(0)
+  const [canUpload, setCanUpload] = useState(false)
+  const [isDragging, setIsDragging] = useState(false)
 
   useEffect(() => {
     loadData()
   }, [clientId])
 
+  // Determine upload permission
+  useEffect(() => {
+    if (!user) return
+    if (user.role === 'admin') {
+      setCanUpload(true)
+      return
+    }
+    if (user.role === 'contractor') {
+      // Check level from gamification endpoint
+      async function checkLevel() {
+        try {
+          const res = await fetch(apiEndpoint('/gamification/me'), { headers: { ...getAuthHeaders() } })
+          const json = await res.json()
+          if (json.success && json.data && json.data.current_level >= 7) {
+            setCanUpload(true)
+          }
+        } catch { /* leave canUpload false */ }
+      }
+      checkLevel()
+    }
+  }, [user])
+
   const loadData = async () => {
     try {
-      const [profileRes, guidesRes] = await Promise.all([
-        fetch(apiEndpoint(`/brand-profiles/${clientId}`), { headers: { ...getAuthHeaders() } }),
-        fetch(apiEndpoint(`/brand-guides?client_id=${clientId}`), { headers: { ...getAuthHeaders() } })
-      ])
-
+      const profileRes = await fetch(apiEndpoint(`/brand-profiles/${clientId}`), { headers: { ...getAuthHeaders() } })
       const profileJson = await profileRes.json()
-      const guidesJson = await guidesRes.json()
 
       if (profileJson.success) {
         setBrandProfile(profileJson.data)
-        // Fetch logos once we know the profile exists
         try {
           const logosRes = await fetch(apiEndpoint(`/brand-profiles/${clientId}/logos`), { headers: { ...getAuthHeaders() } })
           const logosJson = await logosRes.json()
           if (logosJson.success) setLogos(logosJson.data || [])
         } catch { /* logos table may not exist yet */ }
       }
-      if (guidesJson.success) setBrandGuides(guidesJson.data)
     } catch (err) {
       addToast(err.message, 'error')
     } finally {
@@ -153,58 +171,83 @@ export default function AdminBrandProfileEdit() {
     }
   }
 
-  const handleUploadGuide = async (files) => {
-    setUploading(true)
+  const handleUploadGuidePdf = async (file) => {
+    if (!file || !file.name.toLowerCase().endsWith('.pdf')) {
+      addToast('Only PDF files are accepted', 'error')
+      return
+    }
+    if (file.size > 50 * 1024 * 1024) {
+      addToast('File size must be under 50MB', 'error')
+      return
+    }
+
+    setUploadingPdf(true)
+    setUploadProgress(10)
     try {
       const formData = new FormData()
-      formData.append('client_id', clientId)
-      for (const file of files) {
-        formData.append('files', file)
-      }
+      formData.append('file', file)
 
-      const res = await fetch(apiEndpoint('/brand-guides'), {
+      setUploadProgress(30)
+      const res = await fetch(apiEndpoint(`/brand-profiles/${clientId}/guide-pdf`), {
         method: 'POST',
-        headers: {
-          ...getAuthHeaders()
-        },
-        body: formData
+        headers: { ...getAuthHeaders() },
+        body: formData,
       })
+      setUploadProgress(80)
 
       const json = await res.json()
 
       if (json.success) {
-        setBrandGuides([...brandGuides, ...json.data])
+        setBrandProfile(prev => prev ? { ...prev, brand_guide_path: json.data.brand_guide_path } : prev)
+        setUploadProgress(100)
         addToast('Brand guide uploaded successfully', 'success')
       } else {
-        addToast(json.message || 'Failed to upload brand guide', 'error')
+        addToast(json.error || 'Failed to upload brand guide', 'error')
       }
     } catch (err) {
       addToast(err.message, 'error')
     } finally {
-      setUploading(false)
+      setTimeout(() => {
+        setUploadingPdf(false)
+        setUploadProgress(0)
+      }, 500)
     }
   }
 
-  const handleDeleteGuide = async (guideId) => {
-    if (!confirm('Are you sure you want to delete this brand guide?')) return
-
+  const handleRemoveGuide = async () => {
+    setSaving(true)
     try {
-      const res = await fetch(apiEndpoint(`/brand-guides/${guideId}`), {
-        method: 'DELETE',
-        headers: { ...getAuthHeaders() }
+      const res = await fetch(apiEndpoint(`/brand-profiles/${clientId}`), {
+        method: 'PUT',
+        headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
+        body: JSON.stringify({ brand_guide_path: null })
       })
-
       const json = await res.json()
-
       if (json.success) {
-        setBrandGuides(brandGuides.filter(g => g.id !== guideId))
-        addToast('Brand guide deleted successfully', 'success')
+        setBrandProfile(prev => prev ? { ...prev, brand_guide_path: null } : prev)
+        addToast('Brand guide removed', 'success')
       } else {
-        addToast(json.message || 'Failed to delete brand guide', 'error')
+        addToast(json.error || 'Failed to remove brand guide', 'error')
       }
     } catch (err) {
       addToast(err.message, 'error')
+    } finally {
+      setSaving(false)
     }
+  }
+
+  const handlePdfDrop = (e) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setIsDragging(false)
+    const file = e.dataTransfer.files[0]
+    if (file) handleUploadGuidePdf(file)
+  }
+
+  const handlePdfFileSelect = (e) => {
+    const file = e.target.files[0]
+    if (file) handleUploadGuidePdf(file)
+    e.target.value = ''
   }
 
   if (loading) {
@@ -215,49 +258,205 @@ export default function AdminBrandProfileEdit() {
     )
   }
 
-  const backLinkStyle = {
-    display: 'inline-flex',
-    alignItems: 'center',
-    gap: spacing[2],
-    color: colours.neutral[900],
-    textDecoration: 'none',
-    fontSize: typography.fontSize.sm,
-    fontWeight: typography.fontWeight.medium,
-    marginBottom: spacing[4],
-  }
-
-  const sectionStyle = {
-    marginBottom: spacing[8],
-  }
-
-  const sectionHeaderStyle = {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: spacing[4],
-  }
-
-  const sectionTitleStyle = {
-    fontSize: typography.fontSize.xl,
-    fontWeight: typography.fontWeight.semibold,
-    color: colours.neutral[900],
-  }
-
-  const guidesGridStyle = {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))',
-    gap: spacing[4],
-  }
+  const hasGuide = brandProfile && brandProfile.brand_guide_path
 
   return (
     <div>
-      <Link to="/admin/brands" style={backLinkStyle}>
+      <Link to="/admin/brands" style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: spacing[2],
+        color: colours.neutral[900],
+        textDecoration: 'none',
+        fontSize: typography.fontSize.sm,
+        fontWeight: typography.fontWeight.medium,
+        marginBottom: spacing[4],
+      }}>
         ← Back to Brand Profiles
       </Link>
 
-      <PageHeader title="Edit Brand Profile" />
+      <PageHeader title="Brand Breakdown" />
 
-      <div style={sectionStyle}>
+      {/* Brand Guide PDF Upload */}
+      <div style={{ marginBottom: spacing[8] }}>
+        <h2 style={{
+          fontSize: typography.fontSize.xl,
+          fontWeight: typography.fontWeight.semibold,
+          color: colours.neutral[900],
+          marginBottom: spacing[4],
+        }}>
+          Brand Guide PDF
+        </h2>
+
+        {canUpload ? (
+          <GlowCard style={{ padding: spacing[5] }}>
+            {hasGuide && !uploadingPdf ? (
+              <div style={{ display: 'flex', alignItems: 'center', gap: spacing[3] }}>
+                <div style={{
+                  width: '40px',
+                  height: '40px',
+                  borderRadius: radii.md,
+                  backgroundColor: colours.neutral[100],
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexShrink: 0,
+                }}>
+                  <FileText size={20} color={colours.neutral[700]} />
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{
+                    fontSize: typography.fontSize.sm,
+                    fontWeight: typography.fontWeight.medium,
+                    color: colours.neutral[900],
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: spacing[2],
+                  }}>
+                    <Check size={14} color={colours.neutral[700]} />
+                    brand-guide.pdf
+                  </div>
+                  <div style={{ fontSize: '12px', color: colours.neutral[500], marginTop: '2px' }}>
+                    {brandProfile.brand_guide_path}
+                  </div>
+                </div>
+                <div style={{ display: 'flex', gap: spacing[2], flexShrink: 0 }}>
+                  <label style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    cursor: 'pointer',
+                    fontSize: typography.fontSize.sm,
+                    color: colours.neutral[700],
+                    padding: `${spacing[2]} ${spacing[3]}`,
+                    border: '1px solid #333',
+                    borderRadius: radii.md,
+                    transition: `border-color ${transitions.fast}`,
+                  }}>
+                    <Upload size={14} />
+                    Replace
+                    <input
+                      type="file"
+                      accept=".pdf"
+                      onChange={handlePdfFileSelect}
+                      style={{ display: 'none' }}
+                    />
+                  </label>
+                  <button
+                    onClick={handleRemoveGuide}
+                    disabled={saving}
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      cursor: 'pointer',
+                      fontSize: typography.fontSize.sm,
+                      color: colours.neutral[500],
+                      padding: `${spacing[2]} ${spacing[3]}`,
+                      border: '1px solid #333',
+                      borderRadius: radii.md,
+                      background: 'none',
+                      transition: `color ${transitions.fast}`,
+                    }}
+                  >
+                    <X size={14} />
+                    Remove
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div>
+                {/* Upload progress */}
+                {uploadingPdf && (
+                  <div style={{ marginBottom: spacing[4] }}>
+                    <div style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      marginBottom: spacing[2],
+                      fontSize: typography.fontSize.sm,
+                      color: colours.neutral[700],
+                    }}>
+                      <span>Uploading brand guide...</span>
+                      <span>{uploadProgress}%</span>
+                    </div>
+                    <div style={{
+                      width: '100%',
+                      height: '4px',
+                      backgroundColor: colours.neutral[200],
+                      borderRadius: '2px',
+                      overflow: 'hidden',
+                    }}>
+                      <div style={{
+                        width: `${uploadProgress}%`,
+                        height: '100%',
+                        backgroundColor: colours.neutral[900],
+                        borderRadius: '2px',
+                        transition: 'width 0.3s ease',
+                      }} />
+                    </div>
+                  </div>
+                )}
+
+                {/* Drop zone */}
+                {!uploadingPdf && (
+                  <div
+                    onDragEnter={(e) => { e.preventDefault(); setIsDragging(true) }}
+                    onDragLeave={(e) => { e.preventDefault(); setIsDragging(false) }}
+                    onDragOver={(e) => e.preventDefault()}
+                    onDrop={handlePdfDrop}
+                    style={{
+                      border: `2px dashed ${isDragging ? colours.neutral[700] : colours.neutral[300]}`,
+                      borderRadius: radii.lg,
+                      padding: spacing[8],
+                      textAlign: 'center',
+                      backgroundColor: isDragging ? colours.neutral[100] : 'transparent',
+                      transition: `all ${transitions.normal}`,
+                      cursor: 'pointer',
+                    }}
+                    onClick={() => document.getElementById('pdf-upload-input').click()}
+                  >
+                    <FileText size={32} color={colours.neutral[400]} style={{ margin: '0 auto 8px' }} />
+                    <div style={{
+                      fontSize: typography.fontSize.base,
+                      color: colours.neutral[700],
+                      marginBottom: spacing[1],
+                    }}>
+                      Drop PDF here or click to browse
+                    </div>
+                    <div style={{
+                      fontSize: typography.fontSize.sm,
+                      color: colours.neutral[500],
+                    }}>
+                      PDF only, max 50MB
+                    </div>
+                    <input
+                      id="pdf-upload-input"
+                      type="file"
+                      accept=".pdf"
+                      onChange={handlePdfFileSelect}
+                      style={{ display: 'none' }}
+                    />
+                  </div>
+                )}
+              </div>
+            )}
+          </GlowCard>
+        ) : (
+          <GlowCard style={{ padding: spacing[5] }}>
+            <div style={{
+              textAlign: 'center',
+              color: colours.neutral[500],
+              fontSize: typography.fontSize.sm,
+              padding: spacing[4],
+            }}>
+              Camp Leader rank required to upload brand guides
+            </div>
+          </GlowCard>
+        )}
+      </div>
+
+      {/* Brand Profile Editor (the breakdown) */}
+      <div style={{ marginBottom: spacing[8] }}>
         <BrandProfileEditor
           profile={brandProfile}
           clientId={clientId}
@@ -269,38 +468,6 @@ export default function AdminBrandProfileEdit() {
           onDeleteLogo={handleDeleteLogo}
           saving={saving}
         />
-      </div>
-
-      <div style={sectionStyle}>
-        <div style={sectionHeaderStyle}>
-          <h2 style={sectionTitleStyle}>Brand Guides</h2>
-          <FileUpload
-            onUpload={handleUploadGuide}
-            multiple
-            disabled={uploading}
-            accept=".pdf,.doc,.docx"
-          >
-            Upload Guide
-          </FileUpload>
-        </div>
-
-        {brandGuides.length > 0 ? (
-          <div style={guidesGridStyle}>
-            {brandGuides.map(guide => (
-              <BrandGuideCard
-                key={guide.id}
-                guide={guide}
-                onDelete={() => handleDeleteGuide(guide.id)}
-                showActions
-              />
-            ))}
-          </div>
-        ) : (
-          <EmptyState
-            title="No brand guides yet"
-            message="Upload brand guides to help campers understand the client's brand."
-          />
-        )}
       </div>
     </div>
   )

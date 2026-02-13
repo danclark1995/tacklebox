@@ -312,6 +312,72 @@ export async function handleBrandProfiles(request, env, auth, path, method) {
     }
   }
 
+  // --- POST /brand-profiles/:clientId/guide-pdf — upload brand guide PDF to R2 ---
+  if (guidePdfMatch && method === 'POST') {
+    const clientId = guidePdfMatch[1]
+    const authCheck = requireAuth(auth)
+    if (!authCheck.authorized) return jsonResponse({ success: false, error: authCheck.error }, authCheck.status)
+
+    // Permission: admin always, contractor with level >= 7
+    const user = auth.user
+    if (user.role === 'contractor') {
+      const xp = await env.DB.prepare(
+        'SELECT current_level FROM contractor_xp WHERE user_id = ?'
+      ).bind(user.id).first()
+      if (!xp || xp.current_level < 7) {
+        return jsonResponse({ success: false, error: 'Camp Leader rank (level 7+) required to upload brand guides' }, 403)
+      }
+    } else if (user.role !== 'admin') {
+      return jsonResponse({ success: false, error: 'Insufficient permissions' }, 403)
+    }
+
+    try {
+      const formData = await request.formData()
+      const file = formData.get('file')
+      if (!file) return jsonResponse({ success: false, error: 'No PDF file provided' }, 400)
+
+      if (!file.name.toLowerCase().endsWith('.pdf')) {
+        return jsonResponse({ success: false, error: 'Only PDF files are accepted' }, 400)
+      }
+
+      // Get client info to derive slug
+      const client = await env.DB.prepare(
+        'SELECT company, display_name FROM users WHERE id = ?'
+      ).bind(clientId).first()
+      if (!client) return jsonResponse({ success: false, error: 'Client not found' }, 404)
+
+      const brandName = client.company || client.display_name || clientId
+      const slug = brandName.toLowerCase().replace(/[^a-z0-9\s-]/g, '').replace(/\s+/g, '-')
+      const r2Path = `brand-guides/${slug}/brand-guide.pdf`
+
+      const arrayBuffer = await file.arrayBuffer()
+      await env.tacklebox_storage.put(r2Path, arrayBuffer, {
+        httpMetadata: { contentType: 'application/pdf' },
+      })
+
+      // Ensure brand profile exists, then update path
+      const existing = await env.DB.prepare(
+        'SELECT id FROM brand_profiles WHERE client_id = ?'
+      ).bind(clientId).first()
+
+      if (existing) {
+        await env.DB.prepare(
+          'UPDATE brand_profiles SET brand_guide_path = ?, updated_at = datetime("now") WHERE client_id = ?'
+        ).bind(r2Path, clientId).run()
+      } else {
+        const profileId = crypto.randomUUID()
+        await env.DB.prepare(
+          'INSERT INTO brand_profiles (id, client_id, brand_guide_path) VALUES (?, ?, ?)'
+        ).bind(profileId, clientId, r2Path).run()
+      }
+
+      return jsonResponse({ success: true, data: { brand_guide_path: r2Path } })
+    } catch (err) {
+      console.error('Brand guide PDF upload error:', err)
+      return jsonResponse({ success: false, error: 'Failed to upload brand guide' }, 500)
+    }
+  }
+
   // --- Logo routes: /brand-profiles/:clientId/logos ---
   const logosMatch = path.match(/^\/brand-profiles\/([^\/]+)\/logos(?:\/([^\/]+))?$/)
   if (logosMatch) {

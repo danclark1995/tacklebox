@@ -107,7 +107,7 @@ export default function AdminBrandProfiles() {
                   size="sm"
                   onClick={() => navigate(`/admin/brands/${client.id}/edit`)}
                 >
-                  Edit
+                  Brand Breakdown
                 </Button>
               </div>
             </GlowCard>
