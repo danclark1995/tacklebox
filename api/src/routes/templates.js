@@ -296,7 +296,7 @@ export async function handleTemplates(request, env, auth, path, method) {
     if (!authCheck.authorized) {
       return jsonResponse({ success: false, error: authCheck.error }, authCheck.status)
     }
-    const roleCheck = requireRole(auth, ['admin'])
+    const roleCheck = requireRole(auth, 'admin')
     if (!roleCheck.authorized) {
       return jsonResponse({ success: false, error: roleCheck.error }, roleCheck.status)
     }

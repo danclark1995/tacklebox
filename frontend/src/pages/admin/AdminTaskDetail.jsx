@@ -8,6 +8,7 @@ import Modal from '@/components/ui/Modal'
 import Select from '@/components/ui/Select'
 import Textarea from '@/components/ui/Textarea'
 import GlowCard from '@/components/ui/GlowCard'
+import ConfirmAction from '@/components/ui/ConfirmAction'
 import TaskDetail from '@/components/features/tasks/TaskDetail'
 import AIAssistantPanel from '@/components/features/tasks/AIAssistantPanel'
 import { apiEndpoint } from '@/config/env'
@@ -700,63 +701,13 @@ export default function AdminTaskDetail() {
 
       {/* Delete Task */}
       <div style={{ marginTop: spacing[8], paddingTop: spacing[6], borderTop: '1px solid #1a1a1a' }}>
-        {!confirmingDelete ? (
-          <button
-            onClick={() => setConfirmingDelete(true)}
-            style={{
-              background: 'transparent',
-              color: '#ff4444',
-              border: '1px solid #ff4444',
-              borderRadius: '6px',
-              fontSize: '13px',
-              padding: '8px 20px',
-              cursor: 'pointer',
-              fontFamily: 'inherit',
-              fontWeight: 500,
-            }}
-          >
-            Delete Task
-          </button>
-        ) : (
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <span style={{ fontSize: '13px', color: colours.neutral[500] }}>
-              Delete this task? This cannot be undone.
-            </span>
-            <button
-              onClick={handleDeleteTask}
-              disabled={deleting}
-              style={{
-                backgroundColor: '#ff4444',
-                color: '#ffffff',
-                border: 'none',
-                borderRadius: '6px',
-                fontSize: '12px',
-                padding: '6px 16px',
-                cursor: deleting ? 'wait' : 'pointer',
-                fontFamily: 'inherit',
-                fontWeight: 600,
-                opacity: deleting ? 0.7 : 1,
-              }}
-            >
-              {deleting ? 'Deleting...' : 'Confirm'}
-            </button>
-            <button
-              onClick={() => setConfirmingDelete(false)}
-              style={{
-                backgroundColor: 'transparent',
-                color: colours.neutral[500],
-                border: '1px solid #333',
-                borderRadius: '6px',
-                fontSize: '12px',
-                padding: '6px 16px',
-                cursor: 'pointer',
-                fontFamily: 'inherit',
-              }}
-            >
-              Cancel
-            </button>
-          </div>
-        )}
+        <ConfirmAction
+          trigger={<Button variant="danger" size="sm">Delete Task</Button>}
+          message="Delete this task? This cannot be undone."
+          confirmLabel={deleting ? 'Deleting...' : 'Confirm'}
+          confirmVariant="danger"
+          onConfirm={handleDeleteTask}
+        />
       </div>
     </div>
   )

@@ -333,24 +333,17 @@ export default function AdminTemplates() {
           >
             {row.is_active ? 'Deactivate' : 'Activate'}
           </Button>
-          <button
+          <Button
+            size="sm"
+            variant="danger"
             onClick={(e) => {
               e.stopPropagation()
               handleDeleteTemplate(row)
             }}
-            style={{
-              background: 'none',
-              border: 'none',
-              cursor: 'pointer',
-              padding: '4px',
-              display: 'flex',
-              alignItems: 'center',
-              color: colours.neutral[500],
-            }}
-            title="Delete template"
+            icon={<Trash2 size={14} />}
           >
-            <Trash2 size={16} />
-          </button>
+            Delete
+          </Button>
         </div>
       ),
     },

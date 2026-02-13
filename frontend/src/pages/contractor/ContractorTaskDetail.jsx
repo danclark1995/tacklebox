@@ -4,6 +4,7 @@ import { Undo2 } from 'lucide-react'
 import useToast from '@/hooks/useToast'
 import EmberLoader from '@/components/ui/EmberLoader'
 import Button from '@/components/ui/Button'
+import ConfirmAction from '@/components/ui/ConfirmAction'
 import FileUpload from '@/components/ui/FileUpload'
 import Select from '@/components/ui/Select'
 import TaskDetail from '@/components/features/tasks/TaskDetail'
@@ -404,49 +405,14 @@ export default function ContractorTaskDetail() {
             <Button onClick={() => handleStatusChange('in_progress')}>
               Start Work
             </Button>
-            {!confirmingPass ? (
-              <Button variant="secondary" onClick={() => setConfirmingPass(true)} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
-                <Undo2 size={14} />
-                Pass
-              </Button>
-            ) : (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span style={{ fontSize: '13px', color: colours.neutral[500] }}>Return this task to the campfire?</span>
-                <button
-                  onClick={handlePass}
-                  disabled={passing}
-                  style={{
-                    backgroundColor: '#ffffff',
-                    color: '#111111',
-                    border: 'none',
-                    borderRadius: '6px',
-                    fontWeight: 600,
-                    fontSize: '12px',
-                    padding: '6px 16px',
-                    cursor: passing ? 'wait' : 'pointer',
-                    fontFamily: 'inherit',
-                    opacity: passing ? 0.7 : 1,
-                  }}
-                >
-                  {passing ? 'Passing...' : 'Confirm'}
-                </button>
-                <button
-                  onClick={() => setConfirmingPass(false)}
-                  style={{
-                    backgroundColor: 'transparent',
-                    color: colours.neutral[500],
-                    border: '1px solid #333',
-                    borderRadius: '6px',
-                    fontSize: '12px',
-                    padding: '6px 16px',
-                    cursor: 'pointer',
-                    fontFamily: 'inherit',
-                  }}
-                >
-                  Cancel
-                </button>
-              </div>
-            )}
+            <ConfirmAction
+              trigger={
+                <Button variant="secondary" icon={<Undo2 size={14} />}>Pass</Button>
+              }
+              message="Return this task to the campfire?"
+              confirmLabel={passing ? 'Passing...' : 'Confirm'}
+              onConfirm={handlePass}
+            />
           </>
         )}
 

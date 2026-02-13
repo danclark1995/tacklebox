@@ -51,22 +51,24 @@ const Button = ({
 
   const variantStyles = {
     primary: {
-      backgroundColor: colours.neutral[900],
-      color: colours.neutral[50],
+      backgroundColor: '#ffffff',
+      color: '#0a0a0a',
+      border: 'none',
     },
     secondary: {
       backgroundColor: 'transparent',
-      color: colours.neutral[900],
-      border: `1px solid ${colours.neutral[900]}`,
+      color: '#ffffff',
+      border: '1px solid #333',
     },
     outline: {
       backgroundColor: 'transparent',
-      color: colours.neutral[900],
-      border: `1px solid ${colours.neutral[300]}`,
+      color: '#ffffff',
+      border: '1px solid #333',
     },
     ghost: {
       backgroundColor: 'transparent',
-      color: colours.neutral[700],
+      color: '#999',
+      border: 'none',
     },
     danger: {
       backgroundColor: 'transparent',
@@ -79,8 +81,8 @@ const Button = ({
     primary: { boxShadow: '0 0 12px rgba(255, 255, 255, 0.15)', filter: 'brightness(0.95)' },
     secondary: { borderColor: '#555', boxShadow: '0 0 8px rgba(255, 255, 255, 0.06)' },
     outline: { borderColor: '#555', boxShadow: '0 0 8px rgba(255, 255, 255, 0.06)' },
-    ghost: { backgroundColor: colours.neutral[200] },
-    danger: { backgroundColor: 'rgba(255, 68, 68, 0.1)' },
+    ghost: { color: '#fff', backgroundColor: 'rgba(255,255,255,0.05)' },
+    danger: { backgroundColor: 'rgba(255, 68, 68, 0.1)', borderColor: 'rgba(255, 68, 68, 0.5)' },
   }
 
   const [isHovered, setIsHovered] = React.useState(false)

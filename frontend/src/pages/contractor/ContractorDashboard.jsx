@@ -4,6 +4,8 @@ import { Flame, Wrench, ChevronDown } from 'lucide-react'
 import useAuth from '@/hooks/useAuth'
 import useToast from '@/hooks/useToast'
 import GlowCard from '@/components/ui/GlowCard'
+import Button from '@/components/ui/Button'
+import ConfirmAction from '@/components/ui/ConfirmAction'
 import EmberLoader from '@/components/ui/EmberLoader'
 import EmptyState from '@/components/ui/EmptyState'
 import TaskList from '@/components/features/tasks/TaskList'
@@ -360,60 +362,11 @@ export default function ContractorDashboard() {
 
                     {/* Right: action button(s) */}
                     <div style={{ flexShrink: 0, display: 'flex', gap: '6px' }}>
-                      {!isConfirming ? (
-                        <button
-                          onClick={() => setConfirmingClaim(task.id)}
-                          style={{
-                            backgroundColor: '#ffffff',
-                            color: '#111111',
-                            border: 'none',
-                            borderRadius: '6px',
-                            fontWeight: 600,
-                            fontSize: '12px',
-                            padding: '6px 16px',
-                            cursor: 'pointer',
-                            fontFamily: 'inherit',
-                          }}
-                        >
-                          Pick Up
-                        </button>
-                      ) : (
-                        <>
-                          <button
-                            onClick={() => handleClaim(task.id)}
-                            disabled={isClaiming}
-                            style={{
-                              backgroundColor: '#ffffff',
-                              color: '#111111',
-                              border: 'none',
-                              borderRadius: '6px',
-                              fontWeight: 600,
-                              fontSize: '12px',
-                              padding: '6px 16px',
-                              cursor: isClaiming ? 'wait' : 'pointer',
-                              fontFamily: 'inherit',
-                              opacity: isClaiming ? 0.7 : 1,
-                            }}
-                          >
-                            {isClaiming ? 'Claiming...' : 'Confirm'}
-                          </button>
-                          <button
-                            onClick={() => setConfirmingClaim(null)}
-                            style={{
-                              backgroundColor: 'transparent',
-                              color: colours.neutral[500],
-                              border: '1px solid #333',
-                              borderRadius: '6px',
-                              fontSize: '12px',
-                              padding: '6px 16px',
-                              cursor: 'pointer',
-                              fontFamily: 'inherit',
-                            }}
-                          >
-                            Cancel
-                          </button>
-                        </>
-                      )}
+                      <ConfirmAction
+                        trigger={<Button size="sm">Pick Up</Button>}
+                        confirmLabel={isClaiming ? 'Claiming...' : 'Confirm'}
+                        onConfirm={() => handleClaim(task.id)}
+                      />
                     </div>
                   </div>
                 </GlowCard>
@@ -451,24 +404,9 @@ export default function ContractorDashboard() {
           <ToolboxGrid tools={showAllTools ? toolboxTools : toolboxTools.slice(0, 6)} />
           {toolboxTools.length > 6 && !showAllTools && (
             <div style={{ textAlign: 'center', marginTop: spacing[4] }}>
-              <button
-                onClick={() => setShowAllTools(true)}
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  color: '#ffffff',
-                  cursor: 'pointer',
-                  fontSize: typography.fontSize.sm,
-                  fontWeight: typography.fontWeight.medium,
-                  fontFamily: 'inherit',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '4px',
-                }}
-              >
+              <Button variant="ghost" size="sm" onClick={() => setShowAllTools(true)} icon={<ChevronDown size={14} />}>
                 View all ({toolboxTools.length})
-                <ChevronDown size={14} />
-              </button>
+              </Button>
             </div>
           )}
         </div>
