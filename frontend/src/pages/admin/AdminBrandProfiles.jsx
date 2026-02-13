@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { BookOpen } from 'lucide-react'
+import { BookOpen, FileText } from 'lucide-react'
 import useToast from '@/hooks/useToast'
 import PageHeader from '@/components/ui/PageHeader'
 import Button from '@/components/ui/Button'
@@ -8,6 +8,7 @@ import GlowCard from '@/components/ui/GlowCard'
 import EmberLoader from '@/components/ui/EmberLoader'
 import EmptyState from '@/components/ui/EmptyState'
 import BrandBooklet from '@/components/features/brand/BrandBooklet'
+import BrandGuidePDFViewer from '@/components/features/brand/BrandGuidePDFViewer'
 import { apiEndpoint } from '@/config/env'
 import { getAuthHeaders } from '@/services/auth'
 import { spacing, colours, typography } from '@/config/tokens'
@@ -20,6 +21,7 @@ export default function AdminBrandProfiles() {
   const [viewingProfile, setViewingProfile] = useState(null)
   const [viewingLogos, setViewingLogos] = useState([])
   const [viewingClient, setViewingClient] = useState(null)
+  const [pdfViewerClientId, setPdfViewerClientId] = useState(null)
 
   const handleViewProfile = async (client) => {
     try {
@@ -106,6 +108,12 @@ export default function AdminBrandProfiles() {
           onClose={() => { setViewingProfile(null); setViewingLogos([]); setViewingClient(null) }}
         />
       )}
+      {pdfViewerClientId && (
+        <BrandGuidePDFViewer
+          clientId={pdfViewerClientId}
+          onClose={() => setPdfViewerClientId(null)}
+        />
+      )}
       <PageHeader
         title="Brand Profiles"
         actions={<Button onClick={() => navigate('/admin/brands/new')}>Create Brand Profile</Button>}
@@ -118,7 +126,7 @@ export default function AdminBrandProfiles() {
               <div style={clientNameStyle}>{client.display_name || client.name}</div>
               {client.company && <div style={clientCompanyStyle}>{client.company}</div>}
               <div style={clientEmailStyle}>{client.email}</div>
-              <div style={{ display: 'flex', gap: spacing[2] }}>
+              <div style={{ display: 'flex', gap: spacing[2], flexWrap: 'wrap' }}>
                 <Button
                   size="sm"
                   variant="secondary"
@@ -127,6 +135,15 @@ export default function AdminBrandProfiles() {
                 >
                   <BookOpen size={14} />
                   View
+                </Button>
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  onClick={() => setPdfViewerClientId(client.id)}
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+                >
+                  <FileText size={14} />
+                  Brand Guide
                 </Button>
                 <Button
                   size="sm"

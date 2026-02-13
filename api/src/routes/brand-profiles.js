@@ -278,6 +278,40 @@ export async function handleBrandProfiles(request, env, auth, path, method) {
     }
   }
 
+  // --- GET /brand-profiles/:clientId/guide-pdf — serve brand guide PDF from R2 ---
+  const guidePdfMatch = path.match(/^\/brand-profiles\/([^\/]+)\/guide-pdf$/)
+  if (guidePdfMatch && method === 'GET') {
+    const clientId = guidePdfMatch[1]
+    const authCheck = requireAuth(auth)
+    if (!authCheck.authorized) return jsonResponse({ success: false, error: authCheck.error }, authCheck.status)
+
+    try {
+      const profile = await env.DB.prepare(
+        'SELECT brand_guide_path FROM brand_profiles WHERE client_id = ?'
+      ).bind(clientId).first()
+
+      if (!profile || !profile.brand_guide_path) {
+        return jsonResponse({ success: false, error: 'No brand guide uploaded for this client' }, 404)
+      }
+
+      const object = await env.tacklebox_storage.get(profile.brand_guide_path)
+      if (!object) {
+        return jsonResponse({ success: false, error: 'Brand guide file not found in storage' }, 404)
+      }
+
+      const headers = new Headers()
+      headers.set('Content-Type', 'application/pdf')
+      headers.set('Content-Disposition', 'inline')
+      headers.set('Cache-Control', 'public, max-age=3600')
+      if (object.size) headers.set('Content-Length', object.size)
+
+      return new Response(object.body, { headers })
+    } catch (err) {
+      console.error('Brand guide PDF error:', err)
+      return jsonResponse({ success: false, error: 'Failed to fetch brand guide' }, 500)
+    }
+  }
+
   // --- Logo routes: /brand-profiles/:clientId/logos ---
   const logosMatch = path.match(/^\/brand-profiles\/([^\/]+)\/logos(?:\/([^\/]+))?$/)
   if (logosMatch) {
