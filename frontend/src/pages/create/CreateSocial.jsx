@@ -4,6 +4,7 @@ import useAuth from '@/hooks/useAuth'
 import { apiEndpoint } from '@/config/env'
 import { getAuthHeaders } from '@/services/auth'
 import Button from '@/components/ui/Button'
+import Textarea from '@/components/ui/Textarea'
 import Dropdown from '@/components/ui/Dropdown'
 import { colours, spacing, typography, radii, shadows, transitions } from '@/config/tokens'
 
@@ -182,13 +183,15 @@ export default function CreateSocial() {
             style={{ marginBottom: spacing[4] }}
           />
 
-          <label style={labelStyle}>Prompt</label>
-          <textarea
-            style={textareaStyle}
-            value={prompt}
-            onChange={e => setPrompt(e.target.value)}
-            placeholder="Describe what you want in the image... e.g. 'Minimalist product showcase with dark background'"
-          />
+          <div style={{ marginBottom: spacing[4] }}>
+            <Textarea
+              label="Prompt"
+              value={prompt}
+              onChange={e => setPrompt(e.target.value)}
+              placeholder="Describe what you want in the image... e.g. 'Minimalist product showcase with dark background'"
+              rows={4}
+            />
+          </div>
 
           {error && (
             <div style={{ color: colours.neutral[700], fontSize: typography.fontSize.sm, marginBottom: spacing[3] }}>

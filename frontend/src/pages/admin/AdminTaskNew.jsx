@@ -3,6 +3,7 @@ import { useNavigate, Link } from 'react-router-dom'
 import useAuth from '@/hooks/useAuth'
 import useToast from '@/hooks/useToast'
 import PageHeader from '@/components/ui/PageHeader'
+import Select from '@/components/ui/Select'
 import EmberLoader from '@/components/ui/EmberLoader'
 import TaskForm from '@/components/features/tasks/TaskForm'
 import { apiEndpoint } from '@/config/env'
@@ -109,35 +110,13 @@ export default function AdminTaskNew() {
       <PageHeader title="Create Task" />
 
       <div style={{ marginBottom: spacing[5] }}>
-        <label style={{
-          display: 'block',
-          fontSize: '14px',
-          fontWeight: 500,
-          color: colours.neutral[700],
-          marginBottom: spacing[2],
-        }}>
-          Client <span style={{ color: colours.neutral[700] }}>*</span>
-        </label>
-        <select
+        <Select
+          label="Client"
           value={selectedClientId}
           onChange={(e) => setSelectedClientId(e.target.value)}
-          style={{
-            width: '100%',
-            padding: '10px 12px',
-            backgroundColor: '#111',
-            border: '1px solid #2a2a2a',
-            borderRadius: '8px',
-            color: '#ffffff',
-            fontSize: '14px',
-            fontFamily: 'inherit',
-            outline: 'none',
-          }}
-        >
-          <option value="">Select client...</option>
-          {clients.map(c => (
-            <option key={c.id} value={c.id}>{c.display_name}{c.company ? ` (${c.company})` : ''}</option>
-          ))}
-        </select>
+          options={clients.map(c => ({ value: c.id, label: `${c.display_name}${c.company ? ` (${c.company})` : ''}` }))}
+          placeholder="Select client..."
+        />
       </div>
 
       <TaskForm

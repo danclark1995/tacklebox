@@ -4,6 +4,8 @@ import useAuth from '@/hooks/useAuth'
 import useToast from '@/hooks/useToast'
 import PageHeader from '@/components/ui/PageHeader'
 import GlowCard from '@/components/ui/GlowCard'
+import Button from '@/components/ui/Button'
+import Input from '@/components/ui/Input'
 import Avatar from '@/components/ui/Avatar'
 import { apiEndpoint } from '@/config/env'
 import { getAuthHeaders } from '@/services/auth'
@@ -171,54 +173,30 @@ export default function ContractorProfile() {
 
                   {isEditing ? (
                     <div style={{ display: 'flex', alignItems: 'center', gap: spacing[2] }}>
-                      <input
-                        type="text"
-                        value={editValue}
-                        onChange={(e) => setEditValue(e.target.value)}
-                        onKeyDown={handleKeyDown}
-                        onBlur={handleBlur}
-                        autoFocus
-                        style={{
-                          flex: 1,
-                          backgroundColor: '#111',
-                          border: '1px solid #2a2a2a',
-                          borderRadius: '6px',
-                          color: colours.neutral[900],
-                          fontSize: typography.fontSize.base,
-                          fontFamily: 'inherit',
-                          padding: '10px 14px',
-                          outline: 'none',
-                        }}
-                      />
-                      <button
+                      <div style={{ flex: 1 }}>
+                        <Input
+                          value={editValue}
+                          onChange={(e) => setEditValue(e.target.value)}
+                          onKeyDown={handleKeyDown}
+                          onBlur={handleBlur}
+                          autoFocus
+                        />
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="sm"
                         data-action="save"
                         onClick={(e) => { e.stopPropagation(); handleSave() }}
                         disabled={saving}
-                        style={{
-                          background: 'none',
-                          border: 'none',
-                          cursor: 'pointer',
-                          color: colours.neutral[900],
-                          padding: '4px',
-                          display: 'flex',
-                        }}
-                      >
-                        <Check size={16} />
-                      </button>
-                      <button
+                        icon={<Check size={16} />}
+                      />
+                      <Button
+                        variant="ghost"
+                        size="sm"
                         data-action="cancel"
                         onClick={(e) => { e.stopPropagation(); cancelEditing() }}
-                        style={{
-                          background: 'none',
-                          border: 'none',
-                          cursor: 'pointer',
-                          color: colours.neutral[500],
-                          padding: '4px',
-                          display: 'flex',
-                        }}
-                      >
-                        <X size={16} />
-                      </button>
+                        icon={<X size={16} />}
+                      />
                     </div>
                   ) : (
                     <div style={{

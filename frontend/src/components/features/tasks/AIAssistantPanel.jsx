@@ -2,6 +2,8 @@ import { useState } from 'react'
 import { Download, Maximize2 } from 'lucide-react'
 import useToast from '@/hooks/useToast'
 import Button from '@/components/ui/Button'
+import Input from '@/components/ui/Input'
+import Textarea from '@/components/ui/Textarea'
 import Dropdown from '@/components/ui/Dropdown'
 import EmberLoader from '@/components/ui/EmberLoader'
 import PromptTips from '@/components/features/PromptTips'
@@ -370,8 +372,8 @@ export default function AIAssistantPanel({ task, brandProfile, onAttachmentAdded
       </div>
       <div style={{ marginTop: spacing[3] }}>
         <label style={labelStyle}>Prompt<PromptTips contentType="social_image" /></label>
-        <textarea style={textareaStyle} value={prompt} onChange={e => setPrompt(e.target.value)}
-          placeholder="Describe the image you want to generate..." />
+        <Textarea value={prompt} onChange={e => setPrompt(e.target.value)}
+          placeholder="Describe the image you want to generate..." rows={3} />
       </div>
     </>
   )
@@ -389,13 +391,13 @@ export default function AIAssistantPanel({ task, brandProfile, onAttachmentAdded
       </div>
       <div>
         <label style={labelStyle}>Prompt<PromptTips contentType="document" /></label>
-        <textarea style={textareaStyle} value={prompt} onChange={e => setPrompt(e.target.value)}
-          placeholder="Describe the document you need..." />
+        <Textarea value={prompt} onChange={e => setPrompt(e.target.value)}
+          placeholder="Describe the document you need..." rows={3} />
       </div>
       <div>
         <label style={labelStyle}>Key Points (optional)</label>
-        <textarea style={{ ...textareaStyle, minHeight: '60px' }} value={keyPoints} onChange={e => setKeyPoints(e.target.value)}
-          placeholder="Key topics to include..." />
+        <Textarea value={keyPoints} onChange={e => setKeyPoints(e.target.value)}
+          placeholder="Key topics to include..." rows={2} />
       </div>
     </>
   )
@@ -404,13 +406,13 @@ export default function AIAssistantPanel({ task, brandProfile, onAttachmentAdded
     <>
       <div>
         <label style={labelStyle}>Topic<PromptTips contentType="presentation" /></label>
-        <textarea style={{ ...textareaStyle, minHeight: '60px' }} value={topic} onChange={e => setTopic(e.target.value)}
-          placeholder="Describe the presentation slides and content..." />
+        <Textarea value={topic} onChange={e => setTopic(e.target.value)}
+          placeholder="Describe the presentation slides and content..." rows={2} />
       </div>
       <div style={rowStyle}>
         <div>
           <label style={labelStyle}>Audience (optional)</label>
-          <input style={{ ...inputStyle, marginBottom: 0 }} value={audience} onChange={e => setAudience(e.target.value)}
+          <Input value={audience} onChange={e => setAudience(e.target.value)}
             placeholder="e.g. Marketing team" />
         </div>
         <div>
@@ -433,8 +435,8 @@ export default function AIAssistantPanel({ task, brandProfile, onAttachmentAdded
       </div>
       <div>
         <label style={labelStyle}>Key Points (optional)</label>
-        <textarea style={{ ...textareaStyle, minHeight: '60px' }} value={keyPoints} onChange={e => setKeyPoints(e.target.value)}
-          placeholder="Main points to cover..." />
+        <Textarea value={keyPoints} onChange={e => setKeyPoints(e.target.value)}
+          placeholder="Main points to cover..." rows={2} />
       </div>
     </>
   )
@@ -453,19 +455,19 @@ export default function AIAssistantPanel({ task, brandProfile, onAttachmentAdded
       <div style={rowStyle}>
         <div>
           <label style={labelStyle}>Headline (optional)</label>
-          <input style={{ ...inputStyle, marginBottom: 0 }} value={headline} onChange={e => setHeadline(e.target.value)}
+          <Input value={headline} onChange={e => setHeadline(e.target.value)}
             placeholder="e.g. Elevate Your Brand" />
         </div>
         <div>
           <label style={labelStyle}>CTA (optional)</label>
-          <input style={{ ...inputStyle, marginBottom: 0 }} value={ctaText} onChange={e => setCtaText(e.target.value)}
+          <Input value={ctaText} onChange={e => setCtaText(e.target.value)}
             placeholder="e.g. Learn More" />
         </div>
       </div>
       <div style={{ marginTop: spacing[3] }}>
         <label style={labelStyle}>Image Prompt (optional)<PromptTips contentType="ad_creative" /></label>
-        <textarea style={textareaStyle} value={prompt} onChange={e => setPrompt(e.target.value)}
-          placeholder="Describe the ad visual and copy..." />
+        <Textarea value={prompt} onChange={e => setPrompt(e.target.value)}
+          placeholder="Describe the ad visual and copy..." rows={3} />
       </div>
     </>
   )

@@ -496,13 +496,14 @@ export default function BrandProfileEditor({ profile, clientId, onSaveSection, o
       {/* Import from Brand Guide panel */}
       {onExtract && (
         <div style={{ border: `1px solid ${colours.neutral[200]}`, borderRadius: radii.lg, overflow: 'hidden' }}>
-          <button
+          <Button
+            variant="ghost"
             type="button"
             onClick={() => setImportExpanded(!importExpanded)}
             style={{
               display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%',
               padding: `${spacing[3]} ${spacing[4]}`, backgroundColor: colours.neutral[100],
-              border: 'none', cursor: 'pointer', fontFamily: typography.fontFamily.sans,
+              borderRadius: 0,
             }}
           >
             <span style={{ fontSize: typography.fontSize.base, fontWeight: typography.fontWeight.semibold, color: colours.neutral[900] }}>
@@ -511,7 +512,7 @@ export default function BrandProfileEditor({ profile, clientId, onSaveSection, o
             <span style={{ color: colours.neutral[500], fontSize: typography.fontSize.lg }}>
               {importExpanded ? '−' : '+'}
             </span>
-          </button>
+          </Button>
 
           {importExpanded && (
             <div style={{ padding: spacing[5] }}>
@@ -567,7 +568,7 @@ export default function BrandProfileEditor({ profile, clientId, onSaveSection, o
           <span style={{ fontSize: typography.fontSize.sm, fontWeight: typography.fontWeight.medium, color: colours.neutral[700] }}>
             Brand profile extracted! Review each section and save.
           </span>
-          <button type="button" onClick={() => setExtractionDone(false)} style={{ background: 'none', border: 'none', color: colours.neutral[700], cursor: 'pointer', fontSize: typography.fontSize.lg, fontFamily: typography.fontFamily.sans }}>x</button>
+          <Button variant="ghost" size="sm" type="button" onClick={() => setExtractionDone(false)}>x</Button>
         </div>
       )}
 
@@ -576,8 +577,9 @@ export default function BrandProfileEditor({ profile, clientId, onSaveSection, o
         {/* Left nav */}
         <nav style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
           {SECTIONS.map(section => (
-            <button
+            <Button
               key={section.id}
+              variant="ghost"
               type="button"
               onClick={() => setActiveSection(section.id)}
               style={{
@@ -585,10 +587,9 @@ export default function BrandProfileEditor({ profile, clientId, onSaveSection, o
                 padding: `${spacing[2]} ${spacing[3]}`,
                 backgroundColor: activeSection === section.id ? colours.neutral[200] : 'transparent',
                 color: activeSection === section.id ? colours.neutral[900] : colours.neutral[600],
-                border: 'none', borderRadius: radii.md, cursor: 'pointer',
+                borderRadius: radii.md,
                 fontSize: typography.fontSize.sm, fontWeight: activeSection === section.id ? typography.fontWeight.semibold : typography.fontWeight.medium,
-                fontFamily: typography.fontFamily.sans,
-                textAlign: 'left', transition: `all ${transitions.fast}`,
+                textAlign: 'left', width: '100%', justifyContent: 'flex-start',
               }}
             >
               <span style={{ width: 20, textAlign: 'center', fontSize: typography.fontSize.xs }}>{section.icon}</span>
@@ -596,7 +597,7 @@ export default function BrandProfileEditor({ profile, clientId, onSaveSection, o
               {populatedSections[section.id] && (
                 <span style={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: colours.neutral[700], marginLeft: 'auto', flexShrink: 0 }} />
               )}
-            </button>
+            </Button>
           ))}
         </nav>
 

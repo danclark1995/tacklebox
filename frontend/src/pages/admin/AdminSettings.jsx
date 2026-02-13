@@ -169,22 +169,9 @@ export default function AdminSettings() {
             <div style={statValueStyle}>{activeClients}</div>
           </GlowCard>
         </div>
-        <button
-          onClick={() => navigate('/admin/users')}
-          style={{
-            background: 'none',
-            border: 'none',
-            color: '#ffffff',
-            cursor: 'pointer',
-            fontSize: typography.fontSize.sm,
-            fontWeight: typography.fontWeight.medium,
-            fontFamily: 'inherit',
-            textDecoration: 'underline',
-            padding: 0,
-          }}
-        >
+        <Button variant="ghost" size="sm" onClick={() => navigate('/admin/users')} style={{ textDecoration: 'underline', padding: 0 }}>
           Manage Users
-        </button>
+        </Button>
       </div>
 
       {/* Section 3: Support Messages */}

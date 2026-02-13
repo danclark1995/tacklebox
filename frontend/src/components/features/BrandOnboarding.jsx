@@ -447,24 +447,14 @@ function StepBrandIdentity({ data, update, toggleArchetype }) {
           {ARCHETYPES.map(name => {
             const selected = data.archetypes.includes(name)
             return (
-              <button
+              <Button
                 key={name}
+                variant={selected ? 'primary' : 'ghost'}
+                size="sm"
                 onClick={() => toggleArchetype(name)}
-                style={{
-                  padding: `${spacing[2]} ${spacing[3]}`,
-                  borderRadius: radii.md,
-                  border: selected ? '1px solid #ffffff' : '1px solid #333',
-                  backgroundColor: selected ? '#ffffff' : 'transparent',
-                  color: selected ? '#000000' : colours.neutral[400],
-                  cursor: 'pointer',
-                  fontSize: typography.fontSize.sm,
-                  fontFamily: typography.fontFamily.sans,
-                  fontWeight: selected ? 600 : 400,
-                  transition: 'all 0.2s ease',
-                }}
               >
                 {name}
-              </button>
+              </Button>
             )
           })}
         </div>
@@ -494,9 +484,9 @@ function StepMessaging({ data, update, updatePillar, addPillar, removePillar }) 
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing[2] }}>
           <div style={labelStyle}>Key Messaging Pillars (up to 3)</div>
           {data.pillars.length < 3 && (
-            <button onClick={addPillar} style={addPillarButtonStyle}>
-              <Plus size={14} /> Add Pillar
-            </button>
+            <Button variant="ghost" size="sm" onClick={addPillar} icon={<Plus size={14} />}>
+              Add Pillar
+            </Button>
           )}
         </div>
         {data.pillars.map((pillar, i) => (
@@ -504,9 +494,7 @@ function StepMessaging({ data, update, updatePillar, addPillar, removePillar }) 
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing[2] }}>
               <span style={{ fontSize: typography.fontSize.xs, color: colours.neutral[500] }}>Pillar {i + 1}</span>
               {data.pillars.length > 1 && (
-                <button onClick={() => removePillar(i)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: colours.neutral[500], padding: '4px', display: 'flex' }}>
-                  <X size={14} />
-                </button>
+                <Button variant="ghost" size="sm" onClick={() => removePillar(i)} icon={<X size={14} />} />
               )}
             </div>
             <div style={{ marginBottom: spacing[2] }}>
@@ -578,7 +566,8 @@ function StepReview({ data, goToStep, expanded, setExpanded }) {
       <div style={{ display: 'flex', flexDirection: 'column', gap: spacing[3] }}>
         {sections.map((section, i) => (
           <GlowCard key={i} style={{ padding: 0, overflow: 'hidden' }}>
-            <button
+            <Button
+              variant="ghost"
               onClick={() => toggle(i)}
               style={{
                 display: 'flex',
@@ -586,13 +575,9 @@ function StepReview({ data, goToStep, expanded, setExpanded }) {
                 alignItems: 'center',
                 width: '100%',
                 padding: `${spacing[3]} ${spacing[4]}`,
-                background: 'none',
-                border: 'none',
-                cursor: 'pointer',
-                color: '#ffffff',
                 fontSize: typography.fontSize.sm,
                 fontWeight: typography.fontWeight.semibold,
-                fontFamily: typography.fontFamily.sans,
+                borderRadius: 0,
               }}
             >
               <span>{section.title}</span>
@@ -605,7 +590,7 @@ function StepReview({ data, goToStep, expanded, setExpanded }) {
                 </span>
                 {expanded[i] ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
               </div>
-            </button>
+            </Button>
 
             {expanded[i] && (
               <div style={{ padding: `0 ${spacing[4]} ${spacing[4]}`, borderTop: '1px solid #1a1a1a' }}>

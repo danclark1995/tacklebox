@@ -277,22 +277,20 @@ function TimeEntryRow({ entry, canEdit, onEdit, onDelete }) {
 
       {canEdit && (
         <div style={actionsStyles}>
-          <button
-            type="button"
-            style={iconBtnStyles}
+          <Button
+            variant="ghost"
+            size="sm"
             onClick={() => onEdit(entry)}
             title="Edit entry"
-          >
-            <EditIcon />
-          </button>
-          <button
-            type="button"
-            style={{ ...iconBtnStyles, color: colours.neutral[600] }}
+            icon={<EditIcon />}
+          />
+          <Button
+            variant="ghost"
+            size="sm"
             onClick={() => onDelete(entry.id)}
             title="Delete entry"
-          >
-            <TrashIcon />
-          </button>
+            icon={<TrashIcon />}
+          />
         </div>
       )}
     </div>

@@ -191,13 +191,14 @@ export default function MyCreations() {
 
       <div style={filterRowStyle}>
         {TYPE_FILTERS.map(f => (
-          <button
+          <Button
             key={f.value}
-            style={filterBtnStyle(filter === f.value)}
+            variant={filter === f.value ? 'secondary' : 'ghost'}
+            size="sm"
             onClick={() => { setFilter(f.value); setPage(1) }}
           >
             {f.label}
-          </button>
+          </Button>
         ))}
       </div>
 
@@ -245,9 +246,9 @@ export default function MyCreations() {
                     <div style={cardDateStyle}>
                       {gen.created_at ? new Date(gen.created_at).toLocaleDateString() : ''}
                     </div>
-                    <button style={deleteStyle} onClick={() => handleDelete(gen.id)}>
+                    <Button variant="ghost" size="sm" onClick={() => handleDelete(gen.id)}>
                       Delete
-                    </button>
+                    </Button>
                   </div>
                 </div>
               </div>

@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { ChevronDown, ChevronUp, BookOpen, Palette, CheckCircle } from 'lucide-react'
 import GlowCard from '@/components/ui/GlowCard'
+import Button from '@/components/ui/Button'
 import { colours, spacing, typography } from '@/config/tokens'
 
 const PROMPT_SECTIONS = [
@@ -92,13 +93,16 @@ export default function AdminGuidance() {
               const isOpen = expandedSections[section.title]
               return (
                 <div key={section.title} style={accordionItemStyle}>
-                  <button
+                  <Button
+                    variant="ghost"
                     onClick={() => toggleSection(section.title)}
                     style={accordionButtonStyle}
                   >
-                    <span style={{ fontWeight: 600 }}>{section.title}</span>
-                    {isOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-                  </button>
+                    <span style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+                      <span style={{ fontWeight: 600 }}>{section.title}</span>
+                      {isOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                    </span>
+                  </Button>
 
                   {isOpen && (
                     <div style={accordionContentStyle}>

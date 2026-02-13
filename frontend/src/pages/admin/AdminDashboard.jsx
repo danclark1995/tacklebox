@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import useToast from '@/hooks/useToast'
 import useAuth from '@/hooks/useAuth'
 import GlowCard from '@/components/ui/GlowCard'
+import Button from '@/components/ui/Button'
 import EmberLoader from '@/components/ui/EmberLoader'
 import Leaderboard from '@/components/features/gamification/Leaderboard'
 import { apiEndpoint } from '@/config/env'
@@ -190,23 +191,9 @@ export default function AdminDashboard() {
             </GlowCard>
           ))}
         </div>
-        <button
-          onClick={() => navigate('/admin/tasks')}
-          style={{
-            background: 'none',
-            border: 'none',
-            color: '#ffffff',
-            cursor: 'pointer',
-            fontSize: typography.fontSize.sm,
-            fontWeight: typography.fontWeight.medium,
-            fontFamily: 'inherit',
-            marginTop: spacing[3],
-            textDecoration: 'underline',
-            padding: 0,
-          }}
-        >
+        <Button variant="ghost" size="sm" onClick={() => navigate('/admin/tasks')} style={{ marginTop: spacing[3], textDecoration: 'underline', padding: 0 }}>
           View all tasks
-        </button>
+        </Button>
       </div>
     </div>
   )

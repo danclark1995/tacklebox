@@ -4,6 +4,8 @@ import useAuth from '@/hooks/useAuth'
 import { apiEndpoint } from '@/config/env'
 import { getAuthHeaders } from '@/services/auth'
 import Button from '@/components/ui/Button'
+import Input from '@/components/ui/Input'
+import Textarea from '@/components/ui/Textarea'
 import Dropdown from '@/components/ui/Dropdown'
 import { colours, spacing, typography, radii, transitions } from '@/config/tokens'
 
@@ -145,21 +147,24 @@ export default function CreatePresentation() {
             style={{ marginBottom: spacing[4] }}
           />
 
-          <label style={labelStyle}>Topic</label>
-          <textarea
-            style={textareaStyle}
-            value={topic}
-            onChange={e => setTopic(e.target.value)}
-            placeholder="What is the presentation about? e.g. 'Q1 2026 Brand Strategy Overview'"
-          />
+          <div style={{ marginBottom: spacing[4] }}>
+            <Textarea
+              label="Topic"
+              value={topic}
+              onChange={e => setTopic(e.target.value)}
+              placeholder="What is the presentation about? e.g. 'Q1 2026 Brand Strategy Overview'"
+              rows={3}
+            />
+          </div>
 
-          <label style={labelStyle}>Target Audience (optional)</label>
-          <input
-            style={inputStyle}
-            value={audience}
-            onChange={e => setAudience(e.target.value)}
-            placeholder="e.g. Marketing team, Board of Directors..."
-          />
+          <div style={{ marginBottom: spacing[4] }}>
+            <Input
+              label="Target Audience (optional)"
+              value={audience}
+              onChange={e => setAudience(e.target.value)}
+              placeholder="e.g. Marketing team, Board of Directors..."
+            />
+          </div>
 
           <div style={rowStyle}>
             <div>
@@ -180,13 +185,15 @@ export default function CreatePresentation() {
             </div>
           </div>
 
-          <label style={labelStyle}>Key Points (optional)</label>
-          <textarea
-            style={{ ...textareaStyle, minHeight: '80px' }}
-            value={keyPoints}
-            onChange={e => setKeyPoints(e.target.value)}
-            placeholder="Main points to cover in the presentation..."
-          />
+          <div style={{ marginBottom: spacing[4] }}>
+            <Textarea
+              label="Key Points (optional)"
+              value={keyPoints}
+              onChange={e => setKeyPoints(e.target.value)}
+              placeholder="Main points to cover in the presentation..."
+              rows={3}
+            />
+          </div>
 
           {error && (
             <div style={{ color: colours.neutral[700], fontSize: typography.fontSize.sm, marginBottom: spacing[3] }}>

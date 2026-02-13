@@ -21,6 +21,7 @@ import {
   ExternalLink,
 } from 'lucide-react'
 import GlowCard from '@/components/ui/GlowCard'
+import Button from '@/components/ui/Button'
 import { spacing, typography, colours } from '@/config/tokens'
 
 const ICON_MAP = {
@@ -88,34 +89,18 @@ export default function ToolboxGrid({ tools = [], editable = false, onEdit, onDe
                   display: 'flex',
                   gap: '4px',
                 }}>
-                  <button
+                  <Button
+                    variant="ghost"
+                    size="sm"
                     onClick={(e) => { e.stopPropagation(); onEdit?.(tool) }}
-                    style={{
-                      background: 'none',
-                      border: 'none',
-                      cursor: 'pointer',
-                      color: colours.neutral[500],
-                      padding: '4px',
-                      display: 'flex',
-                      alignItems: 'center',
-                    }}
-                  >
-                    <Pencil size={14} />
-                  </button>
-                  <button
+                    icon={<Pencil size={14} />}
+                  />
+                  <Button
+                    variant="ghost"
+                    size="sm"
                     onClick={(e) => { e.stopPropagation(); onDelete?.(tool) }}
-                    style={{
-                      background: 'none',
-                      border: 'none',
-                      cursor: 'pointer',
-                      color: colours.neutral[500],
-                      padding: '4px',
-                      display: 'flex',
-                      alignItems: 'center',
-                    }}
-                  >
-                    <Trash2 size={14} />
-                  </button>
+                    icon={<Trash2 size={14} />}
+                  />
                 </div>
               )}
 

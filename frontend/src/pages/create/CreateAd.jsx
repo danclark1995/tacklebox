@@ -4,6 +4,8 @@ import useAuth from '@/hooks/useAuth'
 import { apiEndpoint } from '@/config/env'
 import { getAuthHeaders } from '@/services/auth'
 import Button from '@/components/ui/Button'
+import Input from '@/components/ui/Input'
+import Textarea from '@/components/ui/Textarea'
 import Dropdown from '@/components/ui/Dropdown'
 import { colours, spacing, typography, radii, transitions } from '@/config/tokens'
 
@@ -149,37 +151,42 @@ export default function CreateAd() {
             style={{ marginBottom: spacing[4] }}
           />
 
-          <label style={labelStyle}>Headline (optional — AI will generate if blank)</label>
-          <input
-            style={inputStyle}
-            value={headline}
-            onChange={e => setHeadline(e.target.value)}
-            placeholder="e.g. 'Elevate Your Brand'"
-          />
+          <div style={{ marginBottom: spacing[4] }}>
+            <Input
+              label="Headline (optional — AI will generate if blank)"
+              value={headline}
+              onChange={e => setHeadline(e.target.value)}
+              placeholder="e.g. 'Elevate Your Brand'"
+            />
+          </div>
 
-          <label style={labelStyle}>CTA Text (optional)</label>
-          <input
-            style={inputStyle}
-            value={ctaText}
-            onChange={e => setCtaText(e.target.value)}
-            placeholder="e.g. 'Learn More', 'Get Started'"
-          />
+          <div style={{ marginBottom: spacing[4] }}>
+            <Input
+              label="CTA Text (optional)"
+              value={ctaText}
+              onChange={e => setCtaText(e.target.value)}
+              placeholder="e.g. 'Learn More', 'Get Started'"
+            />
+          </div>
 
-          <label style={labelStyle}>Offer / Description (optional)</label>
-          <input
-            style={inputStyle}
-            value={offer}
-            onChange={e => setOffer(e.target.value)}
-            placeholder="e.g. '50% off first month'"
-          />
+          <div style={{ marginBottom: spacing[4] }}>
+            <Input
+              label="Offer / Description (optional)"
+              value={offer}
+              onChange={e => setOffer(e.target.value)}
+              placeholder="e.g. '50% off first month'"
+            />
+          </div>
 
-          <label style={labelStyle}>Image Prompt (optional)</label>
-          <textarea
-            style={textareaStyle}
-            value={prompt}
-            onChange={e => setPrompt(e.target.value)}
-            placeholder="Describe the background image... e.g. 'Abstract dark gradient with subtle gold accents'"
-          />
+          <div style={{ marginBottom: spacing[4] }}>
+            <Textarea
+              label="Image Prompt (optional)"
+              value={prompt}
+              onChange={e => setPrompt(e.target.value)}
+              placeholder="Describe the background image... e.g. 'Abstract dark gradient with subtle gold accents'"
+              rows={3}
+            />
+          </div>
 
           {error && (
             <div style={{ color: colours.neutral[700], fontSize: typography.fontSize.sm, marginBottom: spacing[3] }}>

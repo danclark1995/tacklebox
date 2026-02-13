@@ -4,6 +4,8 @@ import useAuth from '@/hooks/useAuth'
 import { apiEndpoint } from '@/config/env'
 import { getAuthHeaders } from '@/services/auth'
 import Button from '@/components/ui/Button'
+import Input from '@/components/ui/Input'
+import Textarea from '@/components/ui/Textarea'
 import Dropdown from '@/components/ui/Dropdown'
 import { colours, spacing, typography, radii, transitions } from '@/config/tokens'
 
@@ -147,32 +149,35 @@ export default function CreateDocument() {
             style={{ marginBottom: spacing[4] }}
           />
 
-          <label style={labelStyle}>Prompt</label>
-          <textarea
-            style={textareaStyle}
-            value={prompt}
-            onChange={e => setPrompt(e.target.value)}
-            placeholder="Describe the document content... e.g. 'Quarterly brand strategy report for Q1 2026'"
-          />
+          <div style={{ marginBottom: spacing[4] }}>
+            <Textarea
+              label="Prompt"
+              value={prompt}
+              onChange={e => setPrompt(e.target.value)}
+              placeholder="Describe the document content... e.g. 'Quarterly brand strategy report for Q1 2026'"
+              rows={4}
+            />
+          </div>
 
-          <label style={labelStyle}>Key Points (optional)</label>
-          <textarea
-            style={{ ...textareaStyle, minHeight: '80px' }}
-            value={keyPoints}
-            onChange={e => setKeyPoints(e.target.value)}
-            placeholder="Bullet points or key topics to include..."
-          />
+          <div style={{ marginBottom: spacing[4] }}>
+            <Textarea
+              label="Key Points (optional)"
+              value={keyPoints}
+              onChange={e => setKeyPoints(e.target.value)}
+              placeholder="Bullet points or key topics to include..."
+              rows={3}
+            />
+          </div>
 
           {documentType === 'letterhead' && (
-            <>
-              <label style={labelStyle}>Recipient (optional)</label>
-              <input
-                style={inputStyle}
+            <div style={{ marginBottom: spacing[4] }}>
+              <Input
+                label="Recipient (optional)"
                 value={recipient}
                 onChange={e => setRecipient(e.target.value)}
                 placeholder="To: recipient name or company"
               />
-            </>
+            </div>
           )}
 
           {error && (

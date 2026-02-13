@@ -469,22 +469,13 @@ export default function TaskDetail({
                   maxHeight: '120px',
                 }}
               />
-              <button
+              <Button
+                variant="ghost"
+                size="sm"
                 onClick={handleSubmitComment}
                 disabled={!commentText.trim()}
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  cursor: commentText.trim() ? 'pointer' : 'default',
-                  color: commentText.trim() ? '#ffffff' : '#444',
-                  padding: '8px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  transition: 'color 150ms ease',
-                }}
-              >
-                <Send size={18} />
-              </button>
+                icon={<Send size={18} />}
+              />
             </div>
             {(isAdmin || isContractor) && (
               <div style={{ marginTop: '8px' }}>

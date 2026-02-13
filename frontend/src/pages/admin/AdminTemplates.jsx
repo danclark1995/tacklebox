@@ -507,30 +507,26 @@ export default function AdminTemplates() {
                       <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
                     </svg>
                     <span style={{ flex: 1 }}>{item}</span>
-                    <button
-                      style={checklistRemoveStyle}
+                    <Button
+                      variant="ghost"
+                      size="sm"
                       onClick={() => handleRemoveChecklistItem(index)}
-                      onMouseEnter={(e) => { e.currentTarget.style.color = colours.neutral[700] }}
-                      onMouseLeave={(e) => { e.currentTarget.style.color = colours.neutral[400] }}
+                      style={{ marginLeft: 'auto', flexShrink: 0, padding: spacing[1] }}
                     >
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                         <line x1="18" y1="6" x2="6" y2="18" />
                         <line x1="6" y1="6" x2="18" y2="18" />
                       </svg>
-                    </button>
+                    </Button>
                   </div>
                 ))}
 
                 <div style={checklistInputRowStyle}>
-                  <input
-                    type="text"
+                  <Input
                     value={newChecklistItem}
                     onChange={(e) => setNewChecklistItem(e.target.value)}
                     onKeyPress={handleChecklistKeyPress}
                     placeholder="Add a checklist item..."
-                    style={checklistInputStyle}
-                    onFocus={(e) => { e.target.style.borderColor = colours.neutral[900] }}
-                    onBlur={(e) => { e.target.style.borderColor = colours.neutral[300] }}
                   />
                   <Button
                     size="sm"
