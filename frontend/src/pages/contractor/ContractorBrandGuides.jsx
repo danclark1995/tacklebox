@@ -6,7 +6,7 @@ import PageHeader from '@/components/ui/PageHeader'
 import GlowCard from '@/components/ui/GlowCard'
 import EmberLoader from '@/components/ui/EmberLoader'
 import EmptyState from '@/components/ui/EmptyState'
-import BrandProfileView from '@/components/features/brand/BrandProfileView'
+import BrandBooklet from '@/components/features/brand/BrandBooklet'
 import { apiEndpoint } from '@/config/env'
 import { getAuthHeaders } from '@/services/auth'
 import { spacing, colours, typography } from '@/config/tokens'
@@ -53,38 +53,20 @@ export default function ContractorBrandGuides() {
     )
   }
 
-  // Slide-over panel for viewing a brand profile
-  if (selectedProfile) {
-    return (
-      <div>
-        <button
-          onClick={() => { setSelectedProfile(null); setLogos([]) }}
-          style={{
-            background: 'none',
-            border: 'none',
-            color: colours.neutral[900],
-            cursor: 'pointer',
-            fontSize: typography.fontSize.sm,
-            fontWeight: typography.fontWeight.medium,
-            fontFamily: 'inherit',
-            marginBottom: spacing[4],
-            padding: 0,
-          }}
-        >
-          ← Back to Brands
-        </button>
-        <BrandProfileView
-          profile={selectedProfile}
-          clientName={selectedProfile.client_name}
-          companyName={selectedProfile.client_company}
-          logos={logos}
-        />
-      </div>
-    )
-  }
+  // Brand booklet overlay
+  const bookletOverlay = selectedProfile ? (
+    <BrandBooklet
+      brandProfile={selectedProfile}
+      clientName={selectedProfile.client_name}
+      companyName={selectedProfile.client_company}
+      logos={logos}
+      onClose={() => { setSelectedProfile(null); setLogos([]) }}
+    />
+  ) : null
 
   return (
     <div>
+      {bookletOverlay}
       <PageHeader title="Brands" />
 
       {brandProfiles.length > 0 ? (

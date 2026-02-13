@@ -301,14 +301,6 @@ export default function TaskDetail({
                 {task.description}
               </p>
 
-              {brandProfile && (isContractor || isAdmin) && (
-                <div style={{ marginTop: spacing[6], padding: spacing[4], backgroundColor: colours.neutral[100], borderRadius: '8px' }}>
-                  <h4 style={{ fontSize: '14px', fontWeight: 600, marginBottom: spacing[2] }}>Brand Profile</h4>
-                  <Button variant="secondary" size="sm" onClick={() => window.open(`/brand-profile/${task.client_id}`, '_blank')}>
-                    View {task.client_name}'s Brand Profile
-                  </Button>
-                </div>
-              )}
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: spacing[4] }}>

@@ -4,7 +4,7 @@ import useToast from '@/hooks/useToast'
 import PageHeader from '@/components/ui/PageHeader'
 import EmberLoader from '@/components/ui/EmberLoader'
 import EmptyState from '@/components/ui/EmptyState'
-import BrandProfileView from '@/components/features/brand/BrandProfileView'
+import BrandBooklet from '@/components/features/brand/BrandBooklet'
 import BrandGuideCard from '@/components/features/brand/BrandGuideCard'
 import { apiEndpoint } from '@/config/env'
 import { getAuthHeaders } from '@/services/auth'
@@ -79,7 +79,7 @@ export default function ClientBrandHub() {
       <div style={sectionStyle}>
         <h2 style={sectionTitleStyle}>Brand Profile</h2>
         {brandProfile ? (
-          <BrandProfileView profile={brandProfile} clientName={user.display_name} companyName={user.company} logos={logos} />
+          <BrandBooklet brandProfile={brandProfile} clientName={user.display_name} companyName={user.company} logos={logos} inline />
         ) : (
           <EmptyState
             title="Your brand profile is being set up"
