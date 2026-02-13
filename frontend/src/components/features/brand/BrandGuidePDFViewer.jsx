@@ -110,8 +110,6 @@ export default function BrandGuidePDFViewer({ clientId, onClose }) {
   pagesToRender.add(activePage)
   if (numPages && activePage < numPages) pagesToRender.add(activePage + 1)
 
-  const estimatedHeight = Math.round(pageWidth * 1.414)
-
   return (
     <div style={overlayStyle} onClick={(e) => { if (e.target === e.currentTarget) onClose() }}>
       <style>{`
@@ -179,41 +177,42 @@ export default function BrandGuidePDFViewer({ clientId, onClose }) {
               borderRadius: '8px',
               overflow: 'hidden',
               boxShadow: '0 4px 24px rgba(0, 0, 0, 0.5)',
-              backgroundColor: '#ffffff',
+              background: 'transparent',
               position: 'relative',
-              width: pageWidth,
-              height: estimatedHeight,
               maxHeight: 'calc(100vh - 140px)',
             }}>
               <Document
                 file={pdfData}
                 onLoadSuccess={onDocumentLoadSuccess}
                 loading={
-                  <div style={{ width: pageWidth, height: estimatedHeight, display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#fff' }}>
+                  <div style={{ width: pageWidth, height: Math.round(pageWidth * 1.414), display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#fff', borderRadius: '8px' }}>
                     <EmberLoader size="md" />
                   </div>
                 }
               >
-                {[...pagesToRender].map(pageNum => (
-                  <div
-                    key={pageNum}
-                    className="pdf-page-layer"
-                    style={{
-                      position: 'absolute',
-                      top: 0,
-                      left: 0,
-                      opacity: pageNum === activePage ? 1 : 0,
-                      pointerEvents: pageNum === activePage ? 'auto' : 'none',
-                    }}
-                  >
-                    <Page
-                      pageNumber={pageNum}
-                      width={pageWidth}
-                      renderTextLayer={false}
-                      renderAnnotationLayer={false}
-                    />
-                  </div>
-                ))}
+                {[...pagesToRender].map(pageNum => {
+                  const isActive = pageNum === activePage
+                  return (
+                    <div
+                      key={pageNum}
+                      className="pdf-page-layer"
+                      style={{
+                        ...(isActive
+                          ? { position: 'relative' }
+                          : { position: 'absolute', top: 0, left: 0 }),
+                        opacity: isActive ? 1 : 0,
+                        pointerEvents: isActive ? 'auto' : 'none',
+                      }}
+                    >
+                      <Page
+                        pageNumber={pageNum}
+                        width={pageWidth}
+                        renderTextLayer={false}
+                        renderAnnotationLayer={false}
+                      />
+                    </div>
+                  )
+                })}
               </Document>
             </div>
 
