@@ -14,6 +14,7 @@ const Button = ({
   type = 'button',
   fullWidth = false,
   className = '',
+  style: externalStyle,
 }) => {
   const baseStyles = {
     fontFamily: typography.fontFamily.sans,
@@ -91,6 +92,7 @@ const Button = ({
     ...sizeStyles[size],
     ...variantStyles[variant],
     ...(isHovered && !disabled && !loading ? hoverStyles[variant] : {}),
+    ...externalStyle,
   }
 
   const handleClick = (e) => {
@@ -134,6 +136,7 @@ Button.propTypes = {
   type: PropTypes.oneOf(['button', 'submit', 'reset']),
   fullWidth: PropTypes.bool,
   className: PropTypes.string,
+  style: PropTypes.object,
 }
 
 export default Button

@@ -26,6 +26,7 @@ export default function BrandProfileEditor({ profile, clientId, onSaveSection, o
   const [selectedFile, setSelectedFile] = useState(null)
   const [extractionDone, setExtractionDone] = useState(false)
   const [dragOver, setDragOver] = useState(false)
+  const [newLogo, setNewLogo] = useState({ variant_name: '', file_path: '', background_type: 'transparent', logo_type: 'primary' })
 
   function getDefaultForm() {
     return {
@@ -398,8 +399,6 @@ export default function BrandProfileEditor({ profile, clientId, onSaveSection, o
   }
 
   const renderLogos = () => {
-    const [newLogo, setNewLogo] = useState({ variant_name: '', file_path: '', background_type: 'transparent', logo_type: 'primary' })
-
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: spacing[4] }}>
         {logos.length > 0 && (
@@ -573,7 +572,7 @@ export default function BrandProfileEditor({ profile, clientId, onSaveSection, o
       )}
 
       {/* Editor grid */}
-      <div style={{ display: 'grid', gridTemplateColumns: '200px 1fr', gap: spacing[6], minHeight: '600px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '200px 1fr', gap: spacing[6], minHeight: '600px', width: '100%' }}>
         {/* Left nav */}
         <nav style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
           {SECTIONS.map(section => (
@@ -602,7 +601,7 @@ export default function BrandProfileEditor({ profile, clientId, onSaveSection, o
         </nav>
 
         {/* Right content */}
-        <div>
+        <div style={{ minWidth: 0, textAlign: 'left' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing[6], paddingBottom: spacing[4], borderBottom: `1px solid ${colours.neutral[200]}` }}>
             <h2 style={{ fontSize: typography.fontSize.xl, fontWeight: typography.fontWeight.bold, color: colours.neutral[900] }}>
               {currentSection?.label}
