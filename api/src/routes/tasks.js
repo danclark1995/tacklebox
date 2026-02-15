@@ -125,8 +125,18 @@ export async function handleTasks(request, env, auth, path, method) {
       return jsonResponse({ success: false, error: 'Insufficient permissions' }, 403)
     }
     try {
+      // Get contractor's level for filtering
+      let userLevel = 99 // admin sees all
+      if (auth.user.role === 'contractor') {
+        const xp = await env.DB.prepare(
+          'SELECT current_level FROM contractor_xp WHERE user_id = ?'
+        ).bind(auth.user.id).first()
+        userLevel = xp?.current_level || 1
+      }
+
       const result = await env.DB.prepare(`
         SELECT t.id, t.title, t.description, t.priority, t.complexity_level, t.created_at,
+          t.estimated_hours, t.hourly_rate, t.total_payout, t.min_level, t.deadline,
           cat.name as category_name,
           c.display_name as client_name
         FROM tasks t
@@ -135,8 +145,9 @@ export async function handleTasks(request, env, auth, path, method) {
         WHERE t.status = 'submitted'
           AND t.contractor_id IS NULL
           AND t.campfire_eligible = 1
+          AND COALESCE(t.min_level, 1) <= ?
         ORDER BY t.created_at DESC
-      `).all()
+      `).bind(userLevel).all()
       return jsonResponse({ success: true, data: result.results || [] })
     } catch (err) {
       console.error('Campfire list error:', err)
@@ -164,6 +175,17 @@ export async function handleTasks(request, env, auth, path, method) {
       }
       if (task.campfire_eligible !== 1 || task.status !== 'submitted' || task.contractor_id) {
         return jsonResponse({ success: false, error: 'This task has already been claimed' }, 409)
+      }
+
+      // Check contractor level meets min_level
+      if (task.min_level && task.min_level > 1) {
+        const xp = await env.DB.prepare(
+          'SELECT current_level FROM contractor_xp WHERE user_id = ?'
+        ).bind(auth.user.id).first()
+        const level = xp?.current_level || 1
+        if (level < task.min_level) {
+          return jsonResponse({ success: false, error: `Level ${task.min_level} required to claim this task` }, 403)
+        }
       }
       await env.DB.prepare(`
         UPDATE tasks SET contractor_id = ?, status = 'assigned', updated_at = datetime("now") WHERE id = ?
@@ -421,7 +443,7 @@ export async function handleTasks(request, env, auth, path, method) {
 
     try {
       const body = await request.json()
-      const { title, description, priority, category_id, project_id, client_id, template_id, deadline, campfire_eligible, complexity_level } = body
+      const { title, description, priority, category_id, project_id, client_id, template_id, deadline, campfire_eligible, complexity_level, estimated_hours, hourly_rate, min_level, scheduled_start, scheduled_end } = body
 
       if (!title || !description || !priority || !category_id || !project_id) {
         return jsonResponse(
@@ -499,12 +521,18 @@ export async function handleTasks(request, env, auth, path, method) {
 
       const taskId = crypto.randomUUID()
 
+      const estHours = estimated_hours ? Number(estimated_hours) : null
+      const hRate = hourly_rate ? Number(hourly_rate) : null
+      const totalPayout = (estHours && hRate) ? Math.round(estHours * hRate * 100) / 100 : null
+      const minLvl = min_level ? Number(min_level) : 1
+
       await env.DB.prepare(`
         INSERT INTO tasks (
           id, title, description, status, priority, category_id, project_id,
-          client_id, created_by, template_id, deadline, ai_metadata, campfire_eligible, complexity_level
+          client_id, created_by, template_id, deadline, ai_metadata, campfire_eligible, complexity_level,
+          estimated_hours, hourly_rate, total_payout, min_level, scheduled_start, scheduled_end
         )
-        VALUES (?, ?, ?, 'submitted', ?, ?, ?, ?, ?, ?, ?, NULL, ?, ?)
+        VALUES (?, ?, ?, 'submitted', ?, ?, ?, ?, ?, ?, ?, NULL, ?, ?, ?, ?, ?, ?, ?, ?)
       `).bind(
         taskId,
         title,
@@ -517,7 +545,13 @@ export async function handleTasks(request, env, auth, path, method) {
         template_id || null,
         deadline || null,
         campfire_eligible ? 1 : 0,
-        complexity_level != null ? Number(complexity_level) : null
+        complexity_level != null ? Number(complexity_level) : null,
+        estHours,
+        hRate,
+        totalPayout,
+        minLvl,
+        scheduled_start || null,
+        scheduled_end || null
       ).run()
 
       // Create initial history entry
@@ -693,6 +727,42 @@ export async function handleTasks(request, env, auth, path, method) {
         }
       }
 
+      // Admin can set pricing & level fields
+      if (auth.user.role === 'admin') {
+        if (body.estimated_hours !== undefined) {
+          updates.push('estimated_hours = ?')
+          bindings.push(body.estimated_hours ? Number(body.estimated_hours) : null)
+        }
+        if (body.hourly_rate !== undefined) {
+          updates.push('hourly_rate = ?')
+          bindings.push(body.hourly_rate ? Number(body.hourly_rate) : null)
+        }
+        if (body.min_level !== undefined) {
+          updates.push('min_level = ?')
+          bindings.push(body.min_level ? Number(body.min_level) : 1)
+        }
+        if (body.scheduled_start !== undefined) {
+          updates.push('scheduled_start = ?')
+          bindings.push(body.scheduled_start || null)
+        }
+        if (body.scheduled_end !== undefined) {
+          updates.push('scheduled_end = ?')
+          bindings.push(body.scheduled_end || null)
+        }
+        // Recompute total_payout if hours or rate changed
+        if (body.estimated_hours !== undefined || body.hourly_rate !== undefined) {
+          const h = body.estimated_hours !== undefined ? Number(body.estimated_hours) : null
+          const r = body.hourly_rate !== undefined ? Number(body.hourly_rate) : null
+          // Need to fetch current values for any that weren't provided
+          const current = await env.DB.prepare('SELECT estimated_hours, hourly_rate FROM tasks WHERE id = ?').bind(taskId).first()
+          const finalH = h !== null ? h : current?.estimated_hours
+          const finalR = r !== null ? r : current?.hourly_rate
+          const payout = (finalH && finalR) ? Math.round(finalH * finalR * 100) / 100 : null
+          updates.push('total_payout = ?')
+          bindings.push(payout)
+        }
+      }
+
       if (updates.length === 0) {
         return jsonResponse(
           { success: false, error: 'No fields to update' },
@@ -826,6 +896,31 @@ export async function handleTasks(request, env, auth, path, method) {
         newStatus,
         note || null
       ).run()
+
+      // Credit earnings when task is closed
+      if (newStatus === 'closed' && task.contractor_id) {
+        const fullTask = await env.DB.prepare('SELECT total_payout FROM tasks WHERE id = ?').bind(taskId).first()
+        const payout = fullTask?.total_payout || 0
+        if (payout > 0) {
+          await env.DB.prepare(`
+            INSERT INTO earnings (id, user_id, task_id, type, amount, description)
+            VALUES (?, ?, ?, 'task_completion', ?, ?)
+          `).bind(
+            crypto.randomUUID(),
+            task.contractor_id,
+            taskId,
+            payout,
+            `Task completed: ${task.title}`
+          ).run()
+
+          // Update cached balance
+          await env.DB.prepare(`
+            UPDATE contractor_xp 
+            SET total_earnings = total_earnings + ?, available_balance = available_balance + ?, updated_at = datetime('now')
+            WHERE user_id = ?
+          `).bind(payout, payout, task.contractor_id).run()
+        }
+      }
 
       const updatedTask = await env.DB.prepare(`
         SELECT t.*,

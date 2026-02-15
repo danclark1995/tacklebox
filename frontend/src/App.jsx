@@ -20,6 +20,8 @@ import ContractorTaskDetail from '@/pages/contractor/ContractorTaskDetail'
 import ContractorBrandGuides from '@/pages/contractor/ContractorBrandGuides'
 import ContractorProfile from '@/pages/contractor/ContractorProfile'
 import CamperJourney from '@/pages/contractor/CamperJourney'
+import CamperEarnings from '@/pages/contractor/CamperEarnings'
+import CalendarPage from '@/pages/shared/CalendarPage'
 
 // Admin pages
 import AdminDashboard from '@/pages/admin/AdminDashboard'
@@ -101,6 +103,7 @@ function App() {
               <Route path="/admin/tools/presentation" element={<CreatePresentation />} />
               <Route path="/admin/tools/ad" element={<CreateAd />} />
               <Route path="/admin/settings" element={<AdminSettings />} />
+              <Route path="/admin/calendar" element={<CalendarPage />} />
             </Route>
 
             {/* Client routes */}
@@ -128,6 +131,8 @@ function App() {
               <Route path="/camper/tasks/:id" element={<ContractorTaskDetail />} />
               <Route path="/camper/brands" element={<ContractorBrandGuides />} />
               <Route path="/camper/journey" element={<CamperJourney />} />
+              <Route path="/camper/earnings" element={<CamperEarnings />} />
+              <Route path="/camper/calendar" element={<CalendarPage />} />
               <Route path="/camper/profile" element={<ContractorProfile />} />
             </Route>
 

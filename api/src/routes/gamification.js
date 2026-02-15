@@ -132,6 +132,8 @@ export async function handleGamification(request, env, auth, path, method) {
           on_time_count: xpData?.on_time_count ?? 0,
           total_tasks_with_deadline: xpData?.total_tasks_with_deadline ?? 0,
           avg_quality_rating: xpData?.avg_quality_rating ?? 0,
+          total_earnings: xpData?.total_earnings ?? 0,
+          available_balance: xpData?.available_balance ?? 0,
           current_level_details: currentLevel,
           next_level: nextLevel,
           xp_to_next_level: nextLevel

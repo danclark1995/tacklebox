@@ -32,6 +32,9 @@ export default function TaskForm({
     attachments: [],
     campfire_eligible: false,
     complexity_level: '',
+    estimated_hours: '',
+    hourly_rate: '',
+    min_level: '1',
   })
 
   const [errors, setErrors] = useState({})
@@ -51,6 +54,9 @@ export default function TaskForm({
         attachments: [],
         campfire_eligible: !!initialData.campfire_eligible,
         complexity_level: initialData.complexity_level != null ? String(initialData.complexity_level) : '',
+        estimated_hours: initialData.estimated_hours != null ? String(initialData.estimated_hours) : '',
+        hourly_rate: initialData.hourly_rate != null ? String(initialData.hourly_rate) : '',
+        min_level: initialData.min_level != null ? String(initialData.min_level) : '1',
       })
     }
   }, [initialData])
@@ -341,6 +347,81 @@ export default function TaskForm({
             disabled={loading}
           />
         </div>
+      )}
+
+      {/* Pricing & Level (admin only) */}
+      {isAdmin && (
+        <>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: spacing[4] }}>
+            <div>
+              <label style={{ display: 'block', fontSize: '14px', fontWeight: 500, color: colours.neutral[700], marginBottom: spacing[2] }}>
+                Estimated Hours
+              </label>
+              <Input
+                type="number"
+                step="0.5"
+                min="0.5"
+                value={formData.estimated_hours}
+                onChange={(e) => handleChange('estimated_hours', e.target.value)}
+                placeholder="e.g. 6"
+                disabled={loading}
+              />
+            </div>
+            <div>
+              <label style={{ display: 'block', fontSize: '14px', fontWeight: 500, color: colours.neutral[700], marginBottom: spacing[2] }}>
+                Hourly Rate ($)
+              </label>
+              <Input
+                type="number"
+                step="1"
+                min="0"
+                value={formData.hourly_rate}
+                onChange={(e) => handleChange('hourly_rate', e.target.value)}
+                placeholder="e.g. 20"
+                disabled={loading}
+              />
+            </div>
+            <div>
+              <label style={{ display: 'block', fontSize: '14px', fontWeight: 500, color: colours.neutral[700], marginBottom: spacing[2] }}>
+                Total Payout
+              </label>
+              <div style={{
+                padding: `${spacing[3]} ${spacing[4]}`, backgroundColor: colours.neutral[100],
+                borderRadius: '6px', fontSize: '14px', fontWeight: 600,
+                color: (formData.estimated_hours && formData.hourly_rate) ? colours.neutral[900] : colours.neutral[500],
+              }}>
+                {(formData.estimated_hours && formData.hourly_rate)
+                  ? `$${(Number(formData.estimated_hours) * Number(formData.hourly_rate)).toFixed(2)}`
+                  : '—'
+                }
+              </div>
+            </div>
+          </div>
+          <div>
+            <label style={{ display: 'block', fontSize: '14px', fontWeight: 500, color: colours.neutral[700], marginBottom: spacing[2] }}>
+              Minimum Level Required
+            </label>
+            <Select
+              value={formData.min_level}
+              onChange={(e) => handleChange('min_level', e.target.value)}
+              options={[
+                { value: '1', label: 'Level 1 — Volunteer (anyone)' },
+                { value: '2', label: 'Level 2 — Apprentice' },
+                { value: '3', label: 'Level 3 — Junior' },
+                { value: '4', label: 'Level 4 — Intermediate' },
+                { value: '5', label: 'Level 5 — Senior' },
+                { value: '6', label: 'Level 6 — Specialist' },
+                { value: '7', label: 'Level 7 — Camp Leader' },
+                { value: '8', label: 'Level 8 — Guide' },
+                { value: '9', label: 'Level 9 — Trailblazer' },
+                { value: '10', label: 'Level 10 — Pioneer' },
+                { value: '11', label: 'Level 11 — Legend' },
+                { value: '12', label: 'Level 12 — Legacy' },
+              ]}
+              disabled={loading}
+            />
+          </div>
+        </>
       )}
 
       {/* Attachments */}

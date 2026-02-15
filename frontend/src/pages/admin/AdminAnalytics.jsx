@@ -1,9 +1,9 @@
 import { useState, useEffect, useCallback } from 'react'
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip } from 'recharts'
-import { CheckCircle, Clock, Users, Star, TrendingUp, Calendar } from 'lucide-react'
+import { CheckCircle, Clock, Users, Star, TrendingUp, Calendar, Gift, DollarSign } from 'lucide-react'
 import useAuth from '@/hooks/useAuth'
 import useToast from '@/hooks/useToast'
-import { GlowCard, EmberLoader, PageHeader, DatePicker, Button } from '@/components/ui'
+import { GlowCard, EmberLoader, PageHeader, DatePicker, Button, Select, Input } from '@/components/ui'
 import {
   getTaskOverview,
   getTurnaround,
@@ -11,6 +11,8 @@ import {
   getTimeTracking,
   getReviewInsights,
 } from '@/services/analytics'
+import { apiEndpoint } from '@/config/env'
+import { getAuthHeaders } from '@/services/auth'
 import { colours, spacing, typography, radii } from '@/config/tokens'
 
 // ── Formatting helpers ────────────────────────────────────────────
@@ -223,6 +225,15 @@ export default function AdminAnalytics() {
   const [contractorData, setContractorData] = useState(null)
   const [timeData, setTimeData] = useState(null)
   const [reviewData, setReviewData] = useState(null)
+  const [earningsAnalytics, setEarningsAnalytics] = useState(null)
+  const [campersList, setCampersList] = useState([])
+
+  // Reward form
+  const [rewardUser, setRewardUser] = useState('')
+  const [rewardType, setRewardType] = useState('bonus_cash')
+  const [rewardAmount, setRewardAmount] = useState('')
+  const [rewardDescription, setRewardDescription] = useState('')
+  const [rewardSubmitting, setRewardSubmitting] = useState(false)
 
   const [loading, setLoading] = useState(true)
 
@@ -251,6 +262,18 @@ export default function AdminAnalytics() {
       setContractorData(contrs)
       setTimeData(time)
       setReviewData(reviews)
+
+      // Fetch earnings analytics and campers list
+      try {
+        const [earningsRes, usersRes] = await Promise.all([
+          fetch(apiEndpoint('/earnings/analytics'), { headers: getAuthHeaders() }),
+          fetch(apiEndpoint('/users'), { headers: getAuthHeaders() }),
+        ])
+        const earningsJson = await earningsRes.json()
+        const usersJson = await usersRes.json()
+        if (earningsJson.success) setEarningsAnalytics(earningsJson.data)
+        if (usersJson.success) setCampersList(usersJson.data.filter(u => u.role === 'contractor'))
+      } catch (e) { /* non-critical */ }
     } catch (err) {
       addToast(err.message || 'Failed to load analytics', 'error')
     } finally {
@@ -413,6 +436,149 @@ export default function AdminAnalytics() {
           }
         }
       `}</style>
+
+      {/* Level Breakdown */}
+      {earningsAnalytics?.by_level && earningsAnalytics.by_level.length > 0 && (
+        <GlowCard style={{ marginTop: spacing[6] }}>
+          <h3 style={{ fontSize: typography.fontSize.lg, fontWeight: typography.fontWeight.semibold, color: colours.neutral[900], marginBottom: spacing[4] }}>
+            Tasks by Level
+          </h3>
+          <div style={{ display: 'grid', gridTemplateColumns: '80px 1fr 60px 60px 80px', gap: spacing[2], padding: `0 0 ${spacing[2]} 0`, borderBottom: `1px solid ${colours.neutral[200]}` }}>
+            <span style={{ fontSize: typography.fontSize.xs, color: colours.neutral[500], textTransform: 'uppercase' }}>Level</span>
+            <span style={{ fontSize: typography.fontSize.xs, color: colours.neutral[500], textTransform: 'uppercase' }}>Name</span>
+            <span style={{ fontSize: typography.fontSize.xs, color: colours.neutral[500], textTransform: 'uppercase', textAlign: 'right' }}>Active</span>
+            <span style={{ fontSize: typography.fontSize.xs, color: colours.neutral[500], textTransform: 'uppercase', textAlign: 'right' }}>Done</span>
+            <span style={{ fontSize: typography.fontSize.xs, color: colours.neutral[500], textTransform: 'uppercase', textAlign: 'right' }}>Value</span>
+          </div>
+          {earningsAnalytics.by_level.map((row) => (
+            <div key={row.level} style={{ display: 'grid', gridTemplateColumns: '80px 1fr 60px 60px 80px', gap: spacing[2], padding: `${spacing[2]} 0`, borderBottom: `1px solid ${colours.neutral[100]}` }}>
+              <span style={{ fontSize: typography.fontSize.sm, fontWeight: typography.fontWeight.semibold, color: colours.neutral[900] }}>Lv. {row.level}</span>
+              <span style={{ fontSize: typography.fontSize.sm, color: colours.neutral[600] }}>{row.level_name || '—'}</span>
+              <span style={{ fontSize: typography.fontSize.sm, color: colours.neutral[900], textAlign: 'right' }}>{row.active}</span>
+              <span style={{ fontSize: typography.fontSize.sm, color: colours.neutral[900], textAlign: 'right' }}>{row.completed}</span>
+              <span style={{ fontSize: typography.fontSize.sm, fontWeight: typography.fontWeight.semibold, color: colours.neutral[900], textAlign: 'right' }}>
+                {row.total_value > 0 ? `$${Number(row.total_value).toLocaleString()}` : '—'}
+              </span>
+            </div>
+          ))}
+        </GlowCard>
+      )}
+
+      {/* Earnings Summary */}
+      {earningsAnalytics?.earnings_summary && (
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: spacing[4], marginTop: spacing[6] }}>
+          <StatTile
+            icon={DollarSign}
+            label="Task Earnings"
+            value={`$${fmtCount(earningsAnalytics.earnings_summary.task_earnings || 0)}`}
+            sublabel="paid for completed tasks"
+          />
+          <StatTile
+            icon={Gift}
+            label="Bonus Cash"
+            value={`$${fmtCount(earningsAnalytics.earnings_summary.bonus_earnings || 0)}`}
+            sublabel="awarded as bonuses"
+          />
+          <StatTile
+            icon={Star}
+            label="Bonus XP"
+            value={fmtCount(earningsAnalytics.earnings_summary.total_bonus_xp || 0)}
+            sublabel={`to ${earningsAnalytics.earnings_summary.unique_earners || 0} campers`}
+          />
+        </div>
+      )}
+
+      {/* Reward Panel */}
+      <GlowCard style={{ marginTop: spacing[6] }}>
+        <h3 style={{ fontSize: typography.fontSize.lg, fontWeight: typography.fontWeight.semibold, color: colours.neutral[900], marginBottom: spacing[4] }}>
+          <Gift size={18} style={{ display: 'inline', verticalAlign: 'middle', marginRight: spacing[2] }} />
+          Award Bonus
+        </h3>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: spacing[4] }}>
+          <div>
+            <label style={{ display: 'block', fontSize: typography.fontSize.sm, color: colours.neutral[600], marginBottom: spacing[1] }}>Camper</label>
+            <Select
+              value={rewardUser}
+              onChange={(e) => setRewardUser(e.target.value)}
+              options={[
+                { value: '', label: 'Select camper...' },
+                ...campersList.map(c => ({ value: c.id, label: c.display_name }))
+              ]}
+            />
+          </div>
+          <div>
+            <label style={{ display: 'block', fontSize: typography.fontSize.sm, color: colours.neutral[600], marginBottom: spacing[1] }}>Type</label>
+            <Select
+              value={rewardType}
+              onChange={(e) => setRewardType(e.target.value)}
+              options={[
+                { value: 'bonus_cash', label: 'Cash Bonus ($)' },
+                { value: 'bonus_xp', label: 'XP Bonus' },
+              ]}
+            />
+          </div>
+          <div>
+            <label style={{ display: 'block', fontSize: typography.fontSize.sm, color: colours.neutral[600], marginBottom: spacing[1] }}>
+              {rewardType === 'bonus_cash' ? 'Amount ($)' : 'XP Amount'}
+            </label>
+            <Input
+              type="number"
+              min="1"
+              value={rewardAmount}
+              onChange={(e) => setRewardAmount(e.target.value)}
+              placeholder={rewardType === 'bonus_cash' ? 'e.g. 50' : 'e.g. 500'}
+            />
+          </div>
+          <div>
+            <label style={{ display: 'block', fontSize: typography.fontSize.sm, color: colours.neutral[600], marginBottom: spacing[1] }}>Reason</label>
+            <Input
+              value={rewardDescription}
+              onChange={(e) => setRewardDescription(e.target.value)}
+              placeholder="Great work on the logo redesign"
+            />
+          </div>
+        </div>
+        <Button
+          variant="primary"
+          size="sm"
+          disabled={!rewardUser || !rewardAmount || !rewardDescription || rewardSubmitting}
+          onClick={async () => {
+            setRewardSubmitting(true)
+            try {
+              const body = {
+                target_user_id: rewardUser,
+                type: rewardType,
+                description: rewardDescription,
+              }
+              if (rewardType === 'bonus_cash') body.amount = Number(rewardAmount)
+              else body.xp_amount = Number(rewardAmount)
+
+              const res = await fetch(apiEndpoint('/earnings/reward'), {
+                method: 'POST',
+                headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
+                body: JSON.stringify(body),
+              })
+              const json = await res.json()
+              if (json.success) {
+                addToast('Bonus awarded!', 'success')
+                setRewardUser('')
+                setRewardAmount('')
+                setRewardDescription('')
+                fetchAnalytics()
+              } else {
+                addToast(json.error || 'Failed', 'error')
+              }
+            } catch (err) {
+              addToast('Failed to award bonus', 'error')
+            } finally {
+              setRewardSubmitting(false)
+            }
+          }}
+          style={{ marginTop: spacing[4] }}
+        >
+          {rewardSubmitting ? 'Awarding...' : 'Award Bonus'}
+        </Button>
+      </GlowCard>
     </div>
   )
 }

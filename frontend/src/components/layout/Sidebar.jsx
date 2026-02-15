@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { NavLink, useNavigate } from 'react-router-dom'
-import { Home, CheckSquare, Users, Palette, Wrench, Settings, BookOpen, User, Compass, Menu, Flame } from 'lucide-react'
+import { Home, CheckSquare, Users, Palette, Wrench, Settings, BookOpen, User, Compass, Menu, Flame, DollarSign, Calendar } from 'lucide-react'
 import useAuth from '@/hooks/useAuth'
 import Avatar from '@/components/ui/Avatar'
 import Button from '@/components/ui/Button'
@@ -22,6 +22,7 @@ const navItemsByRole = {
   [ROLES.CONTRACTOR]: [
     { path: '/camper', label: 'Home', icon: <Flame size={ICON_SIZE} /> },
     { path: '/camper/tasks', label: 'Tasks', icon: <CheckSquare size={ICON_SIZE} /> },
+    { path: '/camper/calendar', label: 'Calendar', icon: <Calendar size={ICON_SIZE} /> },
     { path: '/camper/brands', label: 'Brands', icon: <Palette size={ICON_SIZE} /> },
     { path: '/camper/journey', label: 'Journey', icon: <Compass size={ICON_SIZE} /> },
     { path: '/camper/profile', label: 'Profile', icon: <User size={ICON_SIZE} /> },
@@ -29,6 +30,7 @@ const navItemsByRole = {
   [ROLES.ADMIN]: [
     { path: '/admin', label: 'Home', icon: <Home size={ICON_SIZE} /> },
     { path: '/admin/tasks', label: 'Tasks', icon: <CheckSquare size={ICON_SIZE} /> },
+    { path: '/admin/calendar', label: 'Calendar', icon: <Calendar size={ICON_SIZE} /> },
     { path: '/admin/campers', label: 'Campers', icon: <Users size={ICON_SIZE} /> },
     { path: '/admin/brands', label: 'Brands', icon: <Palette size={ICON_SIZE} /> },
     { path: '/admin/journey', label: 'Journey', icon: <Compass size={ICON_SIZE} /> },
@@ -299,6 +301,27 @@ export default function Sidebar() {
                 {(xpData.total_xp || 0).toLocaleString()} XP
               </div>
               <WaveProgressBar progress={xpProgress} size="sm" />
+              {user.role === 'contractor' && (
+                <div
+                  onClick={() => navigate('/camper/earnings')}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: spacing[2],
+                    marginTop: spacing[2], padding: `${spacing[2]} ${spacing[3]}`,
+                    backgroundColor: colours.neutral[100], borderRadius: radii.md,
+                    cursor: 'pointer', transition: `background-color ${transitions.fast}`,
+                  }}
+                  onMouseEnter={e => e.currentTarget.style.backgroundColor = colours.neutral[200]}
+                  onMouseLeave={e => e.currentTarget.style.backgroundColor = colours.neutral[100]}
+                >
+                  <DollarSign size={14} style={{ color: colours.neutral[600] }} />
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: '11px', color: colours.neutral[500] }}>Balance</div>
+                    <div style={{ fontSize: typography.fontSize.sm, fontWeight: typography.fontWeight.semibold, color: colours.neutral[900] }}>
+                      ${(xpData.available_balance || 0).toFixed(2)}
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           )}
           <Button

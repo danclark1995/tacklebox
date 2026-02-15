@@ -1,0 +1,2041 @@
+diff --git a/api/src/migrations/0008_earnings_system.sql b/api/src/migrations/0008_earnings_system.sql
+new file mode 100644
+index 0000000..705acb9
+--- /dev/null
++++ b/api/src/migrations/0008_earnings_system.sql
+@@ -0,0 +1,64 @@
++-- Migration 0008: Earnings system, task pricing, and calendar scheduling
++-- Adds: estimated_hours, hourly_rate, total_payout, min_level to tasks
++-- Adds: earnings table, cashout_requests table
++-- Adds: total_earnings, available_balance to contractor_xp
++-- Adds: task_schedule table for calendar
++
++-- 1. Add pricing columns to tasks
++ALTER TABLE tasks ADD COLUMN estimated_hours REAL;
++ALTER TABLE tasks ADD COLUMN hourly_rate REAL;
++ALTER TABLE tasks ADD COLUMN total_payout REAL;
++ALTER TABLE tasks ADD COLUMN min_level INTEGER DEFAULT 1;
++ALTER TABLE tasks ADD COLUMN scheduled_start TEXT;
++ALTER TABLE tasks ADD COLUMN scheduled_end TEXT;
++
++-- 2. Earnings ledger — every dollar earned or awarded
++CREATE TABLE IF NOT EXISTS earnings (
++  id TEXT PRIMARY KEY,
++  user_id TEXT NOT NULL REFERENCES users(id),
++  task_id TEXT REFERENCES tasks(id),
++  type TEXT NOT NULL CHECK (type IN ('task_completion', 'bonus_cash', 'bonus_xp')),
++  amount REAL NOT NULL DEFAULT 0,
++  xp_amount INTEGER NOT NULL DEFAULT 0,
++  description TEXT,
++  awarded_by TEXT REFERENCES users(id),
++  created_at TEXT NOT NULL DEFAULT (datetime('now'))
++);
++CREATE INDEX IF NOT EXISTS idx_earnings_user ON earnings(user_id);
++CREATE INDEX IF NOT EXISTS idx_earnings_task ON earnings(task_id);
++CREATE INDEX IF NOT EXISTS idx_earnings_type ON earnings(type);
++
++-- 3. Cashout requests — Stripe-ready
++CREATE TABLE IF NOT EXISTS cashout_requests (
++  id TEXT PRIMARY KEY,
++  user_id TEXT NOT NULL REFERENCES users(id),
++  amount REAL NOT NULL,
++  status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'processing', 'completed', 'rejected')),
++  stripe_payout_id TEXT,
++  note TEXT,
++  created_at TEXT NOT NULL DEFAULT (datetime('now')),
++  processed_at TEXT,
++  processed_by TEXT REFERENCES users(id)
++);
++CREATE INDEX IF NOT EXISTS idx_cashout_user ON cashout_requests(user_id);
++CREATE INDEX IF NOT EXISTS idx_cashout_status ON cashout_requests(status);
++
++-- 4. Add cached balance columns to contractor_xp
++ALTER TABLE contractor_xp ADD COLUMN total_earnings REAL NOT NULL DEFAULT 0;
++ALTER TABLE contractor_xp ADD COLUMN available_balance REAL NOT NULL DEFAULT 0;
++
++-- 5. Task schedule — calendar events for campers
++CREATE TABLE IF NOT EXISTS task_schedule (
++  id TEXT PRIMARY KEY,
++  task_id TEXT NOT NULL REFERENCES tasks(id),
++  user_id TEXT NOT NULL REFERENCES users(id),
++  start_time TEXT NOT NULL,
++  end_time TEXT NOT NULL,
++  status TEXT NOT NULL DEFAULT 'scheduled' CHECK (status IN ('scheduled', 'in_progress', 'completed', 'skipped')),
++  notes TEXT,
++  created_at TEXT NOT NULL DEFAULT (datetime('now')),
++  updated_at TEXT NOT NULL DEFAULT (datetime('now'))
++);
++CREATE INDEX IF NOT EXISTS idx_schedule_user ON task_schedule(user_id);
++CREATE INDEX IF NOT EXISTS idx_schedule_task ON task_schedule(task_id);
++CREATE INDEX IF NOT EXISTS idx_schedule_start ON task_schedule(start_time);
+diff --git a/api/src/routes/earnings.js b/api/src/routes/earnings.js
+new file mode 100644
+index 0000000..375bf5e
+--- /dev/null
++++ b/api/src/routes/earnings.js
+@@ -0,0 +1,379 @@
++/**
++ * Earnings Routes — Earnings ledger, balance, rewards, cashout
++ * GET /earnings/me — current user's earnings history + balance
++ * GET /earnings/:userId — admin view of a user's earnings
++ * POST /earnings/reward — camp leader / admin award bonus XP or cash
++ * POST /earnings/cashout — request a cashout
++ * GET /earnings/cashouts — admin list all cashout requests
++ * PATCH /earnings/cashouts/:id — admin process a cashout
++ */
++
++import { jsonResponse } from '../index.js'
++import { requireAuth, requireRole } from '../middleware/auth.js'
++
++export async function handleEarnings(request, env, auth, path, method) {
++
++  // ── GET /earnings/me ─────────────────────────────────────────────
++  if (path === '/earnings/me' && method === 'GET') {
++    const check = requireAuth(auth)
++    if (!check.authorized) return jsonResponse({ success: false, error: check.error }, check.status)
++
++    const userId = auth.user.id
++    try {
++      const earnings = await env.DB.prepare(`
++        SELECT e.*, t.title as task_title, u.display_name as awarded_by_name
++        FROM earnings e
++        LEFT JOIN tasks t ON e.task_id = t.id
++        LEFT JOIN users u ON e.awarded_by = u.id
++        WHERE e.user_id = ?
++        ORDER BY e.created_at DESC
++        LIMIT 100
++      `).bind(userId).first() ? await env.DB.prepare(`
++        SELECT e.*, t.title as task_title, u.display_name as awarded_by_name
++        FROM earnings e
++        LEFT JOIN tasks t ON e.task_id = t.id
++        LEFT JOIN users u ON e.awarded_by = u.id
++        WHERE e.user_id = ?
++        ORDER BY e.created_at DESC
++        LIMIT 100
++      `).bind(userId).all() : { results: [] }
++
++      const balance = await env.DB.prepare(
++        'SELECT total_earnings, available_balance FROM contractor_xp WHERE user_id = ?'
++      ).bind(userId).first()
++
++      const cashouts = await env.DB.prepare(`
++        SELECT * FROM cashout_requests WHERE user_id = ? ORDER BY created_at DESC LIMIT 20
++      `).bind(userId).all()
++
++      return jsonResponse({
++        success: true,
++        data: {
++          earnings: earnings.results || [],
++          total_earnings: balance?.total_earnings || 0,
++          available_balance: balance?.available_balance || 0,
++          cashouts: cashouts.results || [],
++        }
++      })
++    } catch (err) {
++      console.error('Get my earnings error:', err)
++      return jsonResponse({ success: false, error: 'Failed to fetch earnings' }, 500)
++    }
++  }
++
++  // ── GET /earnings/:userId — admin view ───────────────────────────
++  const userMatch = path.match(/^\/earnings\/([^\/]+)$/)
++  if (userMatch && method === 'GET' && userMatch[1] !== 'me' && userMatch[1] !== 'cashouts') {
++    const check = requireRole(auth, 'admin')
++    if (!check.authorized) return jsonResponse({ success: false, error: check.error }, check.status)
++
++    const userId = userMatch[1]
++    try {
++      const earnings = await env.DB.prepare(`
++        SELECT e.*, t.title as task_title, u.display_name as awarded_by_name
++        FROM earnings e
++        LEFT JOIN tasks t ON e.task_id = t.id
++        LEFT JOIN users u ON e.awarded_by = u.id
++        WHERE e.user_id = ?
++        ORDER BY e.created_at DESC
++        LIMIT 100
++      `).bind(userId).all()
++
++      const balance = await env.DB.prepare(
++        'SELECT total_earnings, available_balance FROM contractor_xp WHERE user_id = ?'
++      ).bind(userId).first()
++
++      return jsonResponse({
++        success: true,
++        data: {
++          earnings: earnings.results || [],
++          total_earnings: balance?.total_earnings || 0,
++          available_balance: balance?.available_balance || 0,
++        }
++      })
++    } catch (err) {
++      console.error('Get user earnings error:', err)
++      return jsonResponse({ success: false, error: 'Failed to fetch earnings' }, 500)
++    }
++  }
++
++  // ── POST /earnings/reward — camp leader (7+) or admin award bonus ─
++  if (path === '/earnings/reward' && method === 'POST') {
++    const check = requireAuth(auth)
++    if (!check.authorized) return jsonResponse({ success: false, error: check.error }, check.status)
++
++    const user = auth.user
++    // Must be admin or contractor level 7+
++    if (user.role === 'contractor') {
++      const xp = await env.DB.prepare(
++        'SELECT current_level FROM contractor_xp WHERE user_id = ?'
++      ).bind(user.id).first()
++      if (!xp || xp.current_level < 7) {
++        return jsonResponse({ success: false, error: 'Camp Leader rank (level 7+) required' }, 403)
++      }
++    } else if (user.role !== 'admin') {
++      return jsonResponse({ success: false, error: 'Insufficient permissions' }, 403)
++    }
++
++    try {
++      const body = await request.json()
++      const { target_user_id, type, amount, xp_amount, description } = body
++
++      if (!target_user_id || !type || !description) {
++        return jsonResponse({ success: false, error: 'target_user_id, type, and description required' }, 400)
++      }
++      if (!['bonus_cash', 'bonus_xp'].includes(type)) {
++        return jsonResponse({ success: false, error: 'type must be bonus_cash or bonus_xp' }, 400)
++      }
++      if (type === 'bonus_cash' && (!amount || amount <= 0)) {
++        return jsonResponse({ success: false, error: 'amount must be positive for cash bonus' }, 400)
++      }
++      if (type === 'bonus_xp' && (!xp_amount || xp_amount <= 0)) {
++        return jsonResponse({ success: false, error: 'xp_amount must be positive for XP bonus' }, 400)
++      }
++
++      // Verify target user exists and is a contractor
++      const target = await env.DB.prepare(
++        'SELECT id, role FROM users WHERE id = ? AND is_active = 1'
++      ).bind(target_user_id).first()
++      if (!target || target.role !== 'contractor') {
++        return jsonResponse({ success: false, error: 'Target user not found or not a camper' }, 404)
++      }
++
++      const earningId = crypto.randomUUID()
++      const cashAmount = type === 'bonus_cash' ? amount : 0
++      const xpAmt = type === 'bonus_xp' ? xp_amount : 0
++
++      await env.DB.prepare(`
++        INSERT INTO earnings (id, user_id, type, amount, xp_amount, description, awarded_by)
++        VALUES (?, ?, ?, ?, ?, ?, ?)
++      `).bind(earningId, target_user_id, type, cashAmount, xpAmt, description, user.id).run()
++
++      // Update cached balances
++      if (cashAmount > 0) {
++        await env.DB.prepare(`
++          UPDATE contractor_xp 
++          SET total_earnings = total_earnings + ?, available_balance = available_balance + ?, updated_at = datetime('now')
++          WHERE user_id = ?
++        `).bind(cashAmount, cashAmount, target_user_id).run()
++      }
++
++      if (xpAmt > 0) {
++        // Add XP and recalculate level
++        const xpData = await env.DB.prepare(
++          'SELECT total_xp, current_level FROM contractor_xp WHERE user_id = ?'
++        ).bind(target_user_id).first()
++
++        if (xpData) {
++          const newTotalXp = xpData.total_xp + xpAmt
++          const newLevel = await env.DB.prepare(
++            'SELECT level FROM xp_levels WHERE xp_required <= ? ORDER BY level DESC LIMIT 1'
++          ).bind(newTotalXp).first()
++
++          await env.DB.prepare(`
++            UPDATE contractor_xp SET total_xp = ?, current_level = ?, updated_at = datetime('now')
++            WHERE user_id = ?
++          `).bind(newTotalXp, newLevel?.level || xpData.current_level, target_user_id).run()
++        }
++      }
++
++      return jsonResponse({
++        success: true,
++        data: { id: earningId, type, amount: cashAmount, xp_amount: xpAmt }
++      })
++    } catch (err) {
++      console.error('Reward error:', err)
++      return jsonResponse({ success: false, error: 'Failed to award bonus' }, 500)
++    }
++  }
++
++  // ── POST /earnings/cashout — request cashout ─────────────────────
++  if (path === '/earnings/cashout' && method === 'POST') {
++    const check = requireAuth(auth)
++    if (!check.authorized) return jsonResponse({ success: false, error: check.error }, check.status)
++
++    if (auth.user.role !== 'contractor') {
++      return jsonResponse({ success: false, error: 'Only campers can request cashouts' }, 403)
++    }
++
++    try {
++      const body = await request.json()
++      const { amount } = body
++
++      if (!amount || amount <= 0) {
++        return jsonResponse({ success: false, error: 'Amount must be positive' }, 400)
++      }
++
++      // Check available balance
++      const balance = await env.DB.prepare(
++        'SELECT available_balance FROM contractor_xp WHERE user_id = ?'
++      ).bind(auth.user.id).first()
++
++      if (!balance || balance.available_balance < amount) {
++        return jsonResponse({ success: false, error: 'Insufficient balance' }, 400)
++      }
++
++      const cashoutId = crypto.randomUUID()
++      await env.DB.prepare(`
++        INSERT INTO cashout_requests (id, user_id, amount) VALUES (?, ?, ?)
++      `).bind(cashoutId, auth.user.id, amount).run()
++
++      // Deduct from available balance (held until processed)
++      await env.DB.prepare(`
++        UPDATE contractor_xp SET available_balance = available_balance - ?, updated_at = datetime('now')
++        WHERE user_id = ?
++      `).bind(amount, auth.user.id).run()
++
++      return jsonResponse({
++        success: true,
++        data: { id: cashoutId, amount, status: 'pending' }
++      })
++    } catch (err) {
++      console.error('Cashout request error:', err)
++      return jsonResponse({ success: false, error: 'Failed to create cashout request' }, 500)
++    }
++  }
++
++  // ── GET /earnings/cashouts — admin list all ──────────────────────
++  if (path === '/earnings/cashouts' && method === 'GET') {
++    const check = requireRole(auth, 'admin')
++    if (!check.authorized) return jsonResponse({ success: false, error: check.error }, check.status)
++
++    try {
++      const result = await env.DB.prepare(`
++        SELECT cr.*, u.display_name, u.email
++        FROM cashout_requests cr
++        JOIN users u ON cr.user_id = u.id
++        ORDER BY cr.created_at DESC
++        LIMIT 100
++      `).all()
++
++      return jsonResponse({ success: true, data: result.results || [] })
++    } catch (err) {
++      console.error('List cashouts error:', err)
++      return jsonResponse({ success: false, error: 'Failed to fetch cashouts' }, 500)
++    }
++  }
++
++  // ── PATCH /earnings/cashouts/:id — admin process cashout ─────────
++  const cashoutMatch = path.match(/^\/earnings\/cashouts\/([^\/]+)$/)
++  if (cashoutMatch && method === 'PATCH') {
++    const check = requireRole(auth, 'admin')
++    if (!check.authorized) return jsonResponse({ success: false, error: check.error }, check.status)
++
++    const cashoutId = cashoutMatch[1]
++    try {
++      const body = await request.json()
++      const { status, note } = body
++
++      if (!['completed', 'rejected'].includes(status)) {
++        return jsonResponse({ success: false, error: 'Status must be completed or rejected' }, 400)
++      }
++
++      const cashout = await env.DB.prepare(
++        'SELECT * FROM cashout_requests WHERE id = ?'
++      ).bind(cashoutId).first()
++
++      if (!cashout) return jsonResponse({ success: false, error: 'Cashout not found' }, 404)
++      if (cashout.status !== 'pending') {
++        return jsonResponse({ success: false, error: 'Cashout already processed' }, 400)
++      }
++
++      await env.DB.prepare(`
++        UPDATE cashout_requests 
++        SET status = ?, note = ?, processed_at = datetime('now'), processed_by = ?
++        WHERE id = ?
++      `).bind(status, note || null, auth.user.id, cashoutId).run()
++
++      // If rejected, return the held amount to available balance
++      if (status === 'rejected') {
++        await env.DB.prepare(`
++          UPDATE contractor_xp SET available_balance = available_balance + ?, updated_at = datetime('now')
++          WHERE user_id = ?
++        `).bind(cashout.amount, cashout.user_id).run()
++      }
++
++      return jsonResponse({ success: true, data: { id: cashoutId, status } })
++    } catch (err) {
++      console.error('Process cashout error:', err)
++      return jsonResponse({ success: false, error: 'Failed to process cashout' }, 500)
++    }
++  }
++
++  // ── GET /earnings/analytics — task level/type breakdown for admin ─
++  if (path === '/earnings/analytics' && method === 'GET') {
++    const check = requireRole(auth, 'admin')
++    if (!check.authorized) return jsonResponse({ success: false, error: check.error }, check.status)
++
++    try {
++      // Task breakdown by level
++      const byLevel = await env.DB.prepare(`
++        SELECT 
++          COALESCE(t.min_level, 1) as level,
++          xl.name as level_name,
++          COUNT(*) as total_tasks,
++          SUM(CASE WHEN t.status = 'closed' THEN 1 ELSE 0 END) as completed,
++          SUM(CASE WHEN t.status IN ('submitted','assigned','in_progress','review','revision') THEN 1 ELSE 0 END) as active,
++          ROUND(SUM(COALESCE(t.total_payout, 0)), 2) as total_value,
++          ROUND(AVG(COALESCE(t.estimated_hours, 0)), 1) as avg_hours
++        FROM tasks t
++        LEFT JOIN xp_levels xl ON COALESCE(t.min_level, 1) = xl.level
++        GROUP BY COALESCE(t.min_level, 1)
++        ORDER BY level ASC
++      `).all()
++
++      // Task breakdown by category
++      const byCategory = await env.DB.prepare(`
++        SELECT 
++          cat.name as category_name,
++          COUNT(*) as total_tasks,
++          SUM(CASE WHEN t.status = 'closed' THEN 1 ELSE 0 END) as completed,
++          ROUND(SUM(COALESCE(t.total_payout, 0)), 2) as total_value,
++          ROUND(AVG(COALESCE(t.estimated_hours, 0)), 1) as avg_hours
++        FROM tasks t
++        LEFT JOIN task_categories cat ON t.category_id = cat.id
++        GROUP BY t.category_id
++        ORDER BY total_tasks DESC
++      `).all()
++
++      // By client
++      const byClient = await env.DB.prepare(`
++        SELECT 
++          u.display_name as client_name,
++          u.company,
++          COUNT(*) as total_tasks,
++          SUM(CASE WHEN t.status = 'closed' THEN 1 ELSE 0 END) as completed,
++          ROUND(SUM(COALESCE(t.total_payout, 0)), 2) as total_value
++        FROM tasks t
++        JOIN users u ON t.client_id = u.id
++        GROUP BY t.client_id
++        ORDER BY total_tasks DESC
++      `).all()
++
++      // Total earnings distributed
++      const earningsSummary = await env.DB.prepare(`
++        SELECT 
++          SUM(CASE WHEN type = 'task_completion' THEN amount ELSE 0 END) as task_earnings,
++          SUM(CASE WHEN type = 'bonus_cash' THEN amount ELSE 0 END) as bonus_earnings,
++          SUM(xp_amount) as total_bonus_xp,
++          COUNT(DISTINCT user_id) as unique_earners
++        FROM earnings
++      `).first()
++
++      return jsonResponse({
++        success: true,
++        data: {
++          by_level: byLevel.results || [],
++          by_category: byCategory.results || [],
++          by_client: byClient.results || [],
++          earnings_summary: earningsSummary || {},
++        }
++      })
++    } catch (err) {
++      console.error('Earnings analytics error:', err)
++      return jsonResponse({ success: false, error: 'Failed to fetch analytics' }, 500)
++    }
++  }
++
++  return jsonResponse({ success: false, error: 'Route not found' }, 404)
++}
+diff --git a/api/src/routes/gamification.js b/api/src/routes/gamification.js
+index cf63ded..8822996 100644
+--- a/api/src/routes/gamification.js
++++ b/api/src/routes/gamification.js
+@@ -132,6 +132,8 @@ export async function handleGamification(request, env, auth, path, method) {
+           on_time_count: xpData?.on_time_count ?? 0,
+           total_tasks_with_deadline: xpData?.total_tasks_with_deadline ?? 0,
+           avg_quality_rating: xpData?.avg_quality_rating ?? 0,
++          total_earnings: xpData?.total_earnings ?? 0,
++          available_balance: xpData?.available_balance ?? 0,
+           current_level_details: currentLevel,
+           next_level: nextLevel,
+           xp_to_next_level: nextLevel
+diff --git a/api/src/routes/index.js b/api/src/routes/index.js
+index 79997b9..8797149 100644
+--- a/api/src/routes/index.js
++++ b/api/src/routes/index.js
+@@ -25,6 +25,8 @@ import { handleGenerate, handleGenerateContent } from './generate.js'
+ import { handleSupport } from './support.js'
+ import { handleTools } from './tools.js'
+ import { handleGuidance } from './guidance.js'
++import { handleEarnings } from './earnings.js'
++import { handleSchedule } from './schedule.js'
+ 
+ export async function handleApiRequest(request, env, ctx) {
+   const url = new URL(request.url)
+@@ -76,6 +78,8 @@ export async function handleApiRequest(request, env, ctx) {
+   if (path.startsWith('/support')) return handleSupport(request, env, auth, path, method)
+   if (path.startsWith('/tools')) return handleTools(request, env, auth, path, method)
+   if (path.startsWith('/guidance')) return handleGuidance(request, env, auth, path, method)
++  if (path.startsWith('/earnings')) return handleEarnings(request, env, auth, path, method)
++  if (path.startsWith('/schedule')) return handleSchedule(request, env, auth, path, method)
+ 
+   return jsonResponse({ success: false, error: 'Route not found' }, 404)
+ }
+diff --git a/api/src/routes/schedule.js b/api/src/routes/schedule.js
+new file mode 100644
+index 0000000..8189008
+--- /dev/null
++++ b/api/src/routes/schedule.js
+@@ -0,0 +1,290 @@
++/**
++ * Schedule Routes — Calendar / task scheduling
++ * GET /schedule — get user's scheduled blocks
++ * POST /schedule — create a schedule block
++ * PUT /schedule/:id — update a schedule block
++ * DELETE /schedule/:id — remove a schedule block
++ * GET /schedule/suggestions/:taskId — AI-like scheduling suggestions
++ */
++
++import { jsonResponse } from '../index.js'
++import { requireAuth } from '../middleware/auth.js'
++
++export async function handleSchedule(request, env, auth, path, method) {
++
++  // ── GET /schedule — user's schedule ──────────────────────────────
++  if (path === '/schedule' && method === 'GET') {
++    const check = requireAuth(auth)
++    if (!check.authorized) return jsonResponse({ success: false, error: check.error }, check.status)
++
++    const url = new URL(request.url)
++    const start = url.searchParams.get('start') // ISO date
++    const end = url.searchParams.get('end')     // ISO date
++    const userId = auth.user.role === 'admin' 
++      ? (url.searchParams.get('user_id') || auth.user.id) 
++      : auth.user.id
++
++    try {
++      let query = `
++        SELECT s.*, t.title as task_title, t.priority, t.estimated_hours, t.total_payout,
++          t.complexity_level, t.min_level, t.deadline,
++          cat.name as category_name,
++          c.display_name as client_name
++        FROM task_schedule s
++        JOIN tasks t ON s.task_id = t.id
++        LEFT JOIN task_categories cat ON t.category_id = cat.id
++        LEFT JOIN users c ON t.client_id = c.id
++        WHERE s.user_id = ?
++      `
++      const bindings = [userId]
++
++      if (start) {
++        query += ' AND s.end_time >= ?'
++        bindings.push(start)
++      }
++      if (end) {
++        query += ' AND s.start_time <= ?'
++        bindings.push(end)
++      }
++
++      query += ' ORDER BY s.start_time ASC'
++
++      const stmt = env.DB.prepare(query)
++      const result = await stmt.bind(...bindings).all()
++
++      return jsonResponse({ success: true, data: result.results || [] })
++    } catch (err) {
++      console.error('Get schedule error:', err)
++      return jsonResponse({ success: false, error: 'Failed to fetch schedule' }, 500)
++    }
++  }
++
++  // ── POST /schedule — create schedule block ───────────────────────
++  if (path === '/schedule' && method === 'POST') {
++    const check = requireAuth(auth)
++    if (!check.authorized) return jsonResponse({ success: false, error: check.error }, check.status)
++
++    try {
++      const body = await request.json()
++      const { task_id, start_time, end_time, notes } = body
++
++      if (!task_id || !start_time || !end_time) {
++        return jsonResponse({ success: false, error: 'task_id, start_time, end_time required' }, 400)
++      }
++
++      // Verify task exists and user is assigned
++      const task = await env.DB.prepare('SELECT * FROM tasks WHERE id = ?').bind(task_id).first()
++      if (!task) return jsonResponse({ success: false, error: 'Task not found' }, 404)
++
++      if (auth.user.role === 'contractor' && task.contractor_id !== auth.user.id) {
++        return jsonResponse({ success: false, error: 'You are not assigned to this task' }, 403)
++      }
++
++      const userId = auth.user.role === 'admin' ? (task.contractor_id || auth.user.id) : auth.user.id
++
++      // Check for overlapping blocks
++      const overlap = await env.DB.prepare(`
++        SELECT id FROM task_schedule 
++        WHERE user_id = ? AND start_time < ? AND end_time > ?
++        AND status IN ('scheduled', 'in_progress')
++        LIMIT 1
++      `).bind(userId, end_time, start_time).first()
++
++      const blockId = crypto.randomUUID()
++      await env.DB.prepare(`
++        INSERT INTO task_schedule (id, task_id, user_id, start_time, end_time, notes)
++        VALUES (?, ?, ?, ?, ?, ?)
++      `).bind(blockId, task_id, userId, start_time, end_time, notes || null).run()
++
++      return jsonResponse({
++        success: true,
++        data: { id: blockId, has_overlap: !!overlap }
++      })
++    } catch (err) {
++      console.error('Create schedule block error:', err)
++      return jsonResponse({ success: false, error: 'Failed to create schedule block' }, 500)
++    }
++  }
++
++  // ── PUT /schedule/:id — update block ─────────────────────────────
++  const updateMatch = path.match(/^\/schedule\/([^\/]+)$/)
++  if (updateMatch && method === 'PUT') {
++    const check = requireAuth(auth)
++    if (!check.authorized) return jsonResponse({ success: false, error: check.error }, check.status)
++
++    const blockId = updateMatch[1]
++    try {
++      const block = await env.DB.prepare(
++        'SELECT * FROM task_schedule WHERE id = ?'
++      ).bind(blockId).first()
++      if (!block) return jsonResponse({ success: false, error: 'Block not found' }, 404)
++
++      if (auth.user.role === 'contractor' && block.user_id !== auth.user.id) {
++        return jsonResponse({ success: false, error: 'Access denied' }, 403)
++      }
++
++      const body = await request.json()
++      const updates = []
++      const bindings = []
++
++      if (body.start_time) { updates.push('start_time = ?'); bindings.push(body.start_time) }
++      if (body.end_time) { updates.push('end_time = ?'); bindings.push(body.end_time) }
++      if (body.status) { updates.push('status = ?'); bindings.push(body.status) }
++      if (body.notes !== undefined) { updates.push('notes = ?'); bindings.push(body.notes) }
++
++      if (updates.length === 0) {
++        return jsonResponse({ success: false, error: 'No fields to update' }, 400)
++      }
++
++      updates.push('updated_at = datetime("now")')
++      bindings.push(blockId)
++
++      await env.DB.prepare(
++        `UPDATE task_schedule SET ${updates.join(', ')} WHERE id = ?`
++      ).bind(...bindings).run()
++
++      return jsonResponse({ success: true, data: { id: blockId } })
++    } catch (err) {
++      console.error('Update schedule block error:', err)
++      return jsonResponse({ success: false, error: 'Failed to update block' }, 500)
++    }
++  }
++
++  // ── DELETE /schedule/:id ─────────────────────────────────────────
++  const deleteMatch = path.match(/^\/schedule\/([^\/]+)$/)
++  if (deleteMatch && method === 'DELETE') {
++    const check = requireAuth(auth)
++    if (!check.authorized) return jsonResponse({ success: false, error: check.error }, check.status)
++
++    const blockId = deleteMatch[1]
++    try {
++      const block = await env.DB.prepare(
++        'SELECT * FROM task_schedule WHERE id = ?'
++      ).bind(blockId).first()
++      if (!block) return jsonResponse({ success: false, error: 'Block not found' }, 404)
++
++      if (auth.user.role === 'contractor' && block.user_id !== auth.user.id) {
++        return jsonResponse({ success: false, error: 'Access denied' }, 403)
++      }
++
++      await env.DB.prepare('DELETE FROM task_schedule WHERE id = ?').bind(blockId).run()
++      return jsonResponse({ success: true, data: { deleted: true } })
++    } catch (err) {
++      console.error('Delete schedule block error:', err)
++      return jsonResponse({ success: false, error: 'Failed to delete block' }, 500)
++    }
++  }
++
++  // ── GET /schedule/suggestions/:taskId — smart scheduling ─────────
++  const suggestMatch = path.match(/^\/schedule\/suggestions\/([^\/]+)$/)
++  if (suggestMatch && method === 'GET') {
++    const check = requireAuth(auth)
++    if (!check.authorized) return jsonResponse({ success: false, error: check.error }, check.status)
++
++    const taskId = suggestMatch[1]
++    try {
++      const task = await env.DB.prepare('SELECT * FROM tasks WHERE id = ?').bind(taskId).first()
++      if (!task) return jsonResponse({ success: false, error: 'Task not found' }, 404)
++
++      const userId = auth.user.role === 'admin' ? (task.contractor_id || auth.user.id) : auth.user.id
++      const hours = task.estimated_hours || 2
++
++      // Get existing schedule for the next 7 days
++      const now = new Date()
++      const weekEnd = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000)
++
++      const existing = await env.DB.prepare(`
++        SELECT start_time, end_time FROM task_schedule
++        WHERE user_id = ? AND end_time >= ? AND start_time <= ?
++        AND status IN ('scheduled', 'in_progress')
++        ORDER BY start_time ASC
++      `).bind(userId, now.toISOString(), weekEnd.toISOString()).all()
++
++      const blocks = existing.results || []
++
++      // Generate suggestion slots (9am-5pm work hours, avoiding conflicts)
++      const suggestions = []
++      const blockMinutes = Math.ceil(hours * 60)
++
++      for (let dayOffset = 0; dayOffset < 7 && suggestions.length < 3; dayOffset++) {
++        const day = new Date(now)
++        day.setDate(day.getDate() + dayOffset)
++        
++        // Skip weekends
++        if (day.getDay() === 0 || day.getDay() === 6) continue
++
++        // Work hours: 9am to 5pm
++        const dayStart = new Date(day)
++        dayStart.setHours(9, 0, 0, 0)
++        const dayEnd = new Date(day)
++        dayEnd.setHours(17, 0, 0, 0)
++
++        // If today, start from now (rounded up to next 30 min)
++        let slotStart = dayOffset === 0 ? new Date(Math.max(now.getTime(), dayStart.getTime())) : dayStart
++        if (slotStart < dayStart) slotStart = dayStart
++
++        // Round to next 30 min
++        const mins = slotStart.getMinutes()
++        if (mins > 0 && mins <= 30) slotStart.setMinutes(30, 0, 0)
++        else if (mins > 30) { slotStart.setHours(slotStart.getHours() + 1, 0, 0, 0) }
++
++        while (slotStart.getTime() + blockMinutes * 60000 <= dayEnd.getTime() && suggestions.length < 3) {
++          const slotEnd = new Date(slotStart.getTime() + blockMinutes * 60000)
++
++          // Check for conflicts
++          const hasConflict = blocks.some(b => {
++            const bStart = new Date(b.start_time).getTime()
++            const bEnd = new Date(b.end_time).getTime()
++            return slotStart.getTime() < bEnd && slotEnd.getTime() > bStart
++          })
++
++          if (!hasConflict) {
++            // Determine urgency label
++            let fit = 'good'
++            if (task.deadline) {
++              const deadline = new Date(task.deadline)
++              const daysToDeadline = (deadline - slotStart) / (1000 * 60 * 60 * 24)
++              if (daysToDeadline < 1) fit = 'urgent'
++              else if (daysToDeadline < 3) fit = 'soon'
++            }
++
++            suggestions.push({
++              start_time: slotStart.toISOString(),
++              end_time: slotEnd.toISOString(),
++              fit,
++              day_label: dayOffset === 0 ? 'Today' : dayOffset === 1 ? 'Tomorrow' : day.toLocaleDateString('en-NZ', { weekday: 'long' }),
++              time_label: `${slotStart.toLocaleTimeString('en-NZ', { hour: '2-digit', minute: '2-digit' })} – ${slotEnd.toLocaleTimeString('en-NZ', { hour: '2-digit', minute: '2-digit' })}`,
++            })
++          }
++
++          // Move to next slot (try after the conflict or next 30 min)
++          if (hasConflict) {
++            const conflictEnd = blocks
++              .filter(b => new Date(b.start_time) < slotEnd && new Date(b.end_time) > slotStart)
++              .reduce((max, b) => Math.max(max, new Date(b.end_time).getTime()), 0)
++            slotStart = new Date(conflictEnd)
++            // Round up to next 30 min
++            const m = slotStart.getMinutes()
++            if (m > 0 && m <= 30) slotStart.setMinutes(30, 0, 0)
++            else if (m > 30) { slotStart.setHours(slotStart.getHours() + 1, 0, 0, 0) }
++          } else {
++            slotStart = slotEnd
++          }
++        }
++      }
++
++      return jsonResponse({
++        success: true,
++        data: {
++          task: { id: task.id, title: task.title, estimated_hours: hours, deadline: task.deadline, priority: task.priority },
++          suggestions,
++        }
++      })
++    } catch (err) {
++      console.error('Schedule suggestions error:', err)
++      return jsonResponse({ success: false, error: 'Failed to generate suggestions' }, 500)
++    }
++  }
++
++  return jsonResponse({ success: false, error: 'Route not found' }, 404)
++}
+diff --git a/api/src/routes/tasks.js b/api/src/routes/tasks.js
+index 6fe61a3..ea4e0cd 100644
+--- a/api/src/routes/tasks.js
++++ b/api/src/routes/tasks.js
+@@ -125,8 +125,18 @@ export async function handleTasks(request, env, auth, path, method) {
+       return jsonResponse({ success: false, error: 'Insufficient permissions' }, 403)
+     }
+     try {
++      // Get contractor's level for filtering
++      let userLevel = 99 // admin sees all
++      if (auth.user.role === 'contractor') {
++        const xp = await env.DB.prepare(
++          'SELECT current_level FROM contractor_xp WHERE user_id = ?'
++        ).bind(auth.user.id).first()
++        userLevel = xp?.current_level || 1
++      }
++
+       const result = await env.DB.prepare(`
+         SELECT t.id, t.title, t.description, t.priority, t.complexity_level, t.created_at,
++          t.estimated_hours, t.hourly_rate, t.total_payout, t.min_level, t.deadline,
+           cat.name as category_name,
+           c.display_name as client_name
+         FROM tasks t
+@@ -135,8 +145,9 @@ export async function handleTasks(request, env, auth, path, method) {
+         WHERE t.status = 'submitted'
+           AND t.contractor_id IS NULL
+           AND t.campfire_eligible = 1
++          AND COALESCE(t.min_level, 1) <= ?
+         ORDER BY t.created_at DESC
+-      `).all()
++      `).bind(userLevel).all()
+       return jsonResponse({ success: true, data: result.results || [] })
+     } catch (err) {
+       console.error('Campfire list error:', err)
+@@ -165,6 +176,17 @@ export async function handleTasks(request, env, auth, path, method) {
+       if (task.campfire_eligible !== 1 || task.status !== 'submitted' || task.contractor_id) {
+         return jsonResponse({ success: false, error: 'This task has already been claimed' }, 409)
+       }
++
++      // Check contractor level meets min_level
++      if (task.min_level && task.min_level > 1) {
++        const xp = await env.DB.prepare(
++          'SELECT current_level FROM contractor_xp WHERE user_id = ?'
++        ).bind(auth.user.id).first()
++        const level = xp?.current_level || 1
++        if (level < task.min_level) {
++          return jsonResponse({ success: false, error: `Level ${task.min_level} required to claim this task` }, 403)
++        }
++      }
+       await env.DB.prepare(`
+         UPDATE tasks SET contractor_id = ?, status = 'assigned', updated_at = datetime("now") WHERE id = ?
+       `).bind(auth.user.id, taskId).run()
+@@ -421,7 +443,7 @@ export async function handleTasks(request, env, auth, path, method) {
+ 
+     try {
+       const body = await request.json()
+-      const { title, description, priority, category_id, project_id, client_id, template_id, deadline, campfire_eligible, complexity_level } = body
++      const { title, description, priority, category_id, project_id, client_id, template_id, deadline, campfire_eligible, complexity_level, estimated_hours, hourly_rate, min_level, scheduled_start, scheduled_end } = body
+ 
+       if (!title || !description || !priority || !category_id || !project_id) {
+         return jsonResponse(
+@@ -499,12 +521,18 @@ export async function handleTasks(request, env, auth, path, method) {
+ 
+       const taskId = crypto.randomUUID()
+ 
++      const estHours = estimated_hours ? Number(estimated_hours) : null
++      const hRate = hourly_rate ? Number(hourly_rate) : null
++      const totalPayout = (estHours && hRate) ? Math.round(estHours * hRate * 100) / 100 : null
++      const minLvl = min_level ? Number(min_level) : 1
++
+       await env.DB.prepare(`
+         INSERT INTO tasks (
+           id, title, description, status, priority, category_id, project_id,
+-          client_id, created_by, template_id, deadline, ai_metadata, campfire_eligible, complexity_level
++          client_id, created_by, template_id, deadline, ai_metadata, campfire_eligible, complexity_level,
++          estimated_hours, hourly_rate, total_payout, min_level, scheduled_start, scheduled_end
+         )
+-        VALUES (?, ?, ?, 'submitted', ?, ?, ?, ?, ?, ?, ?, NULL, ?, ?)
++        VALUES (?, ?, ?, 'submitted', ?, ?, ?, ?, ?, ?, ?, NULL, ?, ?, ?, ?, ?, ?, ?, ?)
+       `).bind(
+         taskId,
+         title,
+@@ -517,7 +545,13 @@ export async function handleTasks(request, env, auth, path, method) {
+         template_id || null,
+         deadline || null,
+         campfire_eligible ? 1 : 0,
+-        complexity_level != null ? Number(complexity_level) : null
++        complexity_level != null ? Number(complexity_level) : null,
++        estHours,
++        hRate,
++        totalPayout,
++        minLvl,
++        scheduled_start || null,
++        scheduled_end || null
+       ).run()
+ 
+       // Create initial history entry
+@@ -693,6 +727,42 @@ export async function handleTasks(request, env, auth, path, method) {
+         }
+       }
+ 
++      // Admin can set pricing & level fields
++      if (auth.user.role === 'admin') {
++        if (body.estimated_hours !== undefined) {
++          updates.push('estimated_hours = ?')
++          bindings.push(body.estimated_hours ? Number(body.estimated_hours) : null)
++        }
++        if (body.hourly_rate !== undefined) {
++          updates.push('hourly_rate = ?')
++          bindings.push(body.hourly_rate ? Number(body.hourly_rate) : null)
++        }
++        if (body.min_level !== undefined) {
++          updates.push('min_level = ?')
++          bindings.push(body.min_level ? Number(body.min_level) : 1)
++        }
++        if (body.scheduled_start !== undefined) {
++          updates.push('scheduled_start = ?')
++          bindings.push(body.scheduled_start || null)
++        }
++        if (body.scheduled_end !== undefined) {
++          updates.push('scheduled_end = ?')
++          bindings.push(body.scheduled_end || null)
++        }
++        // Recompute total_payout if hours or rate changed
++        if (body.estimated_hours !== undefined || body.hourly_rate !== undefined) {
++          const h = body.estimated_hours !== undefined ? Number(body.estimated_hours) : null
++          const r = body.hourly_rate !== undefined ? Number(body.hourly_rate) : null
++          // Need to fetch current values for any that weren't provided
++          const current = await env.DB.prepare('SELECT estimated_hours, hourly_rate FROM tasks WHERE id = ?').bind(taskId).first()
++          const finalH = h !== null ? h : current?.estimated_hours
++          const finalR = r !== null ? r : current?.hourly_rate
++          const payout = (finalH && finalR) ? Math.round(finalH * finalR * 100) / 100 : null
++          updates.push('total_payout = ?')
++          bindings.push(payout)
++        }
++      }
++
+       if (updates.length === 0) {
+         return jsonResponse(
+           { success: false, error: 'No fields to update' },
+@@ -827,6 +897,31 @@ export async function handleTasks(request, env, auth, path, method) {
+         note || null
+       ).run()
+ 
++      // Credit earnings when task is closed
++      if (newStatus === 'closed' && task.contractor_id) {
++        const fullTask = await env.DB.prepare('SELECT total_payout FROM tasks WHERE id = ?').bind(taskId).first()
++        const payout = fullTask?.total_payout || 0
++        if (payout > 0) {
++          await env.DB.prepare(`
++            INSERT INTO earnings (id, user_id, task_id, type, amount, description)
++            VALUES (?, ?, ?, 'task_completion', ?, ?)
++          `).bind(
++            crypto.randomUUID(),
++            task.contractor_id,
++            taskId,
++            payout,
++            `Task completed: ${task.title}`
++          ).run()
++
++          // Update cached balance
++          await env.DB.prepare(`
++            UPDATE contractor_xp 
++            SET total_earnings = total_earnings + ?, available_balance = available_balance + ?, updated_at = datetime('now')
++            WHERE user_id = ?
++          `).bind(payout, payout, task.contractor_id).run()
++        }
++      }
++
+       const updatedTask = await env.DB.prepare(`
+         SELECT t.*,
+           c.display_name as client_name,
+diff --git a/frontend/src/App.jsx b/frontend/src/App.jsx
+index adfd91d..59ded92 100644
+--- a/frontend/src/App.jsx
++++ b/frontend/src/App.jsx
+@@ -20,6 +20,8 @@ import ContractorTaskDetail from '@/pages/contractor/ContractorTaskDetail'
+ import ContractorBrandGuides from '@/pages/contractor/ContractorBrandGuides'
+ import ContractorProfile from '@/pages/contractor/ContractorProfile'
+ import CamperJourney from '@/pages/contractor/CamperJourney'
++import CamperEarnings from '@/pages/contractor/CamperEarnings'
++import CalendarPage from '@/pages/shared/CalendarPage'
+ 
+ // Admin pages
+ import AdminDashboard from '@/pages/admin/AdminDashboard'
+@@ -101,6 +103,7 @@ function App() {
+               <Route path="/admin/tools/presentation" element={<CreatePresentation />} />
+               <Route path="/admin/tools/ad" element={<CreateAd />} />
+               <Route path="/admin/settings" element={<AdminSettings />} />
++              <Route path="/admin/calendar" element={<CalendarPage />} />
+             </Route>
+ 
+             {/* Client routes */}
+@@ -128,6 +131,8 @@ function App() {
+               <Route path="/camper/tasks/:id" element={<ContractorTaskDetail />} />
+               <Route path="/camper/brands" element={<ContractorBrandGuides />} />
+               <Route path="/camper/journey" element={<CamperJourney />} />
++              <Route path="/camper/earnings" element={<CamperEarnings />} />
++              <Route path="/camper/calendar" element={<CalendarPage />} />
+               <Route path="/camper/profile" element={<ContractorProfile />} />
+             </Route>
+ 
+diff --git a/frontend/src/components/features/tasks/TaskForm.jsx b/frontend/src/components/features/tasks/TaskForm.jsx
+index 22ee4f8..b8e398a 100644
+--- a/frontend/src/components/features/tasks/TaskForm.jsx
++++ b/frontend/src/components/features/tasks/TaskForm.jsx
+@@ -32,6 +32,9 @@ export default function TaskForm({
+     attachments: [],
+     campfire_eligible: false,
+     complexity_level: '',
++    estimated_hours: '',
++    hourly_rate: '',
++    min_level: '1',
+   })
+ 
+   const [errors, setErrors] = useState({})
+@@ -51,6 +54,9 @@ export default function TaskForm({
+         attachments: [],
+         campfire_eligible: !!initialData.campfire_eligible,
+         complexity_level: initialData.complexity_level != null ? String(initialData.complexity_level) : '',
++        estimated_hours: initialData.estimated_hours != null ? String(initialData.estimated_hours) : '',
++        hourly_rate: initialData.hourly_rate != null ? String(initialData.hourly_rate) : '',
++        min_level: initialData.min_level != null ? String(initialData.min_level) : '1',
+       })
+     }
+   }, [initialData])
+@@ -343,6 +349,81 @@ export default function TaskForm({
+         </div>
+       )}
+ 
++      {/* Pricing & Level (admin only) */}
++      {isAdmin && (
++        <>
++          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: spacing[4] }}>
++            <div>
++              <label style={{ display: 'block', fontSize: '14px', fontWeight: 500, color: colours.neutral[700], marginBottom: spacing[2] }}>
++                Estimated Hours
++              </label>
++              <Input
++                type="number"
++                step="0.5"
++                min="0.5"
++                value={formData.estimated_hours}
++                onChange={(e) => handleChange('estimated_hours', e.target.value)}
++                placeholder="e.g. 6"
++                disabled={loading}
++              />
++            </div>
++            <div>
++              <label style={{ display: 'block', fontSize: '14px', fontWeight: 500, color: colours.neutral[700], marginBottom: spacing[2] }}>
++                Hourly Rate ($)
++              </label>
++              <Input
++                type="number"
++                step="1"
++                min="0"
++                value={formData.hourly_rate}
++                onChange={(e) => handleChange('hourly_rate', e.target.value)}
++                placeholder="e.g. 20"
++                disabled={loading}
++              />
++            </div>
++            <div>
++              <label style={{ display: 'block', fontSize: '14px', fontWeight: 500, color: colours.neutral[700], marginBottom: spacing[2] }}>
++                Total Payout
++              </label>
++              <div style={{
++                padding: `${spacing[3]} ${spacing[4]}`, backgroundColor: colours.neutral[100],
++                borderRadius: '6px', fontSize: '14px', fontWeight: 600,
++                color: (formData.estimated_hours && formData.hourly_rate) ? colours.neutral[900] : colours.neutral[500],
++              }}>
++                {(formData.estimated_hours && formData.hourly_rate)
++                  ? `$${(Number(formData.estimated_hours) * Number(formData.hourly_rate)).toFixed(2)}`
++                  : '—'
++                }
++              </div>
++            </div>
++          </div>
++          <div>
++            <label style={{ display: 'block', fontSize: '14px', fontWeight: 500, color: colours.neutral[700], marginBottom: spacing[2] }}>
++              Minimum Level Required
++            </label>
++            <Select
++              value={formData.min_level}
++              onChange={(e) => handleChange('min_level', e.target.value)}
++              options={[
++                { value: '1', label: 'Level 1 — Volunteer (anyone)' },
++                { value: '2', label: 'Level 2 — Apprentice' },
++                { value: '3', label: 'Level 3 — Junior' },
++                { value: '4', label: 'Level 4 — Intermediate' },
++                { value: '5', label: 'Level 5 — Senior' },
++                { value: '6', label: 'Level 6 — Specialist' },
++                { value: '7', label: 'Level 7 — Camp Leader' },
++                { value: '8', label: 'Level 8 — Guide' },
++                { value: '9', label: 'Level 9 — Trailblazer' },
++                { value: '10', label: 'Level 10 — Pioneer' },
++                { value: '11', label: 'Level 11 — Legend' },
++                { value: '12', label: 'Level 12 — Legacy' },
++              ]}
++              disabled={loading}
++            />
++          </div>
++        </>
++      )}
++
+       {/* Attachments */}
+       <div>
+         <label style={{
+diff --git a/frontend/src/components/layout/Sidebar.jsx b/frontend/src/components/layout/Sidebar.jsx
+index 951bb78..8bc2ee4 100644
+--- a/frontend/src/components/layout/Sidebar.jsx
++++ b/frontend/src/components/layout/Sidebar.jsx
+@@ -1,6 +1,6 @@
+ import { useState, useEffect } from 'react'
+ import { NavLink, useNavigate } from 'react-router-dom'
+-import { Home, CheckSquare, Users, Palette, Wrench, Settings, BookOpen, User, Compass, Menu, Flame } from 'lucide-react'
++import { Home, CheckSquare, Users, Palette, Wrench, Settings, BookOpen, User, Compass, Menu, Flame, DollarSign, Calendar } from 'lucide-react'
+ import useAuth from '@/hooks/useAuth'
+ import Avatar from '@/components/ui/Avatar'
+ import Button from '@/components/ui/Button'
+@@ -22,6 +22,7 @@ const navItemsByRole = {
+   [ROLES.CONTRACTOR]: [
+     { path: '/camper', label: 'Home', icon: <Flame size={ICON_SIZE} /> },
+     { path: '/camper/tasks', label: 'Tasks', icon: <CheckSquare size={ICON_SIZE} /> },
++    { path: '/camper/calendar', label: 'Calendar', icon: <Calendar size={ICON_SIZE} /> },
+     { path: '/camper/brands', label: 'Brands', icon: <Palette size={ICON_SIZE} /> },
+     { path: '/camper/journey', label: 'Journey', icon: <Compass size={ICON_SIZE} /> },
+     { path: '/camper/profile', label: 'Profile', icon: <User size={ICON_SIZE} /> },
+@@ -29,6 +30,7 @@ const navItemsByRole = {
+   [ROLES.ADMIN]: [
+     { path: '/admin', label: 'Home', icon: <Home size={ICON_SIZE} /> },
+     { path: '/admin/tasks', label: 'Tasks', icon: <CheckSquare size={ICON_SIZE} /> },
++    { path: '/admin/calendar', label: 'Calendar', icon: <Calendar size={ICON_SIZE} /> },
+     { path: '/admin/campers', label: 'Campers', icon: <Users size={ICON_SIZE} /> },
+     { path: '/admin/brands', label: 'Brands', icon: <Palette size={ICON_SIZE} /> },
+     { path: '/admin/journey', label: 'Journey', icon: <Compass size={ICON_SIZE} /> },
+@@ -299,6 +301,27 @@ export default function Sidebar() {
+                 {(xpData.total_xp || 0).toLocaleString()} XP
+               </div>
+               <WaveProgressBar progress={xpProgress} size="sm" />
++              {user.role === 'contractor' && (
++                <div
++                  onClick={() => navigate('/camper/earnings')}
++                  style={{
++                    display: 'flex', alignItems: 'center', gap: spacing[2],
++                    marginTop: spacing[2], padding: `${spacing[2]} ${spacing[3]}`,
++                    backgroundColor: colours.neutral[100], borderRadius: radii.md,
++                    cursor: 'pointer', transition: `background-color ${transitions.fast}`,
++                  }}
++                  onMouseEnter={e => e.currentTarget.style.backgroundColor = colours.neutral[200]}
++                  onMouseLeave={e => e.currentTarget.style.backgroundColor = colours.neutral[100]}
++                >
++                  <DollarSign size={14} style={{ color: colours.neutral[600] }} />
++                  <div style={{ flex: 1 }}>
++                    <div style={{ fontSize: '11px', color: colours.neutral[500] }}>Balance</div>
++                    <div style={{ fontSize: typography.fontSize.sm, fontWeight: typography.fontWeight.semibold, color: colours.neutral[900] }}>
++                      ${(xpData.available_balance || 0).toFixed(2)}
++                    </div>
++                  </div>
++                </div>
++              )}
+             </div>
+           )}
+           <Button
+diff --git a/frontend/src/pages/admin/AdminAnalytics.jsx b/frontend/src/pages/admin/AdminAnalytics.jsx
+index a47b2dd..bd56016 100644
+--- a/frontend/src/pages/admin/AdminAnalytics.jsx
++++ b/frontend/src/pages/admin/AdminAnalytics.jsx
+@@ -1,9 +1,9 @@
+ import { useState, useEffect, useCallback } from 'react'
+ import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip } from 'recharts'
+-import { CheckCircle, Clock, Users, Star, TrendingUp, Calendar } from 'lucide-react'
++import { CheckCircle, Clock, Users, Star, TrendingUp, Calendar, Gift, DollarSign } from 'lucide-react'
+ import useAuth from '@/hooks/useAuth'
+ import useToast from '@/hooks/useToast'
+-import { GlowCard, EmberLoader, PageHeader, DatePicker, Button } from '@/components/ui'
++import { GlowCard, EmberLoader, PageHeader, DatePicker, Button, Select, Input } from '@/components/ui'
+ import {
+   getTaskOverview,
+   getTurnaround,
+@@ -11,6 +11,8 @@ import {
+   getTimeTracking,
+   getReviewInsights,
+ } from '@/services/analytics'
++import { apiEndpoint } from '@/config/env'
++import { getAuthHeaders } from '@/services/auth'
+ import { colours, spacing, typography, radii } from '@/config/tokens'
+ 
+ // ── Formatting helpers ────────────────────────────────────────────
+@@ -223,6 +225,15 @@ export default function AdminAnalytics() {
+   const [contractorData, setContractorData] = useState(null)
+   const [timeData, setTimeData] = useState(null)
+   const [reviewData, setReviewData] = useState(null)
++  const [earningsAnalytics, setEarningsAnalytics] = useState(null)
++  const [campersList, setCampersList] = useState([])
++
++  // Reward form
++  const [rewardUser, setRewardUser] = useState('')
++  const [rewardType, setRewardType] = useState('bonus_cash')
++  const [rewardAmount, setRewardAmount] = useState('')
++  const [rewardDescription, setRewardDescription] = useState('')
++  const [rewardSubmitting, setRewardSubmitting] = useState(false)
+ 
+   const [loading, setLoading] = useState(true)
+ 
+@@ -251,6 +262,18 @@ export default function AdminAnalytics() {
+       setContractorData(contrs)
+       setTimeData(time)
+       setReviewData(reviews)
++
++      // Fetch earnings analytics and campers list
++      try {
++        const [earningsRes, usersRes] = await Promise.all([
++          fetch(apiEndpoint('/earnings/analytics'), { headers: getAuthHeaders() }),
++          fetch(apiEndpoint('/users'), { headers: getAuthHeaders() }),
++        ])
++        const earningsJson = await earningsRes.json()
++        const usersJson = await usersRes.json()
++        if (earningsJson.success) setEarningsAnalytics(earningsJson.data)
++        if (usersJson.success) setCampersList(usersJson.data.filter(u => u.role === 'contractor'))
++      } catch (e) { /* non-critical */ }
+     } catch (err) {
+       addToast(err.message || 'Failed to load analytics', 'error')
+     } finally {
+@@ -413,6 +436,149 @@ export default function AdminAnalytics() {
+           }
+         }
+       `}</style>
++
++      {/* Level Breakdown */}
++      {earningsAnalytics?.by_level && earningsAnalytics.by_level.length > 0 && (
++        <GlowCard style={{ marginTop: spacing[6] }}>
++          <h3 style={{ fontSize: typography.fontSize.lg, fontWeight: typography.fontWeight.semibold, color: colours.neutral[900], marginBottom: spacing[4] }}>
++            Tasks by Level
++          </h3>
++          <div style={{ display: 'grid', gridTemplateColumns: '80px 1fr 60px 60px 80px', gap: spacing[2], padding: `0 0 ${spacing[2]} 0`, borderBottom: `1px solid ${colours.neutral[200]}` }}>
++            <span style={{ fontSize: typography.fontSize.xs, color: colours.neutral[500], textTransform: 'uppercase' }}>Level</span>
++            <span style={{ fontSize: typography.fontSize.xs, color: colours.neutral[500], textTransform: 'uppercase' }}>Name</span>
++            <span style={{ fontSize: typography.fontSize.xs, color: colours.neutral[500], textTransform: 'uppercase', textAlign: 'right' }}>Active</span>
++            <span style={{ fontSize: typography.fontSize.xs, color: colours.neutral[500], textTransform: 'uppercase', textAlign: 'right' }}>Done</span>
++            <span style={{ fontSize: typography.fontSize.xs, color: colours.neutral[500], textTransform: 'uppercase', textAlign: 'right' }}>Value</span>
++          </div>
++          {earningsAnalytics.by_level.map((row) => (
++            <div key={row.level} style={{ display: 'grid', gridTemplateColumns: '80px 1fr 60px 60px 80px', gap: spacing[2], padding: `${spacing[2]} 0`, borderBottom: `1px solid ${colours.neutral[100]}` }}>
++              <span style={{ fontSize: typography.fontSize.sm, fontWeight: typography.fontWeight.semibold, color: colours.neutral[900] }}>Lv. {row.level}</span>
++              <span style={{ fontSize: typography.fontSize.sm, color: colours.neutral[600] }}>{row.level_name || '—'}</span>
++              <span style={{ fontSize: typography.fontSize.sm, color: colours.neutral[900], textAlign: 'right' }}>{row.active}</span>
++              <span style={{ fontSize: typography.fontSize.sm, color: colours.neutral[900], textAlign: 'right' }}>{row.completed}</span>
++              <span style={{ fontSize: typography.fontSize.sm, fontWeight: typography.fontWeight.semibold, color: colours.neutral[900], textAlign: 'right' }}>
++                {row.total_value > 0 ? `$${Number(row.total_value).toLocaleString()}` : '—'}
++              </span>
++            </div>
++          ))}
++        </GlowCard>
++      )}
++
++      {/* Earnings Summary */}
++      {earningsAnalytics?.earnings_summary && (
++        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: spacing[4], marginTop: spacing[6] }}>
++          <StatTile
++            icon={DollarSign}
++            label="Task Earnings"
++            value={`$${fmtCount(earningsAnalytics.earnings_summary.task_earnings || 0)}`}
++            sublabel="paid for completed tasks"
++          />
++          <StatTile
++            icon={Gift}
++            label="Bonus Cash"
++            value={`$${fmtCount(earningsAnalytics.earnings_summary.bonus_earnings || 0)}`}
++            sublabel="awarded as bonuses"
++          />
++          <StatTile
++            icon={Star}
++            label="Bonus XP"
++            value={fmtCount(earningsAnalytics.earnings_summary.total_bonus_xp || 0)}
++            sublabel={`to ${earningsAnalytics.earnings_summary.unique_earners || 0} campers`}
++          />
++        </div>
++      )}
++
++      {/* Reward Panel */}
++      <GlowCard style={{ marginTop: spacing[6] }}>
++        <h3 style={{ fontSize: typography.fontSize.lg, fontWeight: typography.fontWeight.semibold, color: colours.neutral[900], marginBottom: spacing[4] }}>
++          <Gift size={18} style={{ display: 'inline', verticalAlign: 'middle', marginRight: spacing[2] }} />
++          Award Bonus
++        </h3>
++        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: spacing[4] }}>
++          <div>
++            <label style={{ display: 'block', fontSize: typography.fontSize.sm, color: colours.neutral[600], marginBottom: spacing[1] }}>Camper</label>
++            <Select
++              value={rewardUser}
++              onChange={(e) => setRewardUser(e.target.value)}
++              options={[
++                { value: '', label: 'Select camper...' },
++                ...campersList.map(c => ({ value: c.id, label: c.display_name }))
++              ]}
++            />
++          </div>
++          <div>
++            <label style={{ display: 'block', fontSize: typography.fontSize.sm, color: colours.neutral[600], marginBottom: spacing[1] }}>Type</label>
++            <Select
++              value={rewardType}
++              onChange={(e) => setRewardType(e.target.value)}
++              options={[
++                { value: 'bonus_cash', label: 'Cash Bonus ($)' },
++                { value: 'bonus_xp', label: 'XP Bonus' },
++              ]}
++            />
++          </div>
++          <div>
++            <label style={{ display: 'block', fontSize: typography.fontSize.sm, color: colours.neutral[600], marginBottom: spacing[1] }}>
++              {rewardType === 'bonus_cash' ? 'Amount ($)' : 'XP Amount'}
++            </label>
++            <Input
++              type="number"
++              min="1"
++              value={rewardAmount}
++              onChange={(e) => setRewardAmount(e.target.value)}
++              placeholder={rewardType === 'bonus_cash' ? 'e.g. 50' : 'e.g. 500'}
++            />
++          </div>
++          <div>
++            <label style={{ display: 'block', fontSize: typography.fontSize.sm, color: colours.neutral[600], marginBottom: spacing[1] }}>Reason</label>
++            <Input
++              value={rewardDescription}
++              onChange={(e) => setRewardDescription(e.target.value)}
++              placeholder="Great work on the logo redesign"
++            />
++          </div>
++        </div>
++        <Button
++          variant="primary"
++          size="sm"
++          disabled={!rewardUser || !rewardAmount || !rewardDescription || rewardSubmitting}
++          onClick={async () => {
++            setRewardSubmitting(true)
++            try {
++              const body = {
++                target_user_id: rewardUser,
++                type: rewardType,
++                description: rewardDescription,
++              }
++              if (rewardType === 'bonus_cash') body.amount = Number(rewardAmount)
++              else body.xp_amount = Number(rewardAmount)
++
++              const res = await fetch(apiEndpoint('/earnings/reward'), {
++                method: 'POST',
++                headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
++                body: JSON.stringify(body),
++              })
++              const json = await res.json()
++              if (json.success) {
++                addToast('Bonus awarded!', 'success')
++                setRewardUser('')
++                setRewardAmount('')
++                setRewardDescription('')
++                fetchAnalytics()
++              } else {
++                addToast(json.error || 'Failed', 'error')
++              }
++            } catch (err) {
++              addToast('Failed to award bonus', 'error')
++            } finally {
++              setRewardSubmitting(false)
++            }
++          }}
++          style={{ marginTop: spacing[4] }}
++        >
++          {rewardSubmitting ? 'Awarding...' : 'Award Bonus'}
++        </Button>
++      </GlowCard>
+     </div>
+   )
+ }
+diff --git a/frontend/src/pages/contractor/CamperEarnings.jsx b/frontend/src/pages/contractor/CamperEarnings.jsx
+new file mode 100644
+index 0000000..84d195e
+--- /dev/null
++++ b/frontend/src/pages/contractor/CamperEarnings.jsx
+@@ -0,0 +1,233 @@
++import { useState, useEffect, useCallback } from 'react'
++import { DollarSign, ArrowUpRight, ArrowDownRight, Gift, Clock, CheckCircle, XCircle } from 'lucide-react'
++import useAuth from '@/hooks/useAuth'
++import useToast from '@/hooks/useToast'
++import { GlowCard, PageHeader, Button, Spinner } from '@/components/ui'
++import { apiEndpoint } from '@/config/env'
++import { getAuthHeaders } from '@/services/auth'
++import { colours, spacing, typography, radii } from '@/config/tokens'
++
++export default function CamperEarnings() {
++  const { user } = useAuth()
++  const { addToast } = useToast()
++  const [data, setData] = useState(null)
++  const [loading, setLoading] = useState(true)
++  const [cashoutAmount, setCashoutAmount] = useState('')
++  const [submitting, setSubmitting] = useState(false)
++  const [showCashout, setShowCashout] = useState(false)
++
++  const fetchEarnings = useCallback(async () => {
++    try {
++      const res = await fetch(apiEndpoint('/earnings/me'), { headers: getAuthHeaders() })
++      const json = await res.json()
++      if (json.success) setData(json.data)
++    } catch (err) {
++      console.error('Fetch earnings error:', err)
++    } finally {
++      setLoading(false)
++    }
++  }, [])
++
++  useEffect(() => { fetchEarnings() }, [fetchEarnings])
++
++  const handleCashout = async () => {
++    const amount = parseFloat(cashoutAmount)
++    if (!amount || amount <= 0) return addToast('Enter a valid amount', 'error')
++    if (amount > (data?.available_balance || 0)) return addToast('Insufficient balance', 'error')
++
++    setSubmitting(true)
++    try {
++      const res = await fetch(apiEndpoint('/earnings/cashout'), {
++        method: 'POST',
++        headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
++        body: JSON.stringify({ amount }),
++      })
++      const json = await res.json()
++      if (json.success) {
++        addToast(`Cashout of $${amount.toFixed(2)} requested`, 'success')
++        setCashoutAmount('')
++        setShowCashout(false)
++        fetchEarnings()
++      } else {
++        addToast(json.error || 'Failed', 'error')
++      }
++    } catch (err) {
++      addToast('Failed to request cashout', 'error')
++    } finally {
++      setSubmitting(false)
++    }
++  }
++
++  if (loading) return <div style={{ display: 'flex', justifyContent: 'center', padding: spacing[8] }}><Spinner size="lg" /></div>
++
++  const balance = data?.available_balance || 0
++  const totalEarned = data?.total_earnings || 0
++  const earnings = data?.earnings || []
++  const cashouts = data?.cashouts || []
++
++  const typeIcon = {
++    task_completion: <CheckCircle size={16} style={{ color: colours.neutral[600] }} />,
++    bonus_cash: <Gift size={16} style={{ color: colours.neutral[600] }} />,
++    bonus_xp: <ArrowUpRight size={16} style={{ color: colours.neutral[600] }} />,
++  }
++
++  const statusBadge = (status) => {
++    const map = {
++      pending: { bg: colours.neutral[200], color: colours.neutral[600], label: 'Pending' },
++      processing: { bg: colours.neutral[300], color: colours.neutral[700], label: 'Processing' },
++      completed: { bg: colours.neutral[800], color: colours.neutral[100], label: 'Completed' },
++      rejected: { bg: colours.neutral[300], color: colours.neutral[500], label: 'Rejected' },
++    }
++    const s = map[status] || map.pending
++    return (
++      <span style={{
++        fontSize: typography.fontSize.xs, fontWeight: typography.fontWeight.medium,
++        padding: `2px ${spacing[2]}`, borderRadius: radii.full,
++        backgroundColor: s.bg, color: s.color,
++      }}>{s.label}</span>
++    )
++  }
++
++  return (
++    <div style={{ padding: spacing[6], maxWidth: 800, margin: '0 auto' }}>
++      <PageHeader title="Earnings" subtitle="Track your income and request cashouts" />
++
++      {/* Balance Cards */}
++      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: spacing[4], marginBottom: spacing[6] }}>
++        <GlowCard>
++          <div style={{ display: 'flex', alignItems: 'center', gap: spacing[3] }}>
++            <div style={{ width: 48, height: 48, borderRadius: radii.lg, backgroundColor: colours.neutral[100], display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
++              <DollarSign size={24} style={{ color: colours.neutral[700] }} />
++            </div>
++            <div>
++              <div style={{ fontSize: typography.fontSize.xs, color: colours.neutral[500], textTransform: 'uppercase', letterSpacing: '0.05em' }}>Available Balance</div>
++              <div style={{ fontSize: typography.fontSize['2xl'], fontWeight: typography.fontWeight.bold, color: colours.neutral[900] }}>
++                ${balance.toFixed(2)}
++              </div>
++            </div>
++          </div>
++          {balance > 0 && (
++            <Button variant="primary" size="sm" onClick={() => setShowCashout(!showCashout)} style={{ marginTop: spacing[3], width: '100%' }}>
++              Cash Out
++            </Button>
++          )}
++        </GlowCard>
++
++        <GlowCard>
++          <div style={{ display: 'flex', alignItems: 'center', gap: spacing[3] }}>
++            <div style={{ width: 48, height: 48, borderRadius: radii.lg, backgroundColor: colours.neutral[100], display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
++              <ArrowUpRight size={24} style={{ color: colours.neutral[700] }} />
++            </div>
++            <div>
++              <div style={{ fontSize: typography.fontSize.xs, color: colours.neutral[500], textTransform: 'uppercase', letterSpacing: '0.05em' }}>Total Earned</div>
++              <div style={{ fontSize: typography.fontSize['2xl'], fontWeight: typography.fontWeight.bold, color: colours.neutral[900] }}>
++                ${totalEarned.toFixed(2)}
++              </div>
++            </div>
++          </div>
++        </GlowCard>
++      </div>
++
++      {/* Cashout Form */}
++      {showCashout && (
++        <GlowCard style={{ marginBottom: spacing[6] }}>
++          <div style={{ fontSize: typography.fontSize.lg, fontWeight: typography.fontWeight.semibold, color: colours.neutral[900], marginBottom: spacing[3] }}>
++            Request Cashout
++          </div>
++          <div style={{ fontSize: typography.fontSize.sm, color: colours.neutral[500], marginBottom: spacing[4] }}>
++            Enter the amount you'd like to withdraw. Cashouts are processed within 2-3 business days via Stripe.
++          </div>
++          <div style={{ display: 'flex', gap: spacing[3], alignItems: 'center' }}>
++            <div style={{ position: 'relative', flex: 1 }}>
++              <span style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: colours.neutral[500] }}>$</span>
++              <input
++                type="number"
++                step="0.01"
++                min="1"
++                max={balance}
++                value={cashoutAmount}
++                onChange={e => setCashoutAmount(e.target.value)}
++                placeholder="0.00"
++                style={{
++                  width: '100%', padding: `${spacing[3]} ${spacing[3]} ${spacing[3]} ${spacing[6]}`,
++                  backgroundColor: colours.neutral[100], border: `1px solid ${colours.neutral[200]}`,
++                  borderRadius: radii.md, color: colours.neutral[900], fontSize: typography.fontSize.lg,
++                  fontFamily: typography.fontFamily.sans, outline: 'none',
++                }}
++              />
++            </div>
++            <Button variant="primary" onClick={handleCashout} disabled={submitting}>
++              {submitting ? 'Processing...' : 'Submit'}
++            </Button>
++            <Button variant="ghost" onClick={() => { setShowCashout(false); setCashoutAmount('') }}>Cancel</Button>
++          </div>
++        </GlowCard>
++      )}
++
++      {/* Cashout History */}
++      {cashouts.length > 0 && (
++        <GlowCard style={{ marginBottom: spacing[6] }}>
++          <div style={{ fontSize: typography.fontSize.lg, fontWeight: typography.fontWeight.semibold, color: colours.neutral[900], marginBottom: spacing[4] }}>
++            Cashout Requests
++          </div>
++          {cashouts.map(c => (
++            <div key={c.id} style={{
++              display: 'flex', justifyContent: 'space-between', alignItems: 'center',
++              padding: `${spacing[3]} 0`, borderBottom: `1px solid ${colours.neutral[100]}`,
++            }}>
++              <div>
++                <div style={{ fontSize: typography.fontSize.sm, fontWeight: typography.fontWeight.medium, color: colours.neutral[900] }}>
++                  ${c.amount.toFixed(2)}
++                </div>
++                <div style={{ fontSize: typography.fontSize.xs, color: colours.neutral[500] }}>
++                  {new Date(c.created_at).toLocaleDateString('en-NZ')}
++                </div>
++              </div>
++              {statusBadge(c.status)}
++            </div>
++          ))}
++        </GlowCard>
++      )}
++
++      {/* Earnings History */}
++      <GlowCard>
++        <div style={{ fontSize: typography.fontSize.lg, fontWeight: typography.fontWeight.semibold, color: colours.neutral[900], marginBottom: spacing[4] }}>
++          Earnings History
++        </div>
++        {earnings.length === 0 ? (
++          <div style={{ textAlign: 'center', padding: spacing[6], color: colours.neutral[500] }}>
++            No earnings yet. Complete tasks to start earning!
++          </div>
++        ) : earnings.map(e => (
++          <div key={e.id} style={{
++            display: 'flex', alignItems: 'center', gap: spacing[3],
++            padding: `${spacing[3]} 0`, borderBottom: `1px solid ${colours.neutral[100]}`,
++          }}>
++            {typeIcon[e.type] || <DollarSign size={16} />}
++            <div style={{ flex: 1 }}>
++              <div style={{ fontSize: typography.fontSize.sm, fontWeight: typography.fontWeight.medium, color: colours.neutral[900] }}>
++                {e.description || e.task_title || 'Earning'}
++              </div>
++              <div style={{ fontSize: typography.fontSize.xs, color: colours.neutral[500] }}>
++                {new Date(e.created_at).toLocaleDateString('en-NZ')}
++                {e.awarded_by_name && ` · Awarded by ${e.awarded_by_name}`}
++              </div>
++            </div>
++            <div style={{ textAlign: 'right' }}>
++              {e.amount > 0 && (
++                <div style={{ fontSize: typography.fontSize.sm, fontWeight: typography.fontWeight.semibold, color: colours.neutral[900] }}>
++                  +${e.amount.toFixed(2)}
++                </div>
++              )}
++              {e.xp_amount > 0 && (
++                <div style={{ fontSize: typography.fontSize.xs, color: colours.neutral[600] }}>
++                  +{e.xp_amount} XP
++                </div>
++              )}
++            </div>
++          </div>
++        ))}
++      </GlowCard>
++    </div>
++  )
++}
+diff --git a/frontend/src/pages/shared/CalendarPage.jsx b/frontend/src/pages/shared/CalendarPage.jsx
+new file mode 100644
+index 0000000..6c6969d
+--- /dev/null
++++ b/frontend/src/pages/shared/CalendarPage.jsx
+@@ -0,0 +1,436 @@
++import { useState, useEffect, useCallback, useMemo } from 'react'
++import { ChevronLeft, ChevronRight, Clock, DollarSign, AlertTriangle, Plus, X, Zap } from 'lucide-react'
++import useAuth from '@/hooks/useAuth'
++import useToast from '@/hooks/useToast'
++import { GlowCard, PageHeader, Button, Spinner } from '@/components/ui'
++import { apiEndpoint } from '@/config/env'
++import { getAuthHeaders } from '@/services/auth'
++import { colours, spacing, typography, radii, transitions } from '@/config/tokens'
++
++const HOURS = Array.from({ length: 11 }, (_, i) => i + 7) // 7am to 5pm
++const HOUR_HEIGHT = 60 // px per hour
++
++function getWeekDays(date) {
++  const d = new Date(date)
++  const day = d.getDay()
++  const diff = d.getDate() - day + (day === 0 ? -6 : 1) // Monday
++  const monday = new Date(d.setDate(diff))
++  return Array.from({ length: 7 }, (_, i) => {
++    const d = new Date(monday)
++    d.setDate(monday.getDate() + i)
++    return d
++  })
++}
++
++function toLocal(iso) {
++  return new Date(iso)
++}
++
++function isSameDay(a, b) {
++  return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate()
++}
++
++const priorityColor = {
++  urgent: colours.neutral[900],
++  high: colours.neutral[700],
++  medium: colours.neutral[500],
++  low: colours.neutral[400],
++}
++
++export default function CalendarPage() {
++  const { user } = useAuth()
++  const { addToast } = useToast()
++  const [currentDate, setCurrentDate] = useState(new Date())
++  const [schedule, setSchedule] = useState([])
++  const [tasks, setTasks] = useState([])
++  const [loading, setLoading] = useState(true)
++  const [selectedTask, setSelectedTask] = useState(null)
++  const [suggestions, setSuggestions] = useState([])
++  const [loadingSuggestions, setLoadingSuggestions] = useState(false)
++  const [showTaskPicker, setShowTaskPicker] = useState(false)
++
++  const weekDays = useMemo(() => getWeekDays(currentDate), [currentDate])
++  const weekStart = weekDays[0].toISOString()
++  const weekEnd = new Date(weekDays[6].getTime() + 24 * 60 * 60 * 1000).toISOString()
++
++  const fetchData = useCallback(async () => {
++    setLoading(true)
++    try {
++      const [schedRes, taskRes] = await Promise.all([
++        fetch(apiEndpoint(`/schedule?start=${weekStart}&end=${weekEnd}`), { headers: getAuthHeaders() }),
++        fetch(apiEndpoint('/tasks?status=assigned,in_progress'), { headers: getAuthHeaders() }),
++      ])
++      const schedJson = await schedRes.json()
++      const taskJson = await taskRes.json()
++      if (schedJson.success) setSchedule(schedJson.data || [])
++      if (taskJson.success) setTasks((taskJson.data || []).filter(t => 
++        user.role === 'admin' || t.contractor_id === user.id
++      ))
++    } catch (err) {
++      console.error('Calendar fetch error:', err)
++    } finally {
++      setLoading(false)
++    }
++  }, [weekStart, weekEnd, user])
++
++  useEffect(() => { fetchData() }, [fetchData])
++
++  const fetchSuggestions = async (taskId) => {
++    setLoadingSuggestions(true)
++    try {
++      const res = await fetch(apiEndpoint(`/schedule/suggestions/${taskId}`), { headers: getAuthHeaders() })
++      const json = await res.json()
++      if (json.success) setSuggestions(json.data.suggestions || [])
++    } catch (err) {
++      console.error('Suggestions error:', err)
++    } finally {
++      setLoadingSuggestions(false)
++    }
++  }
++
++  const handleScheduleBlock = async (taskId, startTime, endTime) => {
++    try {
++      const res = await fetch(apiEndpoint('/schedule'), {
++        method: 'POST',
++        headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
++        body: JSON.stringify({ task_id: taskId, start_time: startTime, end_time: endTime }),
++      })
++      const json = await res.json()
++      if (json.success) {
++        addToast('Task scheduled', 'success')
++        setSelectedTask(null)
++        setSuggestions([])
++        setShowTaskPicker(false)
++        fetchData()
++      } else {
++        addToast(json.error || 'Failed', 'error')
++      }
++    } catch (err) {
++      addToast('Failed to schedule', 'error')
++    }
++  }
++
++  const handleDeleteBlock = async (blockId) => {
++    try {
++      const res = await fetch(apiEndpoint(`/schedule/${blockId}`), {
++        method: 'DELETE',
++        headers: getAuthHeaders(),
++      })
++      const json = await res.json()
++      if (json.success) {
++        addToast('Block removed', 'success')
++        fetchData()
++      }
++    } catch (err) {
++      addToast('Failed to remove', 'error')
++    }
++  }
++
++  const prevWeek = () => {
++    const d = new Date(currentDate)
++    d.setDate(d.getDate() - 7)
++    setCurrentDate(d)
++  }
++
++  const nextWeek = () => {
++    const d = new Date(currentDate)
++    d.setDate(d.getDate() + 7)
++    setCurrentDate(d)
++  }
++
++  const today = new Date()
++
++  // Unscheduled tasks
++  const scheduledTaskIds = new Set(schedule.map(s => s.task_id))
++  const unscheduled = tasks.filter(t => !scheduledTaskIds.has(t.id))
++
++  if (loading) return <div style={{ display: 'flex', justifyContent: 'center', padding: spacing[8] }}><Spinner size="lg" /></div>
++
++  return (
++    <div style={{ padding: spacing[6], maxWidth: 1200, margin: '0 auto' }}>
++      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing[4] }}>
++        <PageHeader title="Calendar" subtitle="Schedule your work blocks" />
++        <Button variant="primary" size="sm" onClick={() => setShowTaskPicker(!showTaskPicker)}>
++          <Plus size={16} /> Schedule Task
++        </Button>
++      </div>
++
++      {/* Task Picker + Suggestions */}
++      {showTaskPicker && (
++        <GlowCard style={{ marginBottom: spacing[4] }}>
++          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing[3] }}>
++            <div style={{ fontSize: typography.fontSize.lg, fontWeight: typography.fontWeight.semibold, color: colours.neutral[900] }}>
++              <Zap size={18} style={{ display: 'inline', verticalAlign: 'middle', marginRight: spacing[2] }} />
++              Smart Schedule
++            </div>
++            <Button variant="ghost" size="sm" onClick={() => { setShowTaskPicker(false); setSelectedTask(null); setSuggestions([]) }}>
++              <X size={16} />
++            </Button>
++          </div>
++
++          {!selectedTask ? (
++            <div>
++              <div style={{ fontSize: typography.fontSize.sm, color: colours.neutral[500], marginBottom: spacing[3] }}>
++                Pick a task to schedule — we'll find the best time slots for you.
++              </div>
++              {unscheduled.length === 0 ? (
++                <div style={{ color: colours.neutral[500], textAlign: 'center', padding: spacing[4] }}>
++                  All assigned tasks are already scheduled!
++                </div>
++              ) : (
++                <div style={{ display: 'flex', flexDirection: 'column', gap: spacing[2] }}>
++                  {unscheduled.map(t => (
++                    <div
++                      key={t.id}
++                      onClick={() => { setSelectedTask(t); fetchSuggestions(t.id) }}
++                      style={{
++                        padding: `${spacing[3]} ${spacing[4]}`, borderRadius: radii.md,
++                        backgroundColor: colours.neutral[50], cursor: 'pointer',
++                        border: `1px solid ${colours.neutral[200]}`,
++                        transition: `background-color ${transitions.fast}`,
++                        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
++                      }}
++                      onMouseEnter={e => e.currentTarget.style.backgroundColor = colours.neutral[100]}
++                      onMouseLeave={e => e.currentTarget.style.backgroundColor = colours.neutral[50]}
++                    >
++                      <div>
++                        <div style={{ fontSize: typography.fontSize.sm, fontWeight: typography.fontWeight.medium, color: colours.neutral[900] }}>
++                          {t.title}
++                        </div>
++                        <div style={{ fontSize: typography.fontSize.xs, color: colours.neutral[500] }}>
++                          {t.client_name || t.category_name}
++                          {t.estimated_hours && ` · ${t.estimated_hours}h`}
++                          {t.total_payout && ` · $${t.total_payout}`}
++                        </div>
++                      </div>
++                      {t.deadline && (
++                        <div style={{ fontSize: typography.fontSize.xs, color: new Date(t.deadline) < new Date(Date.now() + 3*86400000) ? colours.neutral[900] : colours.neutral[500] }}>
++                          Due {new Date(t.deadline).toLocaleDateString('en-NZ', { month: 'short', day: 'numeric' })}
++                        </div>
++                      )}
++                    </div>
++                  ))}
++                </div>
++              )}
++            </div>
++          ) : (
++            <div>
++              <div style={{ display: 'flex', alignItems: 'center', gap: spacing[3], marginBottom: spacing[4] }}>
++                <Button variant="ghost" size="sm" onClick={() => { setSelectedTask(null); setSuggestions([]) }}>
++                  <ChevronLeft size={16} /> Back
++                </Button>
++                <div style={{ fontSize: typography.fontSize.sm, fontWeight: typography.fontWeight.semibold, color: colours.neutral[900] }}>
++                  {selectedTask.title}
++                </div>
++              </div>
++
++              <div style={{ fontSize: typography.fontSize.sm, color: colours.neutral[500], marginBottom: spacing[3] }}>
++                Recommended time slots based on your existing schedule:
++              </div>
++
++              {loadingSuggestions ? (
++                <div style={{ textAlign: 'center', padding: spacing[4] }}><Spinner size="md" /></div>
++              ) : suggestions.length === 0 ? (
++                <div style={{ color: colours.neutral[500], textAlign: 'center', padding: spacing[4] }}>
++                  No available slots found this week.
++                </div>
++              ) : (
++                <div style={{ display: 'flex', flexDirection: 'column', gap: spacing[2] }}>
++                  {suggestions.map((s, i) => (
++                    <div
++                      key={i}
++                      onClick={() => handleScheduleBlock(selectedTask.id, s.start_time, s.end_time)}
++                      style={{
++                        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
++                        padding: `${spacing[3]} ${spacing[4]}`, borderRadius: radii.md,
++                        backgroundColor: colours.neutral[50], cursor: 'pointer',
++                        border: `1px solid ${s.fit === 'urgent' ? colours.neutral[700] : colours.neutral[200]}`,
++                        transition: `background-color ${transitions.fast}`,
++                      }}
++                      onMouseEnter={e => e.currentTarget.style.backgroundColor = colours.neutral[100]}
++                      onMouseLeave={e => e.currentTarget.style.backgroundColor = colours.neutral[50]}
++                    >
++                      <div>
++                        <div style={{ fontSize: typography.fontSize.sm, fontWeight: typography.fontWeight.semibold, color: colours.neutral[900] }}>
++                          {s.day_label}
++                        </div>
++                        <div style={{ fontSize: typography.fontSize.sm, color: colours.neutral[600] }}>
++                          {s.time_label}
++                        </div>
++                      </div>
++                      <div style={{ display: 'flex', alignItems: 'center', gap: spacing[2] }}>
++                        {s.fit === 'urgent' && <AlertTriangle size={14} style={{ color: colours.neutral[700] }} />}
++                        <span style={{
++                          fontSize: typography.fontSize.xs, fontWeight: typography.fontWeight.medium,
++                          padding: `2px ${spacing[2]}`, borderRadius: radii.full,
++                          backgroundColor: s.fit === 'urgent' ? colours.neutral[800] : s.fit === 'soon' ? colours.neutral[300] : colours.neutral[200],
++                          color: s.fit === 'urgent' ? colours.neutral[100] : colours.neutral[700],
++                        }}>
++                          {s.fit === 'urgent' ? 'Urgent' : s.fit === 'soon' ? 'Due soon' : 'Good fit'}
++                        </span>
++                      </div>
++                    </div>
++                  ))}
++                </div>
++              )}
++            </div>
++          )}
++        </GlowCard>
++      )}
++
++      {/* Week Navigation */}
++      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: spacing[4] }}>
++        <Button variant="ghost" size="sm" onClick={prevWeek}><ChevronLeft size={18} /></Button>
++        <div style={{ fontSize: typography.fontSize.lg, fontWeight: typography.fontWeight.semibold, color: colours.neutral[900] }}>
++          {weekDays[0].toLocaleDateString('en-NZ', { month: 'long', day: 'numeric' })} – {weekDays[6].toLocaleDateString('en-NZ', { month: 'long', day: 'numeric', year: 'numeric' })}
++        </div>
++        <Button variant="ghost" size="sm" onClick={nextWeek}><ChevronRight size={18} /></Button>
++      </div>
++
++      {/* Calendar Grid */}
++      <GlowCard style={{ padding: 0, overflow: 'hidden' }}>
++        {/* Day Headers */}
++        <div style={{ display: 'grid', gridTemplateColumns: '60px repeat(7, 1fr)', borderBottom: `1px solid ${colours.neutral[200]}` }}>
++          <div style={{ padding: spacing[2], borderRight: `1px solid ${colours.neutral[200]}` }} />
++          {weekDays.map((day, i) => {
++            const isToday = isSameDay(day, today)
++            const isWeekend = day.getDay() === 0 || day.getDay() === 6
++            return (
++              <div key={i} style={{
++                padding: spacing[3], textAlign: 'center',
++                borderRight: i < 6 ? `1px solid ${colours.neutral[200]}` : 'none',
++                backgroundColor: isToday ? colours.neutral[100] : isWeekend ? colours.neutral[50] : 'transparent',
++              }}>
++                <div style={{ fontSize: typography.fontSize.xs, color: colours.neutral[500], textTransform: 'uppercase' }}>
++                  {day.toLocaleDateString('en-NZ', { weekday: 'short' })}
++                </div>
++                <div style={{
++                  fontSize: typography.fontSize.lg, fontWeight: isToday ? typography.fontWeight.bold : typography.fontWeight.medium,
++                  color: isToday ? colours.neutral[900] : colours.neutral[600],
++                }}>
++                  {day.getDate()}
++                </div>
++              </div>
++            )
++          })}
++        </div>
++
++        {/* Time Grid */}
++        <div style={{ display: 'grid', gridTemplateColumns: '60px repeat(7, 1fr)', position: 'relative' }}>
++          {/* Hour labels */}
++          <div>
++            {HOURS.map(h => (
++              <div key={h} style={{
++                height: HOUR_HEIGHT, borderBottom: `1px solid ${colours.neutral[100]}`,
++                display: 'flex', alignItems: 'flex-start', justifyContent: 'flex-end',
++                paddingRight: spacing[2], paddingTop: 2,
++                fontSize: '11px', color: colours.neutral[400],
++                borderRight: `1px solid ${colours.neutral[200]}`,
++              }}>
++                {h > 12 ? `${h - 12}pm` : h === 12 ? '12pm' : `${h}am`}
++              </div>
++            ))}
++          </div>
++
++          {/* Day columns */}
++          {weekDays.map((day, dayIdx) => {
++            const dayBlocks = schedule.filter(s => isSameDay(toLocal(s.start_time), day))
++            const isWeekend = day.getDay() === 0 || day.getDay() === 6
++
++            return (
++              <div key={dayIdx} style={{
++                position: 'relative',
++                borderRight: dayIdx < 6 ? `1px solid ${colours.neutral[200]}` : 'none',
++                backgroundColor: isWeekend ? colours.neutral[50] : 'transparent',
++              }}>
++                {/* Hour grid lines */}
++                {HOURS.map(h => (
++                  <div key={h} style={{ height: HOUR_HEIGHT, borderBottom: `1px solid ${colours.neutral[100]}` }} />
++                ))}
++
++                {/* Schedule blocks */}
++                {dayBlocks.map(block => {
++                  const start = toLocal(block.start_time)
++                  const end = toLocal(block.end_time)
++                  const startHour = start.getHours() + start.getMinutes() / 60
++                  const endHour = end.getHours() + end.getMinutes() / 60
++                  const top = (startHour - HOURS[0]) * HOUR_HEIGHT
++                  const height = Math.max((endHour - startHour) * HOUR_HEIGHT, 24)
++
++                  return (
++                    <div
++                      key={block.id}
++                      style={{
++                        position: 'absolute', top, left: 2, right: 2, height,
++                        backgroundColor: colours.neutral[800], borderRadius: radii.sm,
++                        padding: `${spacing[1]} ${spacing[2]}`, overflow: 'hidden',
++                        borderLeft: `3px solid ${priorityColor[block.priority] || colours.neutral[600]}`,
++                        cursor: 'pointer', zIndex: 1,
++                      }}
++                      title={`${block.task_title}\n${start.toLocaleTimeString('en-NZ', { hour: '2-digit', minute: '2-digit' })} – ${end.toLocaleTimeString('en-NZ', { hour: '2-digit', minute: '2-digit' })}`}
++                    >
++                      <div style={{
++                        fontSize: '11px', fontWeight: typography.fontWeight.semibold,
++                        color: colours.neutral[100], lineHeight: 1.2,
++                        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
++                      }}>
++                        {block.task_title}
++                      </div>
++                      {height >= 40 && (
++                        <div style={{ fontSize: '10px', color: colours.neutral[400], marginTop: 2 }}>
++                          {block.client_name}
++                          {block.total_payout && ` · $${block.total_payout}`}
++                        </div>
++                      )}
++                      <button
++                        onClick={(e) => { e.stopPropagation(); handleDeleteBlock(block.id) }}
++                        style={{
++                          position: 'absolute', top: 2, right: 2, background: 'none',
++                          border: 'none', cursor: 'pointer', color: colours.neutral[400],
++                          padding: 2, lineHeight: 1,
++                        }}
++                      >
++                        <X size={10} />
++                      </button>
++                    </div>
++                  )
++                })}
++              </div>
++            )
++          })}
++        </div>
++      </GlowCard>
++
++      {/* Unscheduled tasks list */}
++      {unscheduled.length > 0 && (
++        <GlowCard style={{ marginTop: spacing[4] }}>
++          <div style={{ fontSize: typography.fontSize.sm, fontWeight: typography.fontWeight.semibold, color: colours.neutral[900], marginBottom: spacing[3] }}>
++            Unscheduled Tasks ({unscheduled.length})
++          </div>
++          <div style={{ display: 'flex', flexWrap: 'wrap', gap: spacing[2] }}>
++            {unscheduled.map(t => (
++              <div
++                key={t.id}
++                onClick={() => { setShowTaskPicker(true); setSelectedTask(t); fetchSuggestions(t.id) }}
++                style={{
++                  padding: `${spacing[2]} ${spacing[3]}`, borderRadius: radii.md,
++                  backgroundColor: colours.neutral[100], cursor: 'pointer',
++                  border: `1px solid ${colours.neutral[200]}`, fontSize: typography.fontSize.xs,
++                  display: 'flex', alignItems: 'center', gap: spacing[2],
++                  transition: `background-color ${transitions.fast}`,
++                }}
++                onMouseEnter={e => e.currentTarget.style.backgroundColor = colours.neutral[200]}
++                onMouseLeave={e => e.currentTarget.style.backgroundColor = colours.neutral[100]}
++              >
++                <Clock size={12} style={{ color: colours.neutral[500] }} />
++                <span style={{ color: colours.neutral[900], fontWeight: typography.fontWeight.medium }}>{t.title}</span>
++                {t.estimated_hours && <span style={{ color: colours.neutral[500] }}>{t.estimated_hours}h</span>}
++                {t.total_payout && <span style={{ color: colours.neutral[600] }}>${t.total_payout}</span>}
++              </div>
++            ))}
++          </div>
++        </GlowCard>
++      )}
++    </div>
++  )
++}
