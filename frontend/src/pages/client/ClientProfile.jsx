@@ -9,8 +9,7 @@ import Modal from '@/components/ui/Modal'
 import Input from '@/components/ui/Input'
 import Textarea from '@/components/ui/Textarea'
 import Avatar from '@/components/ui/Avatar'
-import { apiEndpoint } from '@/config/env'
-import { getAuthHeaders } from '@/services/auth'
+import { apiFetch } from '@/services/apiFetch'
 import { spacing, colours, typography } from '@/config/tokens'
 
 export default function ClientProfile() {
@@ -24,19 +23,13 @@ export default function ClientProfile() {
   const handleSave = async () => {
     setSaving(true)
     try {
-      const res = await fetch(apiEndpoint(`/users/${user.id}`), {
+      const json = await apiFetch(`/users/${user.id}`, {
         method: 'PUT',
-        headers: {
-          ...getAuthHeaders(),
-          'Content-Type': 'application/json'
-        },
         body: JSON.stringify({
           display_name: displayName,
           company
-        })
+        }),
       })
-
-      const json = await res.json()
 
       if (json.success) {
         addToast('Profile updated successfully', 'success')
@@ -179,12 +172,10 @@ function ContactSupport() {
     if (!subject.trim() || !message.trim()) return
     setSending(true)
     try {
-      const res = await fetch(apiEndpoint('/support'), {
+      const json = await apiFetch('/support', {
         method: 'POST',
-        headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
         body: JSON.stringify({ subject: subject.trim(), message: message.trim() }),
       })
-      const json = await res.json()
       if (json.success) {
         setSent(true)
         setSubject('')

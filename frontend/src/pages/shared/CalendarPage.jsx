@@ -3,8 +3,7 @@ import { ChevronLeft, ChevronRight, Clock, DollarSign, AlertTriangle, Plus, X, Z
 import useAuth from '@/hooks/useAuth'
 import useToast from '@/hooks/useToast'
 import { GlowCard, PageHeader, Button, Spinner } from '@/components/ui'
-import { apiEndpoint } from '@/config/env'
-import { getAuthHeaders } from '@/services/auth'
+import { apiFetch } from '@/services/apiFetch'
 import { colours, spacing, typography, radii, transitions } from '@/config/tokens'
 
 const HOURS = Array.from({ length: 11 }, (_, i) => i + 7) // 7am to 5pm
@@ -56,12 +55,10 @@ export default function CalendarPage() {
   const fetchData = useCallback(async () => {
     setLoading(true)
     try {
-      const [schedRes, taskRes] = await Promise.all([
-        fetch(apiEndpoint(`/schedule?start=${weekStart}&end=${weekEnd}`), { headers: getAuthHeaders() }),
-        fetch(apiEndpoint('/tasks?status=assigned,in_progress'), { headers: getAuthHeaders() }),
+      const [schedJson, taskJson] = await Promise.all([
+        apiFetch(`/schedule?start=${weekStart}&end=${weekEnd}`),
+        apiFetch('/tasks?status=assigned,in_progress'),
       ])
-      const schedJson = await schedRes.json()
-      const taskJson = await taskRes.json()
       if (schedJson.success) setSchedule(schedJson.data || [])
       if (taskJson.success) setTasks((taskJson.data || []).filter(t => 
         user.role === 'admin' || t.contractor_id === user.id
@@ -78,8 +75,7 @@ export default function CalendarPage() {
   const fetchSuggestions = async (taskId) => {
     setLoadingSuggestions(true)
     try {
-      const res = await fetch(apiEndpoint(`/schedule/suggestions/${taskId}`), { headers: getAuthHeaders() })
-      const json = await res.json()
+      const json = await apiFetch(`/schedule/suggestions/${taskId}`)
       if (json.success) setSuggestions(json.data.suggestions || [])
     } catch (err) {
       console.error('Suggestions error:', err)
@@ -90,12 +86,10 @@ export default function CalendarPage() {
 
   const handleScheduleBlock = async (taskId, startTime, endTime) => {
     try {
-      const res = await fetch(apiEndpoint('/schedule'), {
+      const json = await apiFetch('/schedule', {
         method: 'POST',
-        headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
         body: JSON.stringify({ task_id: taskId, start_time: startTime, end_time: endTime }),
       })
-      const json = await res.json()
       if (json.success) {
         addToast('Task scheduled', 'success')
         setSelectedTask(null)
@@ -112,11 +106,9 @@ export default function CalendarPage() {
 
   const handleDeleteBlock = async (blockId) => {
     try {
-      const res = await fetch(apiEndpoint(`/schedule/${blockId}`), {
+      const json = await apiFetch(`/schedule/${blockId}`, {
         method: 'DELETE',
-        headers: getAuthHeaders(),
       })
-      const json = await res.json()
       if (json.success) {
         addToast('Block removed', 'success')
         fetchData()

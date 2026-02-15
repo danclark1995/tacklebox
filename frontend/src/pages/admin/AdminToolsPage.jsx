@@ -11,8 +11,7 @@ import Input from '@/components/ui/Input'
 import Select from '@/components/ui/Select'
 import EmberLoader from '@/components/ui/EmberLoader'
 import useToast from '@/hooks/useToast'
-import { apiEndpoint } from '@/config/env'
-import { getAuthHeaders } from '@/services/auth'
+import { apiFetch } from '@/services/apiFetch'
 import { spacing, typography, colours } from '@/config/tokens'
 
 const TABS = [
@@ -64,8 +63,7 @@ export default function AdminToolsPage() {
   const loadTools = async () => {
     setLoading(true)
     try {
-      const res = await fetch(apiEndpoint('/tools'), { headers: getAuthHeaders() })
-      const json = await res.json()
+      const json = await apiFetch('/tools')
       if (json.success) setTools(json.data || [])
     } catch (err) {
       addToast('Failed to load tools', 'error')
@@ -107,15 +105,13 @@ export default function AdminToolsPage() {
       }
 
       const isEdit = !!editingTool
-      const url = isEdit ? apiEndpoint(`/tools/${editingTool.id}`) : apiEndpoint('/tools')
+      const path = isEdit ? `/tools/${editingTool.id}` : '/tools'
       const method = isEdit ? 'PUT' : 'POST'
 
-      const res = await fetch(url, {
+      const json = await apiFetch(path, {
         method,
-        headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
       })
-      const json = await res.json()
 
       if (json.success) {
         addToast(isEdit ? 'Tool updated' : 'Tool added', 'success')
@@ -137,11 +133,9 @@ export default function AdminToolsPage() {
       return
     }
     try {
-      const res = await fetch(apiEndpoint(`/tools/${tool.id}`), {
+      const json = await apiFetch(`/tools/${tool.id}`, {
         method: 'DELETE',
-        headers: getAuthHeaders(),
       })
-      const json = await res.json()
       if (json.success) {
         setTools(prev => prev.filter(t => t.id !== tool.id))
         addToast('Tool removed', 'success')

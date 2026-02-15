@@ -12,6 +12,7 @@ import Avatar from '@/components/ui/Avatar'
 import Input from '@/components/ui/Input'
 import UserForm from '@/components/features/users/UserForm'
 import { apiEndpoint } from '@/config/env'
+import { apiFetch } from '@/services/apiFetch'
 import { getAuthHeaders } from '@/services/auth'
 import { spacing, colours, typography } from '@/config/tokens'
 import { formatDateTime } from '@/utils/formatters'
@@ -37,8 +38,7 @@ export default function AdminUsers() {
 
   const loadUsers = async () => {
     try {
-      const res = await fetch(apiEndpoint('/users'), { headers: { ...getAuthHeaders() } })
-      const json = await res.json()
+      const json = await apiFetch('/users')
       if (json.success) setUsers(json.data)
     } catch (err) {
       addToast(err.message, 'error')
@@ -87,11 +87,7 @@ export default function AdminUsers() {
   const handleDeactivateUser = async (userId) => {
     if (!confirm('Are you sure you want to deactivate this user?')) return
     try {
-      const res = await fetch(apiEndpoint(`/users/${userId}/deactivate`), {
-        method: 'PATCH',
-        headers: { ...getAuthHeaders() },
-      })
-      const json = await res.json()
+      const json = await apiFetch(`/users/${userId}/deactivate`, { method: 'PATCH' })
       if (json.success) {
         addToast('User deactivated successfully', 'success')
         loadUsers()

@@ -8,8 +8,7 @@ import Button from '@/components/ui/Button'
 import GlowCard from '@/components/ui/GlowCard'
 import EmberLoader from '@/components/ui/EmberLoader'
 import BrandProfileEditor from '@/components/features/brand/BrandProfileEditor'
-import { apiEndpoint } from '@/config/env'
-import { getAuthHeaders } from '@/services/auth'
+import { apiFetch } from '@/services/apiFetch'
 import { spacing, colours, typography, radii, transitions } from '@/config/tokens'
 
 export default function AdminBrandProfileEdit() {
@@ -41,8 +40,7 @@ export default function AdminBrandProfileEdit() {
       // Check level from gamification endpoint
       async function checkLevel() {
         try {
-          const res = await fetch(apiEndpoint('/gamification/me'), { headers: { ...getAuthHeaders() } })
-          const json = await res.json()
+          const json = await apiFetch('/gamification/me')
           if (json.success && json.data && json.data.current_level >= 7) {
             setCanUpload(true)
           }
@@ -54,14 +52,12 @@ export default function AdminBrandProfileEdit() {
 
   const loadData = async () => {
     try {
-      const profileRes = await fetch(apiEndpoint(`/brand-profiles/${clientId}`), { headers: { ...getAuthHeaders() } })
-      const profileJson = await profileRes.json()
+      const profileJson = await apiFetch(`/brand-profiles/${clientId}`)
 
       if (profileJson.success) {
         setBrandProfile(profileJson.data)
         try {
-          const logosRes = await fetch(apiEndpoint(`/brand-profiles/${clientId}/logos`), { headers: { ...getAuthHeaders() } })
-          const logosJson = await logosRes.json()
+          const logosJson = await apiFetch(`/brand-profiles/${clientId}/logos`)
           if (logosJson.success) setLogos(logosJson.data || [])
         } catch { /* logos table may not exist yet */ }
       }
@@ -75,16 +71,10 @@ export default function AdminBrandProfileEdit() {
   const handleSaveSection = async (sectionData) => {
     setSaving(true)
     try {
-      const res = await fetch(apiEndpoint(`/brand-profiles/${clientId}`), {
+      const json = await apiFetch(`/brand-profiles/${clientId}`, {
         method: 'PUT',
-        headers: {
-          ...getAuthHeaders(),
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(sectionData)
+        body: JSON.stringify(sectionData),
       })
-
-      const json = await res.json()
 
       if (json.success) {
         setBrandProfile(json.data)
@@ -102,12 +92,10 @@ export default function AdminBrandProfileEdit() {
   const handleAddLogo = async (logoData) => {
     setSaving(true)
     try {
-      const res = await fetch(apiEndpoint(`/brand-profiles/${clientId}/logos`), {
+      const json = await apiFetch(`/brand-profiles/${clientId}/logos`, {
         method: 'POST',
-        headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
-        body: JSON.stringify(logoData)
+        body: JSON.stringify(logoData),
       })
-      const json = await res.json()
       if (json.success) {
         setLogos(prev => [json.data, ...prev])
         addToast('Logo added', 'success')
@@ -124,11 +112,7 @@ export default function AdminBrandProfileEdit() {
   const handleDeleteLogo = async (logoId) => {
     setSaving(true)
     try {
-      const res = await fetch(apiEndpoint(`/brand-profiles/${clientId}/logos/${logoId}`), {
-        method: 'DELETE',
-        headers: { ...getAuthHeaders() }
-      })
-      const json = await res.json()
+      const json = await apiFetch(`/brand-profiles/${clientId}/logos/${logoId}`, { method: 'DELETE' })
       if (json.success) {
         setLogos(prev => prev.filter(l => l.id !== logoId))
         addToast('Logo deleted', 'success')
@@ -148,13 +132,10 @@ export default function AdminBrandProfileEdit() {
       const formData = new FormData()
       formData.append('file', file)
 
-      const res = await fetch(apiEndpoint(`/brand-profiles/${clientId}/extract`), {
+      const json = await apiFetch(`/brand-profiles/${clientId}/extract`, {
         method: 'POST',
-        headers: { ...getAuthHeaders() },
         body: formData,
       })
-
-      const json = await res.json()
 
       if (json.success) {
         addToast('Brand profile extracted from PDF', 'success')
@@ -188,14 +169,11 @@ export default function AdminBrandProfileEdit() {
       formData.append('file', file)
 
       setUploadProgress(30)
-      const res = await fetch(apiEndpoint(`/brand-profiles/${clientId}/guide-pdf`), {
+      const json = await apiFetch(`/brand-profiles/${clientId}/guide-pdf`, {
         method: 'POST',
-        headers: { ...getAuthHeaders() },
         body: formData,
       })
       setUploadProgress(80)
-
-      const json = await res.json()
 
       if (json.success) {
         setBrandProfile(prev => prev ? { ...prev, brand_guide_path: json.data.brand_guide_path } : prev)
@@ -217,12 +195,10 @@ export default function AdminBrandProfileEdit() {
   const handleRemoveGuide = async () => {
     setSaving(true)
     try {
-      const res = await fetch(apiEndpoint(`/brand-profiles/${clientId}`), {
+      const json = await apiFetch(`/brand-profiles/${clientId}`, {
         method: 'PUT',
-        headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
-        body: JSON.stringify({ brand_guide_path: null })
+        body: JSON.stringify({ brand_guide_path: null }),
       })
-      const json = await res.json()
       if (json.success) {
         setBrandProfile(prev => prev ? { ...prev, brand_guide_path: null } : prev)
         addToast('Brand guide removed', 'success')

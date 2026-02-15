@@ -3,8 +3,7 @@ import { DollarSign, ArrowUpRight, ArrowDownRight, Gift, Clock, CheckCircle, XCi
 import useAuth from '@/hooks/useAuth'
 import useToast from '@/hooks/useToast'
 import { GlowCard, PageHeader, Button, Spinner } from '@/components/ui'
-import { apiEndpoint } from '@/config/env'
-import { getAuthHeaders } from '@/services/auth'
+import { apiFetch } from '@/services/apiFetch'
 import { colours, spacing, typography, radii } from '@/config/tokens'
 
 export default function CamperEarnings() {
@@ -18,8 +17,7 @@ export default function CamperEarnings() {
 
   const fetchEarnings = useCallback(async () => {
     try {
-      const res = await fetch(apiEndpoint('/earnings/me'), { headers: getAuthHeaders() })
-      const json = await res.json()
+      const json = await apiFetch('/earnings/me')
       if (json.success) setData(json.data)
     } catch (err) {
       console.error('Fetch earnings error:', err)
@@ -37,12 +35,10 @@ export default function CamperEarnings() {
 
     setSubmitting(true)
     try {
-      const res = await fetch(apiEndpoint('/earnings/cashout'), {
+      const json = await apiFetch('/earnings/cashout', {
         method: 'POST',
-        headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
         body: JSON.stringify({ amount }),
       })
-      const json = await res.json()
       if (json.success) {
         addToast(`Cashout of $${amount.toFixed(2)} requested`, 'success')
         setCashoutAmount('')

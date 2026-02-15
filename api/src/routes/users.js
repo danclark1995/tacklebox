@@ -208,7 +208,7 @@ export async function handleUsers(request, env, auth, path, method) {
 
         if (invalidFields.length > 0) {
           return jsonResponse(
-            { success: false, error: 'You can only update display_name and avatar_url' },
+            { success: false, error: 'You can only update display_name, company, and avatar_url' },
             403
           )
         }
@@ -298,6 +298,14 @@ export async function handleUsers(request, env, auth, path, method) {
     }
 
     try {
+      const user = await env.DB.prepare('SELECT id, is_active FROM users WHERE id = ?').bind(userId).first()
+      if (!user) {
+        return jsonResponse({ success: false, error: 'User not found' }, 404)
+      }
+      if (!user.is_active) {
+        return jsonResponse({ success: true, data: { id: userId, is_active: false, already_inactive: true } })
+      }
+
       await env.DB.prepare(
         'UPDATE users SET is_active = 0, updated_at = datetime("now") WHERE id = ?'
       ).bind(userId).run()

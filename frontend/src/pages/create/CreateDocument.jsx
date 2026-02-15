@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import useAuth from '@/hooks/useAuth'
 import { apiEndpoint } from '@/config/env'
-import { getAuthHeaders } from '@/services/auth'
+import { apiFetch } from '@/services/apiFetch'
 import Button from '@/components/ui/Button'
 import Input from '@/components/ui/Input'
 import Textarea from '@/components/ui/Textarea'
@@ -36,8 +36,7 @@ export default function CreateDocument() {
 
   async function fetchBrandProfiles() {
     try {
-      const res = await fetch(apiEndpoint('/brand-profiles'), { headers: getAuthHeaders() })
-      const data = await res.json()
+      const data = await apiFetch('/brand-profiles')
       if (data.success && data.data?.length > 0) {
         setBrandProfiles(data.data)
         setSelectedProfile(data.data[0].id)
@@ -52,9 +51,8 @@ export default function CreateDocument() {
     setResult(null)
 
     try {
-      const res = await fetch(apiEndpoint('/generate/document'), {
+      const data = await apiFetch('/generate/document', {
         method: 'POST',
-        headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
         body: JSON.stringify({
           brand_profile_id: selectedProfile,
           document_type: documentType,
@@ -63,7 +61,6 @@ export default function CreateDocument() {
           recipient: recipient.trim() || undefined,
         }),
       })
-      const data = await res.json()
       if (data.success) {
         setResult(data.data)
       } else {

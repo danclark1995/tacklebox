@@ -162,14 +162,14 @@ export async function handleReviews(request, env, auth, path, method) {
           }
         }
 
-        // Check unique constraint (one review per role per task)
+        // Check unique constraint (one review per reviewer per task)
         const existing = await env.DB.prepare(
-          'SELECT id FROM task_reviews WHERE task_id = ? AND reviewer_role = ?'
-        ).bind(task_id, 'contractor').first()
+          'SELECT id FROM task_reviews WHERE task_id = ? AND reviewer_id = ?'
+        ).bind(task_id, auth.user.id).first()
 
         if (existing) {
           return jsonResponse(
-            { success: false, error: 'A contractor review already exists for this task' },
+            { success: false, error: 'You have already reviewed this task' },
             409
           )
         }
@@ -235,14 +235,14 @@ export async function handleReviews(request, env, auth, path, method) {
           }
         }
 
-        // Check unique constraint (one review per role per task)
+        // Check unique constraint (one review per reviewer per task)
         const existing = await env.DB.prepare(
-          'SELECT id FROM task_reviews WHERE task_id = ? AND reviewer_role = ?'
-        ).bind(task_id, 'admin').first()
+          'SELECT id FROM task_reviews WHERE task_id = ? AND reviewer_id = ?'
+        ).bind(task_id, auth.user.id).first()
 
         if (existing) {
           return jsonResponse(
-            { success: false, error: 'An admin review already exists for this task' },
+            { success: false, error: 'You have already reviewed this task' },
             409
           )
         }

@@ -5,8 +5,7 @@ import useToast from '@/hooks/useToast'
 import PageHeader from '@/components/ui/PageHeader'
 import Spinner from '@/components/ui/Spinner'
 import TaskForm from '@/components/features/tasks/TaskForm'
-import { apiEndpoint } from '@/config/env'
-import { getAuthHeaders } from '@/services/auth'
+import { apiFetch } from '@/services/apiFetch'
 import { spacing, colours, typography } from '@/config/tokens'
 
 export default function ClientTaskNew() {
@@ -22,16 +21,11 @@ export default function ClientTaskNew() {
   useEffect(() => {
     async function load() {
       try {
-        const [projectsRes, categoriesRes, templatesRes] = await Promise.all([
-          fetch(apiEndpoint('/projects'), { headers: { ...getAuthHeaders() } }),
-          fetch(apiEndpoint('/categories'), { headers: { ...getAuthHeaders() } }),
-          fetch(apiEndpoint('/templates'), { headers: { ...getAuthHeaders() } })
+        const [projectsJson, categoriesJson, templatesJson] = await Promise.all([
+          apiFetch('/projects'),
+          apiFetch('/categories'),
+          apiFetch('/templates')
         ])
-
-        const projectsJson = await projectsRes.json()
-        const categoriesJson = await categoriesRes.json()
-        const templatesJson = await templatesRes.json()
-
         if (projectsJson.success) setProjects(projectsJson.data)
         if (categoriesJson.success) setCategories(categoriesJson.data)
         if (templatesJson.success) setTemplates(templatesJson.data)
@@ -47,16 +41,10 @@ export default function ClientTaskNew() {
   const handleSubmit = async (taskData) => {
     setSubmitting(true)
     try {
-      const res = await fetch(apiEndpoint('/tasks'), {
+      const json = await apiFetch('/tasks', {
         method: 'POST',
-        headers: {
-          ...getAuthHeaders(),
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(taskData)
+        body: JSON.stringify(taskData),
       })
-
-      const json = await res.json()
 
       if (json.success) {
         addToast('Task submitted! We\'ll get started soon.', 'success')

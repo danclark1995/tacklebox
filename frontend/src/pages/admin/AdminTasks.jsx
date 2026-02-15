@@ -8,8 +8,7 @@ import EmberLoader from '@/components/ui/EmberLoader'
 import Select from '@/components/ui/Select'
 import TaskList from '@/components/features/tasks/TaskList'
 import TaskForm from '@/components/features/tasks/TaskForm'
-import { apiEndpoint } from '@/config/env'
-import { getAuthHeaders } from '@/services/auth'
+import { apiFetch } from '@/services/apiFetch'
 import { spacing } from '@/config/tokens'
 
 export default function AdminTasks() {
@@ -31,20 +30,13 @@ export default function AdminTasks() {
 
   const loadData = useCallback(async () => {
     try {
-      const [tasksRes, usersRes, projectsRes, categoriesRes, templatesRes] = await Promise.all([
-        fetch(apiEndpoint('/tasks'), { headers: { ...getAuthHeaders() } }),
-        fetch(apiEndpoint('/users'), { headers: { ...getAuthHeaders() } }),
-        fetch(apiEndpoint('/projects'), { headers: { ...getAuthHeaders() } }),
-        fetch(apiEndpoint('/categories'), { headers: { ...getAuthHeaders() } }),
-        fetch(apiEndpoint('/templates'), { headers: { ...getAuthHeaders() } }),
+      const [tasksJson, usersJson, projectsJson, categoriesJson, templatesJson] = await Promise.all([
+        apiFetch('/tasks'),
+        apiFetch('/users'),
+        apiFetch('/projects'),
+        apiFetch('/categories'),
+        apiFetch('/templates'),
       ])
-
-      const tasksJson = await tasksRes.json()
-      const usersJson = await usersRes.json()
-      const projectsJson = await projectsRes.json()
-      const categoriesJson = await categoriesRes.json()
-      const templatesJson = await templatesRes.json()
-
       if (tasksJson.success) setTasks(tasksJson.data)
       if (usersJson.success) setUsers(usersJson.data)
       if (projectsJson.success) setProjects(projectsJson.data)
@@ -68,18 +60,13 @@ export default function AdminTasks() {
     }
     setSubmitting(true)
     try {
-      const res = await fetch(apiEndpoint('/tasks'), {
+      const json = await apiFetch('/tasks', {
         method: 'POST',
-        headers: {
-          ...getAuthHeaders(),
-          'Content-Type': 'application/json',
-        },
         body: JSON.stringify({
           ...taskData,
           client_id: selectedClientId,
         }),
       })
-      const json = await res.json()
       if (json.success) {
         addToast('Task created successfully', 'success')
         setShowCreateModal(false)

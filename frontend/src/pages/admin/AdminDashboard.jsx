@@ -7,8 +7,7 @@ import Button from '@/components/ui/Button'
 import StatusBadge from '@/components/ui/StatusBadge'
 import EmberLoader from '@/components/ui/EmberLoader'
 import Leaderboard from '@/components/features/gamification/Leaderboard'
-import { apiEndpoint } from '@/config/env'
-import { getAuthHeaders } from '@/services/auth'
+import { apiFetch } from '@/services/apiFetch'
 import { colours, spacing, typography } from '@/config/tokens'
 
 const STATUS_FILTERS = [
@@ -32,21 +31,16 @@ export default function AdminDashboard() {
   useEffect(() => {
     async function load() {
       try {
-        const [tasksRes, usersRes] = await Promise.all([
-          fetch(apiEndpoint('/tasks'), { headers: { ...getAuthHeaders() } }),
-          fetch(apiEndpoint('/users'), { headers: { ...getAuthHeaders() } })
+        const [tasksJson, usersJson] = await Promise.all([
+          apiFetch('/tasks'),
+          apiFetch('/users')
         ])
-
-        const tasksJson = await tasksRes.json()
-        const usersJson = await usersRes.json()
-
         if (tasksJson.success) setTasks(tasksJson.data)
         if (usersJson.success) setUsers(usersJson.data)
 
         // Fetch leaderboard (non-critical)
         try {
-          const lbRes = await fetch(apiEndpoint('/gamification/leaderboard'), { headers: { ...getAuthHeaders() } })
-          const lbJson = await lbRes.json()
+          const lbJson = await apiFetch('/gamification/leaderboard')
           if (lbJson.success !== false) {
             setLeaderboard(lbJson.data || lbJson || [])
           }

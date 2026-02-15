@@ -3,8 +3,7 @@ import { useParams, Link } from 'react-router-dom'
 import useToast from '@/hooks/useToast'
 import Spinner from '@/components/ui/Spinner'
 import TaskDetail from '@/components/features/tasks/TaskDetail'
-import { apiEndpoint } from '@/config/env'
-import { getAuthHeaders } from '@/services/auth'
+import { apiFetch } from '@/services/apiFetch'
 import { spacing, colours, typography } from '@/config/tokens'
 
 export default function ClientTaskDetail() {
@@ -18,16 +17,11 @@ export default function ClientTaskDetail() {
   useEffect(() => {
     async function load() {
       try {
-        const [taskRes, commentsRes, attachmentsRes] = await Promise.all([
-          fetch(apiEndpoint(`/tasks/${id}`), { headers: { ...getAuthHeaders() } }),
-          fetch(apiEndpoint(`/comments?task_id=${id}`), { headers: { ...getAuthHeaders() } }),
-          fetch(apiEndpoint(`/attachments?task_id=${id}`), { headers: { ...getAuthHeaders() } }),
+        const [taskJson, commentsJson, attachmentsJson] = await Promise.all([
+          apiFetch(`/tasks/${id}`),
+          apiFetch(`/comments?task_id=${id}`),
+          apiFetch(`/attachments?task_id=${id}`),
         ])
-
-        const taskJson = await taskRes.json()
-        const commentsJson = await commentsRes.json()
-        const attachmentsJson = await attachmentsRes.json()
-
         if (taskJson.success) setTask(taskJson.data)
         if (commentsJson.success) setComments(commentsJson.data)
         if (attachmentsJson.success) setAttachments(attachmentsJson.data)
@@ -42,20 +36,14 @@ export default function ClientTaskDetail() {
 
   const handleAddComment = async (commentData) => {
     try {
-      const res = await fetch(apiEndpoint('/comments'), {
+      const json = await apiFetch('/comments', {
         method: 'POST',
-        headers: {
-          ...getAuthHeaders(),
-          'Content-Type': 'application/json'
-        },
         body: JSON.stringify({
           task_id: id,
           text: commentData.content,
           visibility: 'all'
-        })
+        }),
       })
-
-      const json = await res.json()
 
       if (json.success) {
         setComments([...comments, json.data])

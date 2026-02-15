@@ -8,8 +8,7 @@ import EmberLoader from '@/components/ui/EmberLoader'
 import XPBar from '@/components/features/gamification/XPBar'
 import BadgeGrid from '@/components/features/gamification/BadgeGrid'
 import Leaderboard from '@/components/features/gamification/Leaderboard'
-import { apiEndpoint } from '@/config/env'
-import { getAuthHeaders } from '@/services/auth'
+import { apiFetch } from '@/services/apiFetch'
 import { colours, spacing, typography, radii, shadows } from '@/config/tokens'
 
 export default function ContractorStats() {
@@ -27,20 +26,11 @@ export default function ContractorStats() {
 
     async function loadAll() {
       try {
-        const headers = { ...getAuthHeaders() }
-
-        const [xpRes, levelsRes, badgesRes, leaderboardRes] = await Promise.all([
-          fetch(apiEndpoint(`/gamification/xp/${user.id}`), { headers }),
-          fetch(apiEndpoint('/gamification/levels'), { headers }),
-          fetch(apiEndpoint(`/gamification/badges/${user.id}`), { headers }),
-          fetch(apiEndpoint('/gamification/leaderboard'), { headers }),
-        ])
-
         const [xpJson, levelsJson, badgesJson, leaderboardJson] = await Promise.all([
-          xpRes.json(),
-          levelsRes.json(),
-          badgesRes.json(),
-          leaderboardRes.json(),
+          apiFetch(`/gamification/xp/${user.id}`),
+          apiFetch('/gamification/levels'),
+          apiFetch(`/gamification/badges/${user.id}`),
+          apiFetch('/gamification/leaderboard'),
         ])
 
         if (xpJson.success !== false) setXpData(xpJson.data || xpJson)

@@ -3,8 +3,7 @@ import { ChevronDown, ChevronUp, BookOpen, Palette, CheckCircle, Pencil, Save, P
 import useAuth from '@/hooks/useAuth'
 import useToast from '@/hooks/useToast'
 import { GlowCard, Button, Input, Textarea, EmberLoader, PageHeader } from '@/components/ui'
-import { apiEndpoint } from '@/config/env'
-import { getAuthHeaders } from '@/services/auth'
+import { apiFetch } from '@/services/apiFetch'
 import { getContractorXP } from '@/services/gamification'
 import { colours, spacing, typography, radii } from '@/config/tokens'
 
@@ -74,8 +73,7 @@ export default function AdminGuidance() {
   useEffect(() => {
     async function loadSections() {
       try {
-        const res = await fetch(apiEndpoint('/guidance'), { headers: { ...getAuthHeaders() } })
-        const json = await res.json()
+        const json = await apiFetch('/guidance')
         if (json.success && json.data?.length > 0) {
           setSections(json.data)
         } else {
@@ -112,12 +110,10 @@ export default function AdminGuidance() {
   const saveSection = async (sectionKey) => {
     setSaving(true)
     try {
-      const res = await fetch(apiEndpoint(`/guidance/${encodeURIComponent(sectionKey)}`), {
+      const json = await apiFetch(`/guidance/${encodeURIComponent(sectionKey)}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
         body: JSON.stringify({ content: editDraft }),
       })
-      const json = await res.json()
       if (json.success) {
         setSections(prev => prev.map(s => s.section_key === sectionKey ? { ...s, content: json.data.content } : s))
         setEditingKey(null)

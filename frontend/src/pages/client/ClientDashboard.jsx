@@ -8,8 +8,7 @@ import Spinner from '@/components/ui/Spinner'
 import EmptyState from '@/components/ui/EmptyState'
 import TaskProgressTracker from '@/components/ui/TaskProgressTracker'
 import TaskList from '@/components/features/tasks/TaskList'
-import { apiEndpoint } from '@/config/env'
-import { getAuthHeaders } from '@/services/auth'
+import { apiFetch } from '@/services/apiFetch'
 import { colours, spacing, typography } from '@/config/tokens'
 
 export default function ClientDashboard() {
@@ -23,8 +22,7 @@ export default function ClientDashboard() {
   useEffect(() => {
     async function load() {
       try {
-        const res = await fetch(apiEndpoint('/tasks'), { headers: { ...getAuthHeaders() } })
-        const json = await res.json()
+        const json = await apiFetch('/tasks')
         if (json.success) setTasks(json.data)
       } catch (err) {
         addToast(err.message, 'error')

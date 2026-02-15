@@ -6,8 +6,7 @@ import PageHeader from '@/components/ui/PageHeader'
 import Select from '@/components/ui/Select'
 import EmberLoader from '@/components/ui/EmberLoader'
 import TaskForm from '@/components/features/tasks/TaskForm'
-import { apiEndpoint } from '@/config/env'
-import { getAuthHeaders } from '@/services/auth'
+import { apiFetch } from '@/services/apiFetch'
 import { spacing, colours, typography } from '@/config/tokens'
 
 export default function AdminTaskNew() {
@@ -25,18 +24,12 @@ export default function AdminTaskNew() {
   useEffect(() => {
     async function load() {
       try {
-        const [projectsRes, categoriesRes, templatesRes, usersRes] = await Promise.all([
-          fetch(apiEndpoint('/projects'), { headers: { ...getAuthHeaders() } }),
-          fetch(apiEndpoint('/categories'), { headers: { ...getAuthHeaders() } }),
-          fetch(apiEndpoint('/templates'), { headers: { ...getAuthHeaders() } }),
-          fetch(apiEndpoint('/users'), { headers: { ...getAuthHeaders() } }),
+        const [projectsJson, categoriesJson, templatesJson, usersJson] = await Promise.all([
+          apiFetch('/projects'),
+          apiFetch('/categories'),
+          apiFetch('/templates'),
+          apiFetch('/users'),
         ])
-
-        const projectsJson = await projectsRes.json()
-        const categoriesJson = await categoriesRes.json()
-        const templatesJson = await templatesRes.json()
-        const usersJson = await usersRes.json()
-
         if (projectsJson.success) setProjects(projectsJson.data)
         if (categoriesJson.success) setCategories(categoriesJson.data)
         if (templatesJson.success) setTemplates(templatesJson.data)
@@ -57,19 +50,13 @@ export default function AdminTaskNew() {
     }
     setSubmitting(true)
     try {
-      const res = await fetch(apiEndpoint('/tasks'), {
+      const json = await apiFetch('/tasks', {
         method: 'POST',
-        headers: {
-          ...getAuthHeaders(),
-          'Content-Type': 'application/json',
-        },
         body: JSON.stringify({
           ...taskData,
           client_id: selectedClientId,
         }),
       })
-
-      const json = await res.json()
 
       if (json.success) {
         addToast('Task created successfully', 'success')

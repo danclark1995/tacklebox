@@ -9,8 +9,7 @@ import EmptyState from '@/components/ui/EmptyState'
 import Button from '@/components/ui/Button'
 import BrandBooklet from '@/components/features/brand/BrandBooklet'
 import BrandGuidePDFViewer from '@/components/features/brand/BrandGuidePDFViewer'
-import { apiEndpoint } from '@/config/env'
-import { getAuthHeaders } from '@/services/auth'
+import { apiFetch } from '@/services/apiFetch'
 import { spacing, colours, typography } from '@/config/tokens'
 
 export default function ContractorBrandGuides() {
@@ -24,8 +23,7 @@ export default function ContractorBrandGuides() {
   useEffect(() => {
     async function load() {
       try {
-        const res = await fetch(apiEndpoint('/brand-profiles'), { headers: { ...getAuthHeaders() } })
-        const json = await res.json()
+        const json = await apiFetch('/brand-profiles')
         if (json.success) setBrandProfiles(json.data || [])
       } catch (err) {
         addToast(err.message, 'error')
@@ -39,10 +37,7 @@ export default function ContractorBrandGuides() {
   const handleViewProfile = async (profile) => {
     setSelectedProfile(profile)
     try {
-      const res = await fetch(apiEndpoint(`/brand-profiles/${profile.client_id}/logos`), {
-        headers: { ...getAuthHeaders() }
-      })
-      const json = await res.json()
+      const json = await apiFetch(`/brand-profiles/${profile.client_id}/logos`)
       if (json.success) setLogos(json.data || [])
     } catch { /* logos may not exist */ }
   }

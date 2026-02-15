@@ -9,8 +9,7 @@ import Input from '@/components/ui/Input'
 import EmptyState from '@/components/ui/EmptyState'
 import EmberLoader from '@/components/ui/EmberLoader'
 import useToast from '@/hooks/useToast'
-import { apiEndpoint } from '@/config/env'
-import { getAuthHeaders } from '@/services/auth'
+import { apiFetch } from '@/services/apiFetch'
 import { spacing, typography, colours } from '@/config/tokens'
 import { formatDateTime } from '@/utils/formatters'
 
@@ -28,12 +27,10 @@ export default function AdminSettings() {
   useEffect(() => {
     async function loadAll() {
       try {
-        const [msgRes, usersRes] = await Promise.all([
-          fetch(apiEndpoint('/support'), { headers: getAuthHeaders() }),
-          fetch(apiEndpoint('/users'), { headers: getAuthHeaders() }),
+        const [msgJson, usersJson] = await Promise.all([
+          apiFetch('/support'),
+          apiFetch('/users'),
         ])
-        const msgJson = await msgRes.json()
-        const usersJson = await usersRes.json()
         if (msgJson.success) setMessages(msgJson.data || [])
         if (usersJson.success) setUsers(usersJson.data || [])
       } catch (err) {
@@ -48,12 +45,10 @@ export default function AdminSettings() {
   const handleResolve = async (id) => {
     setResolving(id)
     try {
-      const res = await fetch(apiEndpoint(`/support/${id}`), {
+      const json = await apiFetch(`/support/${id}`, {
         method: 'PUT',
-        headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: 'resolved' }),
       })
-      const json = await res.json()
       if (json.success) {
         setMessages(prev => prev.map(m => m.id === id ? { ...m, status: 'resolved', resolved_at: new Date().toISOString() } : m))
         addToast('Message resolved', 'success')

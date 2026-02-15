@@ -7,8 +7,7 @@ import SearchDropdown from '@/components/features/search/SearchDropdown'
 import useAuth from '@/hooks/useAuth'
 import { colours, spacing, typography, shadows } from '@/config/tokens'
 import { SEARCH_DEBOUNCE_MS } from '@/config/constants'
-import { apiEndpoint } from '@/config/env'
-import { getAuthHeaders } from '@/services/auth'
+import { apiFetch } from '@/services/apiFetch'
 
 export default function MainLayout({ children }) {
   const { user } = useAuth()
@@ -32,10 +31,7 @@ export default function MainLayout({ children }) {
     setShowSearchDropdown(true)
 
     try {
-      const res = await fetch(apiEndpoint(`/search?q=${encodeURIComponent(query)}`), {
-        headers: { ...getAuthHeaders() },
-      })
-      const json = await res.json()
+      const json = await apiFetch(`/search?q=${encodeURIComponent(query)}`)
       if (json.success) {
         setSearchResults(json.data)
       }

@@ -10,8 +10,7 @@ import Select from '@/components/ui/Select'
 import TaskDetail from '@/components/features/tasks/TaskDetail'
 import BrandBooklet from '@/components/features/brand/BrandBooklet'
 import AIAssistantPanel from '@/components/features/tasks/AIAssistantPanel'
-import { apiEndpoint } from '@/config/env'
-import { getAuthHeaders } from '@/services/auth'
+import { apiFetch } from '@/services/apiFetch'
 import { spacing, colours, typography } from '@/config/tokens'
 import { COMMENT_VISIBILITY } from '@/config/constants'
 
@@ -42,10 +41,7 @@ export default function ContractorTaskDetail() {
     if (task && task.client_id && activeStatuses.includes(task.status)) {
       async function fetchBrand() {
         try {
-          const res = await fetch(apiEndpoint(`/brand-profiles/${task.client_id}`), {
-            headers: { ...getAuthHeaders() }
-          })
-          const json = await res.json()
+          const json = await apiFetch(`/brand-profiles/${task.client_id}`)
           if (json.success) setBrandProfile(json.data)
         } catch { /* brand profile may not exist */ }
       }
@@ -56,24 +52,15 @@ export default function ContractorTaskDetail() {
   useEffect(() => {
     async function load() {
       try {
-        const [taskRes, commentsRes, attachmentsRes, timeEntriesRes, reviewsRes, totalTimeRes, historyRes] = await Promise.all([
-          fetch(apiEndpoint(`/tasks/${id}`), { headers: { ...getAuthHeaders() } }),
-          fetch(apiEndpoint(`/comments?task_id=${id}`), { headers: { ...getAuthHeaders() } }),
-          fetch(apiEndpoint(`/attachments?task_id=${id}`), { headers: { ...getAuthHeaders() } }),
-          fetch(apiEndpoint(`/time-entries?task_id=${id}`), { headers: { ...getAuthHeaders() } }),
-          fetch(apiEndpoint(`/reviews?task_id=${id}`), { headers: { ...getAuthHeaders() } }),
-          fetch(apiEndpoint(`/time-entries/total?task_id=${id}`), { headers: { ...getAuthHeaders() } }),
-          fetch(apiEndpoint(`/task-history?task_id=${id}`), { headers: { ...getAuthHeaders() } }),
+        const [taskJson, commentsJson, attachmentsJson, timeEntriesJson, reviewsJson, totalTimeJson, historyJson] = await Promise.all([
+          apiFetch(`/tasks/${id}`),
+          apiFetch(`/comments?task_id=${id}`),
+          apiFetch(`/attachments?task_id=${id}`),
+          apiFetch(`/time-entries?task_id=${id}`),
+          apiFetch(`/reviews?task_id=${id}`),
+          apiFetch(`/time-entries/total?task_id=${id}`),
+          apiFetch(`/task-history?task_id=${id}`),
         ])
-
-        const taskJson = await taskRes.json()
-        const commentsJson = await commentsRes.json()
-        const attachmentsJson = await attachmentsRes.json()
-        const timeEntriesJson = await timeEntriesRes.json()
-        const reviewsJson = await reviewsRes.json()
-        const totalTimeJson = await totalTimeRes.json()
-        const historyJson = await historyRes.json()
-
         if (taskJson.success) setTask(taskJson.data)
         if (commentsJson.success) setComments(commentsJson.data)
         if (attachmentsJson.success) setAttachments(attachmentsJson.data)
@@ -92,16 +79,10 @@ export default function ContractorTaskDetail() {
 
   const handleStatusChange = async (newStatus) => {
     try {
-      const res = await fetch(apiEndpoint(`/tasks/${id}/status`), {
+      const json = await apiFetch(`/tasks/${id}/status`, {
         method: 'PATCH',
-        headers: {
-          ...getAuthHeaders(),
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ status: newStatus })
+        body: JSON.stringify({ status: newStatus }),
       })
-
-      const json = await res.json()
 
       if (json.success) {
         setTask({ ...task, status: newStatus })
@@ -116,20 +97,14 @@ export default function ContractorTaskDetail() {
 
   const handleAddComment = async (commentData) => {
     try {
-      const res = await fetch(apiEndpoint('/comments'), {
+      const json = await apiFetch('/comments', {
         method: 'POST',
-        headers: {
-          ...getAuthHeaders(),
-          'Content-Type': 'application/json'
-        },
         body: JSON.stringify({
           task_id: id,
           content: commentData.content,
           visibility: commentData.visibility || 'all'
-        })
+        }),
       })
-
-      const json = await res.json()
 
       if (json.success) {
         setComments([...comments, json.data])
@@ -153,15 +128,10 @@ export default function ContractorTaskDetail() {
         formData.append('files', file)
       }
 
-      const res = await fetch(apiEndpoint('/attachments'), {
+      const json = await apiFetch('/attachments', {
         method: 'POST',
-        headers: {
-          ...getAuthHeaders()
-        },
-        body: formData
+        body: formData,
       })
-
-      const json = await res.json()
 
       if (json.success) {
         setAttachments([...attachments, ...json.data])
@@ -179,16 +149,10 @@ export default function ContractorTaskDetail() {
   const handleAddTimeEntry = async (data) => {
     setSubmitting(true)
     try {
-      const res = await fetch(apiEndpoint('/time-entries'), {
+      const json = await apiFetch('/time-entries', {
         method: 'POST',
-        headers: {
-          ...getAuthHeaders(),
-          'Content-Type': 'application/json',
-        },
         body: JSON.stringify({ task_id: id, ...data }),
       })
-
-      const json = await res.json()
 
       if (json.success) {
         setTimeEntries([...timeEntries, json.data])
@@ -207,24 +171,15 @@ export default function ContractorTaskDetail() {
   const handleUpdateTimeEntry = async (entryId, data) => {
     setSubmitting(true)
     try {
-      const res = await fetch(apiEndpoint(`/time-entries/${entryId}`), {
+      const json = await apiFetch(`/time-entries/${entryId}`, {
         method: 'PUT',
-        headers: {
-          ...getAuthHeaders(),
-          'Content-Type': 'application/json',
-        },
         body: JSON.stringify(data),
       })
-
-      const json = await res.json()
 
       if (json.success) {
         setTimeEntries(timeEntries.map((e) => (e.id === entryId ? json.data : e)))
         // Recalculate total
-        const totalRes = await fetch(apiEndpoint(`/time-entries/total?task_id=${id}`), {
-          headers: { ...getAuthHeaders() },
-        })
-        const totalJson = await totalRes.json()
+        const totalJson = await apiFetch(`/time-entries/total?task_id=${id}`)
         if (totalJson.success) setTotalTimeMinutes(totalJson.data.total_minutes)
         addToast('Time entry updated', 'success')
       } else {
@@ -240,12 +195,7 @@ export default function ContractorTaskDetail() {
   const handleDeleteTimeEntry = async (entryId) => {
     setSubmitting(true)
     try {
-      const res = await fetch(apiEndpoint(`/time-entries/${entryId}`), {
-        method: 'DELETE',
-        headers: { ...getAuthHeaders() },
-      })
-
-      const json = await res.json()
+      const json = await apiFetch(`/time-entries/${entryId}`, { method: 'DELETE' })
 
       if (json.success) {
         const removed = timeEntries.find((e) => e.id === entryId)
@@ -265,16 +215,10 @@ export default function ContractorTaskDetail() {
   const handleSubmitReview = async (reviewData) => {
     setSubmitting(true)
     try {
-      const res = await fetch(apiEndpoint('/reviews'), {
+      const json = await apiFetch('/reviews', {
         method: 'POST',
-        headers: {
-          ...getAuthHeaders(),
-          'Content-Type': 'application/json',
-        },
         body: JSON.stringify({ task_id: id, ...reviewData }),
       })
-
-      const json = await res.json()
 
       if (json.success) {
         setReviews([...reviews, json.data])
@@ -292,12 +236,7 @@ export default function ContractorTaskDetail() {
   const handleDeleteAttachment = async (attachmentId) => {
     setSubmitting(true)
     try {
-      const res = await fetch(apiEndpoint(`/attachments/${attachmentId}`), {
-        method: 'DELETE',
-        headers: { ...getAuthHeaders() },
-      })
-
-      const json = await res.json()
+      const json = await apiFetch(`/attachments/${attachmentId}`, { method: 'DELETE' })
 
       if (json.success) {
         setAttachments(attachments.filter((a) => a.id !== attachmentId))
@@ -319,11 +258,7 @@ export default function ContractorTaskDetail() {
   const handlePass = async () => {
     setPassing(true)
     try {
-      const res = await fetch(apiEndpoint(`/tasks/${id}/pass`), {
-        method: 'POST',
-        headers: { ...getAuthHeaders() },
-      })
-      const json = await res.json()
+      const json = await apiFetch(`/tasks/${id}/pass`, { method: 'POST' })
       if (json.success) {
         addToast('Task returned to the campfire', 'success')
         navigate('/camper/tasks')
@@ -345,15 +280,11 @@ export default function ContractorTaskDetail() {
     setShowBrandProfile(true)
     setLoadingBrandProfile(true)
     try {
-      const res = await fetch(apiEndpoint(`/brand-profiles/${task.client_id}`), {
-        headers: { ...getAuthHeaders() }
-      })
-      const json = await res.json()
+      const json = await apiFetch(`/brand-profiles/${task.client_id}`)
       if (json.success) {
         setBrandProfile(json.data)
         try {
-          const logosRes = await fetch(apiEndpoint(`/brand-profiles/${task.client_id}/logos`), { headers: { ...getAuthHeaders() } })
-          const logosJson = await logosRes.json()
+          const logosJson = await apiFetch(`/brand-profiles/${task.client_id}/logos`)
           if (logosJson.success) setBrandLogos(logosJson.data || [])
         } catch { /* logos may not exist yet */ }
       }

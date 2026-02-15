@@ -7,8 +7,7 @@ import GlowCard from '@/components/ui/GlowCard'
 import Button from '@/components/ui/Button'
 import Input from '@/components/ui/Input'
 import Avatar from '@/components/ui/Avatar'
-import { apiEndpoint } from '@/config/env'
-import { getAuthHeaders } from '@/services/auth'
+import { apiFetch } from '@/services/apiFetch'
 import { spacing, colours, typography } from '@/config/tokens'
 
 export default function ContractorProfile() {
@@ -35,16 +34,10 @@ export default function ContractorProfile() {
       const body = {}
       body[field] = value
 
-      const res = await fetch(apiEndpoint(`/users/${user.id}`), {
+      const json = await apiFetch(`/users/${user.id}`, {
         method: 'PUT',
-        headers: {
-          ...getAuthHeaders(),
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(body)
+        body: JSON.stringify(body),
       })
-
-      const json = await res.json()
 
       if (json.success) {
         setLocalOverrides(prev => ({ ...prev, [field]: value }))

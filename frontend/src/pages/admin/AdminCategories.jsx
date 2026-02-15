@@ -11,6 +11,7 @@ import DataTable from '@/components/ui/DataTable'
 import Badge from '@/components/ui/Badge'
 import ConfirmAction from '@/components/ui/ConfirmAction'
 import { apiEndpoint } from '@/config/env'
+import { apiFetch } from '@/services/apiFetch'
 import { getAuthHeaders } from '@/services/auth'
 import { spacing } from '@/config/tokens'
 
@@ -35,10 +36,7 @@ export default function AdminCategories() {
 
   const loadCategories = async () => {
     try {
-      const res = await fetch(apiEndpoint('/categories?include_inactive=true'), {
-        headers: { ...getAuthHeaders() }
-      })
-      const json = await res.json()
+      const json = await apiFetch('/categories?include_inactive=true')
       if (json.success) setCategories(json.data)
     } catch (err) {
       addToast(err.message, 'error')
@@ -110,11 +108,7 @@ export default function AdminCategories() {
 
   const handleDeleteCategory = async (category) => {
     try {
-      const res = await fetch(apiEndpoint(`/categories/${category.id}`), {
-        method: 'DELETE',
-        headers: { ...getAuthHeaders() },
-      })
-      const json = await res.json()
+      const json = await apiFetch(`/categories/${category.id}`, { method: 'DELETE' })
       if (json.success) {
         addToast('Category deleted', 'success')
         loadCategories()
@@ -128,12 +122,7 @@ export default function AdminCategories() {
 
   const handleDeactivateCategory = async (categoryId) => {
     try {
-      const res = await fetch(apiEndpoint(`/categories/${categoryId}/deactivate`), {
-        method: 'PATCH',
-        headers: { ...getAuthHeaders() }
-      })
-
-      const json = await res.json()
+      const json = await apiFetch(`/categories/${categoryId}/deactivate`, { method: 'PATCH' })
 
       if (json.success) {
         addToast('Category deactivated successfully', 'success')

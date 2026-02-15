@@ -12,6 +12,7 @@ import DataTable from '@/components/ui/DataTable'
 import Badge from '@/components/ui/Badge'
 import ConfirmAction from '@/components/ui/ConfirmAction'
 import { apiEndpoint } from '@/config/env'
+import { apiFetch } from '@/services/apiFetch'
 import { getAuthHeaders } from '@/services/auth'
 import { colours, spacing, typography, radii, transitions } from '@/config/tokens'
 
@@ -61,10 +62,7 @@ export default function AdminTemplates() {
 
   const loadCategories = async () => {
     try {
-      const res = await fetch(apiEndpoint('/categories'), {
-        headers: { ...getAuthHeaders() },
-      })
-      const json = await res.json()
+      const json = await apiFetch('/categories')
       if (json.success) {
         setCategories(json.data || [])
       }
@@ -77,10 +75,7 @@ export default function AdminTemplates() {
     setLoading(true)
     try {
       const categoryParam = filterCategory ? `?category_id=${filterCategory}` : ''
-      const res = await fetch(apiEndpoint(`/templates${categoryParam}`), {
-        headers: { ...getAuthHeaders() },
-      })
-      const json = await res.json()
+      const json = await apiFetch(`/templates${categoryParam}`)
       if (json.success) {
         setTemplates(json.data || [])
       }
@@ -181,11 +176,7 @@ export default function AdminTemplates() {
 
   const handleDeleteTemplate = async (template) => {
     try {
-      const res = await fetch(apiEndpoint(`/templates/${template.id}`), {
-        method: 'DELETE',
-        headers: { ...getAuthHeaders() },
-      })
-      const json = await res.json()
+      const json = await apiFetch(`/templates/${template.id}`, { method: 'DELETE' })
       if (json.success) {
         addToast('Template deleted', 'success')
         loadTemplates()
@@ -200,16 +191,10 @@ export default function AdminTemplates() {
   const handleToggleActive = async (template) => {
     const newActive = !template.is_active
     try {
-      const res = await fetch(apiEndpoint(`/templates/${template.id}`), {
+      const json = await apiFetch(`/templates/${template.id}`, {
         method: 'PUT',
-        headers: {
-          ...getAuthHeaders(),
-          'Content-Type': 'application/json',
-        },
         body: JSON.stringify({ is_active: newActive }),
       })
-
-      const json = await res.json()
 
       if (json.success) {
         addToast(

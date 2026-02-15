@@ -5,8 +5,7 @@ import useAuth from '@/hooks/useAuth'
 import Avatar from '@/components/ui/Avatar'
 import Button from '@/components/ui/Button'
 import WaveProgressBar from '@/components/ui/WaveProgressBar'
-import { apiEndpoint } from '@/config/env'
-import { getAuthHeaders } from '@/services/auth'
+import { apiFetch } from '@/services/apiFetch'
 import { colours, spacing, typography, radii, transitions } from '@/config/tokens'
 import { ROLES } from '@/config/constants'
 
@@ -56,10 +55,7 @@ export default function Sidebar() {
     if (!user?.id || user?.role === 'client') return
     async function loadXP() {
       try {
-        const res = await fetch(apiEndpoint('/gamification/me'), {
-          headers: { ...getAuthHeaders() },
-        })
-        const json = await res.json()
+        const json = await apiFetch('/gamification/me')
         if (json.success !== false) setXpData(json.data || json)
       } catch {}
     }
@@ -70,8 +66,7 @@ export default function Sidebar() {
     if (user?.role !== 'admin') return
     async function loadSupportCount() {
       try {
-        const res = await fetch(apiEndpoint('/support'), { headers: getAuthHeaders() })
-        const json = await res.json()
+        const json = await apiFetch('/support')
         if (json.success) {
           setSupportCount((json.data || []).filter(m => m.status === 'open').length)
         }

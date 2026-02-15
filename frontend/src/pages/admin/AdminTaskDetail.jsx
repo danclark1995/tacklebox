@@ -11,8 +11,7 @@ import GlowCard from '@/components/ui/GlowCard'
 import ConfirmAction from '@/components/ui/ConfirmAction'
 import TaskDetail from '@/components/features/tasks/TaskDetail'
 import AIAssistantPanel from '@/components/features/tasks/AIAssistantPanel'
-import { apiEndpoint } from '@/config/env'
-import { getAuthHeaders } from '@/services/auth'
+import { apiFetch } from '@/services/apiFetch'
 import { SCALING_TIERS } from '@/config/constants'
 import { spacing, colours, typography } from '@/config/tokens'
 
@@ -57,12 +56,10 @@ export default function AdminTaskDetail() {
     const newLevel = value === '' ? null : Number(value)
     setComplexityLevel(newLevel)
     try {
-      const res = await fetch(apiEndpoint(`/tasks/${id}`), {
+      const json = await apiFetch(`/tasks/${id}`, {
         method: 'PUT',
-        headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
         body: JSON.stringify({ complexity_level: newLevel }),
       })
-      const json = await res.json()
       if (json.success) {
         setTask(json.data)
         addToast('Complexity level updated', 'success')
@@ -77,26 +74,16 @@ export default function AdminTaskDetail() {
   useEffect(() => {
     async function load() {
       try {
-        const [taskRes, commentsRes, attachmentsRes, usersRes, timeEntriesRes, reviewsRes, totalTimeRes, historyRes] = await Promise.all([
-          fetch(apiEndpoint(`/tasks/${id}`), { headers: { ...getAuthHeaders() } }),
-          fetch(apiEndpoint(`/comments?task_id=${id}`), { headers: { ...getAuthHeaders() } }),
-          fetch(apiEndpoint(`/attachments?task_id=${id}`), { headers: { ...getAuthHeaders() } }),
-          fetch(apiEndpoint('/users?role=contractor'), { headers: { ...getAuthHeaders() } }),
-          fetch(apiEndpoint(`/time-entries?task_id=${id}`), { headers: { ...getAuthHeaders() } }),
-          fetch(apiEndpoint(`/reviews?task_id=${id}`), { headers: { ...getAuthHeaders() } }),
-          fetch(apiEndpoint(`/time-entries/total?task_id=${id}`), { headers: { ...getAuthHeaders() } }),
-          fetch(apiEndpoint(`/task-history?task_id=${id}`), { headers: { ...getAuthHeaders() } }),
+        const [taskJson, commentsJson, attachmentsJson, usersJson, timeEntriesJson, reviewsJson, totalTimeJson, historyJson] = await Promise.all([
+          apiFetch(`/tasks/${id}`),
+          apiFetch(`/comments?task_id=${id}`),
+          apiFetch(`/attachments?task_id=${id}`),
+          apiFetch('/users?role=contractor'),
+          apiFetch(`/time-entries?task_id=${id}`),
+          apiFetch(`/reviews?task_id=${id}`),
+          apiFetch(`/time-entries/total?task_id=${id}`),
+          apiFetch(`/task-history?task_id=${id}`),
         ])
-
-        const taskJson = await taskRes.json()
-        const commentsJson = await commentsRes.json()
-        const attachmentsJson = await attachmentsRes.json()
-        const usersJson = await usersRes.json()
-        const timeEntriesJson = await timeEntriesRes.json()
-        const reviewsJson = await reviewsRes.json()
-        const totalTimeJson = await totalTimeRes.json()
-        const historyJson = await historyRes.json()
-
         if (taskJson.success) {
           setTask(taskJson.data)
           setComplexityLevel(taskJson.data?.complexity_level ?? null)
@@ -130,10 +117,7 @@ export default function AdminTaskDetail() {
     if (task && task.client_id && activeStatuses.includes(task.status)) {
       async function fetchBrand() {
         try {
-          const res = await fetch(apiEndpoint(`/brand-profiles/${task.client_id}`), {
-            headers: { ...getAuthHeaders() }
-          })
-          const json = await res.json()
+          const json = await apiFetch(`/brand-profiles/${task.client_id}`)
           if (json.success) setBrandProfile(json.data)
         } catch { /* brand profile may not exist */ }
       }
@@ -148,11 +132,7 @@ export default function AdminTaskDetail() {
   const handleDeleteTask = async () => {
     setDeleting(true)
     try {
-      const res = await fetch(apiEndpoint(`/tasks/${id}`), {
-        method: 'DELETE',
-        headers: { ...getAuthHeaders() },
-      })
-      const json = await res.json()
+      const json = await apiFetch(`/tasks/${id}`, { method: 'DELETE' })
       if (json.success) {
         addToast('Task deleted', 'success')
         navigate('/admin/tasks')
@@ -176,19 +156,13 @@ export default function AdminTaskDetail() {
 
     setSubmitting(true)
     try {
-      const res = await fetch(apiEndpoint(`/tasks/${id}/status`), {
+      const json = await apiFetch(`/tasks/${id}/status`, {
         method: 'PATCH',
-        headers: {
-          ...getAuthHeaders(),
-          'Content-Type': 'application/json'
-        },
         body: JSON.stringify({
           status: 'assigned',
           contractor_id: selectedContractor
-        })
+        }),
       })
-
-      const json = await res.json()
 
       if (json.success) {
         setTask({ ...task, status: 'assigned', contractor_id: selectedContractor })
@@ -207,19 +181,13 @@ export default function AdminTaskDetail() {
   const handleStatusChange = async (newStatus, additionalData = {}) => {
     setSubmitting(true)
     try {
-      const res = await fetch(apiEndpoint(`/tasks/${id}/status`), {
+      const json = await apiFetch(`/tasks/${id}/status`, {
         method: 'PATCH',
-        headers: {
-          ...getAuthHeaders(),
-          'Content-Type': 'application/json'
-        },
         body: JSON.stringify({
           status: newStatus,
           ...additionalData
-        })
+        }),
       })
-
-      const json = await res.json()
 
       if (json.success) {
         setTask({ ...task, status: newStatus })
@@ -247,20 +215,14 @@ export default function AdminTaskDetail() {
 
   const handleAddComment = async (commentData) => {
     try {
-      const res = await fetch(apiEndpoint('/comments'), {
+      const json = await apiFetch('/comments', {
         method: 'POST',
-        headers: {
-          ...getAuthHeaders(),
-          'Content-Type': 'application/json'
-        },
         body: JSON.stringify({
           task_id: id,
           text: commentData.text,
           visibility: commentData.visibility || 'all'
-        })
+        }),
       })
-
-      const json = await res.json()
 
       if (json.success) {
         setComments([...comments, json.data])
@@ -276,16 +238,10 @@ export default function AdminTaskDetail() {
   const handleAddTimeEntry = async (data) => {
     setSubmitting(true)
     try {
-      const res = await fetch(apiEndpoint('/time-entries'), {
+      const json = await apiFetch('/time-entries', {
         method: 'POST',
-        headers: {
-          ...getAuthHeaders(),
-          'Content-Type': 'application/json',
-        },
         body: JSON.stringify({ task_id: id, ...data }),
       })
-
-      const json = await res.json()
 
       if (json.success) {
         setTimeEntries([...timeEntries, json.data])
@@ -304,24 +260,15 @@ export default function AdminTaskDetail() {
   const handleUpdateTimeEntry = async (entryId, data) => {
     setSubmitting(true)
     try {
-      const res = await fetch(apiEndpoint(`/time-entries/${entryId}`), {
+      const json = await apiFetch(`/time-entries/${entryId}`, {
         method: 'PUT',
-        headers: {
-          ...getAuthHeaders(),
-          'Content-Type': 'application/json',
-        },
         body: JSON.stringify(data),
       })
-
-      const json = await res.json()
 
       if (json.success) {
         setTimeEntries(timeEntries.map((e) => (e.id === entryId ? json.data : e)))
         // Recalculate total
-        const totalRes = await fetch(apiEndpoint(`/time-entries/total?task_id=${id}`), {
-          headers: { ...getAuthHeaders() },
-        })
-        const totalJson = await totalRes.json()
+        const totalJson = await apiFetch(`/time-entries/total?task_id=${id}`)
         if (totalJson.success) setTotalTimeMinutes(totalJson.data.total_minutes)
         addToast('Time entry updated', 'success')
       } else {
@@ -337,12 +284,7 @@ export default function AdminTaskDetail() {
   const handleDeleteTimeEntry = async (entryId) => {
     setSubmitting(true)
     try {
-      const res = await fetch(apiEndpoint(`/time-entries/${entryId}`), {
-        method: 'DELETE',
-        headers: { ...getAuthHeaders() },
-      })
-
-      const json = await res.json()
+      const json = await apiFetch(`/time-entries/${entryId}`, { method: 'DELETE' })
 
       if (json.success) {
         const removed = timeEntries.find((e) => e.id === entryId)
@@ -362,16 +304,10 @@ export default function AdminTaskDetail() {
   const handleSubmitReview = async (reviewData) => {
     setSubmitting(true)
     try {
-      const res = await fetch(apiEndpoint('/reviews'), {
+      const json = await apiFetch('/reviews', {
         method: 'POST',
-        headers: {
-          ...getAuthHeaders(),
-          'Content-Type': 'application/json',
-        },
         body: JSON.stringify({ task_id: id, ...reviewData }),
       })
-
-      const json = await res.json()
 
       if (json.success) {
         setReviews([...reviews, json.data])
@@ -396,13 +332,10 @@ export default function AdminTaskDetail() {
         formData.append('files', file)
       }
 
-      const res = await fetch(apiEndpoint('/attachments'), {
+      const json = await apiFetch('/attachments', {
         method: 'POST',
-        headers: { ...getAuthHeaders() },
         body: formData,
       })
-
-      const json = await res.json()
 
       if (json.success) {
         setAttachments([...attachments, ...json.data])
@@ -420,12 +353,7 @@ export default function AdminTaskDetail() {
   const handleDeleteAttachment = async (attachmentId) => {
     setSubmitting(true)
     try {
-      const res = await fetch(apiEndpoint(`/attachments/${attachmentId}`), {
-        method: 'DELETE',
-        headers: { ...getAuthHeaders() },
-      })
-
-      const json = await res.json()
+      const json = await apiFetch(`/attachments/${attachmentId}`, { method: 'DELETE' })
 
       if (json.success) {
         setAttachments(attachments.filter((a) => a.id !== attachmentId))
@@ -443,11 +371,7 @@ export default function AdminTaskDetail() {
   const handleAIAnalysis = async () => {
     setAiLoading(true)
     try {
-      const res = await fetch(apiEndpoint(`/ai/analyse-brief/${id}`), {
-        method: 'POST',
-        headers: { ...getAuthHeaders() }
-      })
-      const json = await res.json()
+      const json = await apiFetch(`/ai/analyse-brief/${id}`, { method: 'POST' })
       if (json.success) {
         setAiAnalysis(json.data)
         addToast('AI analysis complete', 'success')

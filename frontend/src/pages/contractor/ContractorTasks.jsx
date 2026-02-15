@@ -9,8 +9,7 @@ import ConfirmAction from '@/components/ui/ConfirmAction'
 import EmberLoader from '@/components/ui/EmberLoader'
 import EmptyState from '@/components/ui/EmptyState'
 import TaskList from '@/components/features/tasks/TaskList'
-import { apiEndpoint } from '@/config/env'
-import { getAuthHeaders } from '@/services/auth'
+import { apiFetch } from '@/services/apiFetch'
 import { spacing, colours, typography } from '@/config/tokens'
 
 function formatRelativeTime(dateStr) {
@@ -38,8 +37,7 @@ export default function ContractorTasks() {
   useEffect(() => {
     async function load() {
       try {
-        const res = await fetch(apiEndpoint('/tasks'), { headers: { ...getAuthHeaders() } })
-        const json = await res.json()
+        const json = await apiFetch('/tasks')
         if (json.success) setTasks(json.data)
       } catch (err) {
         addToast(err.message, 'error')
@@ -53,8 +51,7 @@ export default function ContractorTasks() {
   // Campfire tasks with 30s polling
   const loadCampfire = useCallback(async () => {
     try {
-      const res = await fetch(apiEndpoint('/tasks/campfire'), { headers: { ...getAuthHeaders() } })
-      const json = await res.json()
+      const json = await apiFetch('/tasks/campfire')
       if (json.success) setCampfireTasks(json.data)
     } catch {}
   }, [])
@@ -68,11 +65,7 @@ export default function ContractorTasks() {
   const handleClaim = async (taskId) => {
     setClaimingId(taskId)
     try {
-      const res = await fetch(apiEndpoint(`/tasks/${taskId}/claim`), {
-        method: 'POST',
-        headers: { ...getAuthHeaders() },
-      })
-      const json = await res.json()
+      const json = await apiFetch(`/tasks/${taskId}/claim`, { method: 'POST' })
       if (json.success) {
         setFadingOut(taskId)
         setTimeout(() => {
@@ -81,7 +74,7 @@ export default function ContractorTasks() {
           setConfirmingClaim(null)
           addToast('Task claimed!', 'success')
           // Refresh own tasks
-          fetch(apiEndpoint('/tasks'), { headers: { ...getAuthHeaders() } })
+          apiFetch('/tasks')
             .then(r => r.json())
             .then(j => { if (j.success) setTasks(j.data) })
         }, 400)

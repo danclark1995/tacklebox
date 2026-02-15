@@ -207,6 +207,11 @@ export async function handleCategories(request, env, auth, path, method) {
     }
 
     try {
+      const category = await env.DB.prepare('SELECT id, is_active FROM task_categories WHERE id = ?').bind(categoryId).first()
+      if (!category) {
+        return jsonResponse({ success: false, error: 'Category not found' }, 404)
+      }
+
       await env.DB.prepare(
         'UPDATE task_categories SET is_active = 0 WHERE id = ?'
       ).bind(categoryId).run()

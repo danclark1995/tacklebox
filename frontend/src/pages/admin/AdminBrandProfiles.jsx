@@ -8,8 +8,7 @@ import GlowCard from '@/components/ui/GlowCard'
 import EmberLoader from '@/components/ui/EmberLoader'
 import EmptyState from '@/components/ui/EmptyState'
 import BrandGuidePDFViewer from '@/components/features/brand/BrandGuidePDFViewer'
-import { apiEndpoint } from '@/config/env'
-import { getAuthHeaders } from '@/services/auth'
+import { apiFetch } from '@/services/apiFetch'
 import { spacing, colours, typography } from '@/config/tokens'
 
 export default function AdminBrandProfiles() {
@@ -22,10 +21,7 @@ export default function AdminBrandProfiles() {
   useEffect(() => {
     async function load() {
       try {
-        const res = await fetch(apiEndpoint('/users?role=client'), {
-          headers: { ...getAuthHeaders() }
-        })
-        const json = await res.json()
+        const json = await apiFetch('/users?role=client')
         if (json.success) setClients(json.data)
       } catch (err) {
         addToast(err.message, 'error')

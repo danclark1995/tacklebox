@@ -7,8 +7,7 @@ import Input from '@/components/ui/Input'
 import Textarea from '@/components/ui/Textarea'
 import Select from '@/components/ui/Select'
 import useToast from '@/hooks/useToast'
-import { apiEndpoint } from '@/config/env'
-import { getAuthHeaders } from '@/services/auth'
+import { apiFetch } from '@/services/apiFetch'
 import { colours, spacing, typography, radii } from '@/config/tokens'
 
 const STEPS = [
@@ -140,9 +139,8 @@ export default function BrandOnboarding() {
       const tempPassword = 'Temp' + Math.random().toString(36).slice(2, 8) + '!'
 
       // 1. Create client user
-      const userRes = await fetch(apiEndpoint('/users'), {
+      const userJson = await apiFetch('/users', {
         method: 'POST',
-        headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
         body: JSON.stringify({
           email: data.client_email.trim(),
           password: tempPassword,
@@ -151,7 +149,6 @@ export default function BrandOnboarding() {
           company: data.company_name.trim(),
         }),
       })
-      const userJson = await userRes.json()
       if (!userJson.success) {
         addToast(userJson.error || 'Failed to create client account', 'error')
         setSubmitting(false)
@@ -176,9 +173,8 @@ export default function BrandOnboarding() {
           }))
         : null
 
-      const profileRes = await fetch(apiEndpoint('/brand-profiles'), {
+      const profileJson = await apiFetch('/brand-profiles', {
         method: 'POST',
-        headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
         body: JSON.stringify({
           client_id: clientId,
           industry: data.industry || null,
@@ -195,7 +191,6 @@ export default function BrandOnboarding() {
           messaging_pillars: pillarData,
         }),
       })
-      const profileJson = await profileRes.json()
       if (!profileJson.success) {
         addToast(profileJson.error || 'Failed to create brand profile', 'error')
         setSubmitting(false)

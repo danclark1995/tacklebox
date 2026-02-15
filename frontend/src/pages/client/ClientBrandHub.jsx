@@ -7,8 +7,7 @@ import EmptyState from '@/components/ui/EmptyState'
 import BrandBooklet from '@/components/features/brand/BrandBooklet'
 import BrandGuideCard from '@/components/features/brand/BrandGuideCard'
 import BrandGuidePDFViewer from '@/components/features/brand/BrandGuidePDFViewer'
-import { apiEndpoint } from '@/config/env'
-import { getAuthHeaders } from '@/services/auth'
+import { apiFetch } from '@/services/apiFetch'
 import { spacing, colours, typography } from '@/config/tokens'
 
 export default function ClientBrandHub() {
@@ -23,19 +22,14 @@ export default function ClientBrandHub() {
   useEffect(() => {
     async function load() {
       try {
-        const [profileRes, guidesRes] = await Promise.all([
-          fetch(apiEndpoint(`/brand-profiles/${user.id}`), { headers: { ...getAuthHeaders() } }),
-          fetch(apiEndpoint(`/brand-guides?client_id=${user.id}`), { headers: { ...getAuthHeaders() } })
+        const [profileJson, guidesJson] = await Promise.all([
+          apiFetch(`/brand-profiles/${user.id}`),
+          apiFetch(`/brand-guides?client_id=${user.id}`)
         ])
-
-        const profileJson = await profileRes.json()
-        const guidesJson = await guidesRes.json()
-
         if (profileJson.success) {
           setBrandProfile(profileJson.data)
           try {
-            const logosRes = await fetch(apiEndpoint(`/brand-profiles/${user.id}/logos`), { headers: { ...getAuthHeaders() } })
-            const logosJson = await logosRes.json()
+            const logosJson = await apiFetch(`/brand-profiles/${user.id}/logos`)
             if (logosJson.success) setLogos(logosJson.data || [])
           } catch { /* logos may not exist yet */ }
         }

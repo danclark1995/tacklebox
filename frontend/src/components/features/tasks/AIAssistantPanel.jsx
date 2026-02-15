@@ -8,7 +8,7 @@ import Dropdown from '@/components/ui/Dropdown'
 import EmberLoader from '@/components/ui/EmberLoader'
 import PromptTips from '@/components/features/PromptTips'
 import { apiEndpoint } from '@/config/env'
-import { getAuthHeaders } from '@/services/auth'
+import { apiFetch } from '@/services/apiFetch'
 import { colours, spacing, typography, radii, transitions } from '@/config/tokens'
 
 const PLATFORMS = [
@@ -152,12 +152,10 @@ export default function AIAssistantPanel({ task, brandProfile, onAttachmentAdded
           break
       }
 
-      const res = await fetch(apiEndpoint(endpoint), {
+      const data = await apiFetch(endpoint, {
         method: 'POST',
-        headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
       })
-      const data = await res.json()
       if (data.success) {
         setResult(data.data)
       } else {
@@ -174,12 +172,10 @@ export default function AIAssistantPanel({ task, brandProfile, onAttachmentAdded
     if (!result?.id) return
     setAttaching(true)
     try {
-      const res = await fetch(apiEndpoint('/generate/attach-to-task'), {
+      const data = await apiFetch('/generate/attach-to-task', {
         method: 'POST',
-        headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
         body: JSON.stringify({ generation_id: result.id, task_id: task.id }),
       })
-      const data = await res.json()
       if (data.success) {
         if (onAttachmentAdded) onAttachmentAdded(data.data)
         addToast('Generated content attached to task as deliverable', 'success')

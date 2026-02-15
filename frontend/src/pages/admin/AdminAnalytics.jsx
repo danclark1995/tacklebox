@@ -11,8 +11,7 @@ import {
   getTimeTracking,
   getReviewInsights,
 } from '@/services/analytics'
-import { apiEndpoint } from '@/config/env'
-import { getAuthHeaders } from '@/services/auth'
+import { apiFetch } from '@/services/apiFetch'
 import { colours, spacing, typography, radii } from '@/config/tokens'
 
 // ── Formatting helpers ────────────────────────────────────────────
@@ -265,12 +264,10 @@ export default function AdminAnalytics() {
 
       // Fetch earnings analytics and campers list
       try {
-        const [earningsRes, usersRes] = await Promise.all([
-          fetch(apiEndpoint('/earnings/analytics'), { headers: getAuthHeaders() }),
-          fetch(apiEndpoint('/users'), { headers: getAuthHeaders() }),
+        const [earningsJson, usersJson] = await Promise.all([
+          apiFetch('/earnings/analytics'),
+          apiFetch('/users'),
         ])
-        const earningsJson = await earningsRes.json()
-        const usersJson = await usersRes.json()
         if (earningsJson.success) setEarningsAnalytics(earningsJson.data)
         if (usersJson.success) setCampersList(usersJson.data.filter(u => u.role === 'contractor'))
       } catch (e) { /* non-critical */ }
@@ -553,12 +550,10 @@ export default function AdminAnalytics() {
               if (rewardType === 'bonus_cash') body.amount = Number(rewardAmount)
               else body.xp_amount = Number(rewardAmount)
 
-              const res = await fetch(apiEndpoint('/earnings/reward'), {
-                method: 'POST',
-                headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
-                body: JSON.stringify(body),
-              })
-              const json = await res.json()
+              const json = await apiFetch('/earnings/reward', {
+        method: 'POST',
+        body: JSON.stringify(body),
+      })
               if (json.success) {
                 addToast('Bonus awarded!', 'success')
                 setRewardUser('')
