@@ -39,6 +39,9 @@ export async function handleProjects(request, env, auth, path, method) {
       if (auth.user.role === 'client') {
         conditions.push('p.client_id = ?')
         bindings.push(auth.user.id)
+      } else if (auth.user.role === 'contractor') {
+        conditions.push('p.client_id IN (SELECT DISTINCT client_id FROM tasks WHERE contractor_id = ?)')
+        bindings.push(auth.user.id)
       }
       // Admin sees all projects
 

@@ -1,6 +1,10 @@
+import { useNavigate } from 'react-router-dom'
+import { Button } from '@/components/ui'
 import { colours, spacing, typography } from '@/config/tokens'
 
 export default function ForbiddenPage() {
+  const navigate = useNavigate()
+
   const containerStyle = {
     display: 'flex',
     flexDirection: 'column',
@@ -33,36 +37,16 @@ export default function ForbiddenPage() {
     maxWidth: '500px',
   }
 
-  const linkStyle = {
-    color: colours.neutral[700],
-    textDecoration: 'none',
-    fontSize: typography.fontSize.lg,
-    fontWeight: typography.fontWeight.semibold,
-    padding: `${spacing[3]} ${spacing[6]}`,
-    borderRadius: '8px',
-    border: `2px solid ${colours.neutral[700]}`,
-    transition: 'all 200ms ease',
-    display: 'inline-block',
-  }
-
-  const linkHoverStyle = `
-    .forbidden-link:hover {
-      background-color: ${colours.neutral[700]};
-      color: ${colours.white};
-    }
-  `
-
   return (
     <div style={containerStyle}>
-      <style>{linkHoverStyle}</style>
       <div style={errorCodeStyle}>403</div>
       <h1 style={headingStyle}>Access Denied</h1>
       <p style={messageStyle}>
         You don't have permission to view this page.
       </p>
-      <a href="/" style={linkStyle} className="forbidden-link">
+      <Button variant="secondary" onClick={() => navigate('/')}>
         Back to Dashboard
-      </a>
+      </Button>
     </div>
   )
 }

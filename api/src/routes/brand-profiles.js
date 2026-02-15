@@ -285,6 +285,18 @@ export async function handleBrandProfiles(request, env, auth, path, method) {
     const authCheck = requireAuth(auth)
     if (!authCheck.authorized) return jsonResponse({ success: false, error: authCheck.error }, authCheck.status)
 
+    // Ownership check
+    const user = auth.user
+    if (user.role === 'client' && user.id !== clientId) {
+      return jsonResponse({ success: false, error: 'Access denied' }, 403)
+    }
+    if (user.role === 'contractor') {
+      const link = await env.DB.prepare(
+        'SELECT 1 FROM tasks WHERE contractor_id = ? AND client_id = ? LIMIT 1'
+      ).bind(user.id, clientId).first()
+      if (!link) return jsonResponse({ success: false, error: 'Access denied' }, 403)
+    }
+
     try {
       const profile = await env.DB.prepare(
         'SELECT brand_guide_path FROM brand_profiles WHERE client_id = ?'
@@ -318,7 +330,7 @@ export async function handleBrandProfiles(request, env, auth, path, method) {
     const authCheck = requireAuth(auth)
     if (!authCheck.authorized) return jsonResponse({ success: false, error: authCheck.error }, authCheck.status)
 
-    // Permission: admin always, contractor with level >= 7
+    // Permission: admin always, contractor with level >= 7 AND assigned to client
     const user = auth.user
     if (user.role === 'contractor') {
       const xp = await env.DB.prepare(
@@ -326,6 +338,13 @@ export async function handleBrandProfiles(request, env, auth, path, method) {
       ).bind(user.id).first()
       if (!xp || xp.current_level < 7) {
         return jsonResponse({ success: false, error: 'Camp Leader rank (level 7+) required to upload brand guides' }, 403)
+      }
+      // Verify contractor is assigned to at least one task for this client
+      const link = await env.DB.prepare(
+        'SELECT 1 FROM tasks WHERE contractor_id = ? AND client_id = ? LIMIT 1'
+      ).bind(user.id, clientId).first()
+      if (!link) {
+        return jsonResponse({ success: false, error: 'You can only upload guides for clients you are assigned to' }, 403)
       }
     } else if (user.role !== 'admin') {
       return jsonResponse({ success: false, error: 'Insufficient permissions' }, 403)

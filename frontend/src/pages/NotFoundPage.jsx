@@ -1,6 +1,10 @@
+import { useNavigate } from 'react-router-dom'
+import { Button } from '@/components/ui'
 import { colours, spacing, typography } from '@/config/tokens'
 
 export default function NotFoundPage() {
+  const navigate = useNavigate()
+
   const containerStyle = {
     display: 'flex',
     flexDirection: 'column',
@@ -60,9 +64,9 @@ export default function NotFoundPage() {
       <p style={messageStyle}>
         The page you're looking for doesn't exist or has been moved.
       </p>
-      <a href="/" style={linkStyle}>
+      <Button variant="secondary" onClick={() => navigate('/')}>
         Back to Dashboard
-      </a>
+      </Button>
     </div>
   )
 }

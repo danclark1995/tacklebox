@@ -53,8 +53,8 @@ export default function TaskCard({ task, onClick }) {
               padding: '2px 6px',
               borderRadius: '4px',
               border: '1px solid #333',
-              backgroundColor: '#111',
-              color: task.complexity_level === 0 ? '#ffffff' : colours.neutral[500],
+              backgroundColor: colours.neutral[100],
+              color: task.complexity_level === 0 ? colours.neutral[900] : colours.neutral[500],
               boxShadow: task.complexity_level === 0 ? '0 0 6px rgba(255,255,255,0.3)' : 'none',
               fontWeight: 600,
             }}>

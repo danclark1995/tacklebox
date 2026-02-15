@@ -29,7 +29,7 @@ export default function ProjectCard({ project, onClick }) {
       }}
       onMouseEnter={(e) => {
         e.currentTarget.style.boxShadow = '0 4px 16px rgba(255, 255, 255, 0.05)'
-        e.currentTarget.style.borderColor = '#333'
+        e.currentTarget.style.borderColor = colours.neutral[300]
         e.currentTarget.style.transform = 'translateY(-2px)'
       }}
       onMouseLeave={(e) => {

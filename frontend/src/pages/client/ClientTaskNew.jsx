@@ -3,7 +3,7 @@ import { useNavigate, Link } from 'react-router-dom'
 import useAuth from '@/hooks/useAuth'
 import useToast from '@/hooks/useToast'
 import PageHeader from '@/components/ui/PageHeader'
-import EmberLoader from '@/components/ui/EmberLoader'
+import Spinner from '@/components/ui/Spinner'
 import TaskForm from '@/components/features/tasks/TaskForm'
 import { apiEndpoint } from '@/config/env'
 import { getAuthHeaders } from '@/services/auth'
@@ -74,7 +74,7 @@ export default function ClientTaskNew() {
   if (loading) {
     return (
       <div style={{ display: 'flex', justifyContent: 'center', padding: spacing[8] }}>
-        <EmberLoader size="lg" />
+        <Spinner size="lg" />
       </div>
     )
   }

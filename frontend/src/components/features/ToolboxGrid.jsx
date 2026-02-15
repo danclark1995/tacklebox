@@ -105,12 +105,12 @@ export default function ToolboxGrid({ tools = [], editable = false, onEdit, onDe
               )}
 
               <div style={{ marginBottom: spacing[3] }}>
-                <Icon size={24} style={{ color: '#ffffff' }} />
+                <Icon size={24} style={{ color: colours.neutral[900] }} />
               </div>
               <div style={{
                 fontSize: '15px',
                 fontWeight: 600,
-                color: '#ffffff',
+                color: colours.neutral[900],
                 marginBottom: spacing[1],
               }}>
                 {tool.name}

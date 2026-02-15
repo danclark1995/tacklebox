@@ -4,7 +4,7 @@ import useToast from '@/hooks/useToast'
 import PageHeader from '@/components/ui/PageHeader'
 import Button from '@/components/ui/Button'
 import Select from '@/components/ui/Select'
-import EmberLoader from '@/components/ui/EmberLoader'
+import Spinner from '@/components/ui/Spinner'
 import TaskList from '@/components/features/tasks/TaskList'
 import { apiEndpoint } from '@/config/env'
 import { getAuthHeaders } from '@/services/auth'
@@ -54,7 +54,7 @@ export default function ClientTasks() {
   if (loading) {
     return (
       <div style={{ display: 'flex', justifyContent: 'center', padding: spacing[8] }}>
-        <EmberLoader size="lg" />
+        <Spinner size="lg" />
       </div>
     )
   }

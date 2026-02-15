@@ -248,8 +248,8 @@ export default function BrandProfileView({ profile, clientName, companyName, log
             {logos.map(logo => (
               <div key={logo.id} style={{ padding: spacing[4], backgroundColor: logo.background_type === 'dark' ? '#0a0a0a' : logo.background_type === 'light' ? '#ffffff' : colours.neutral[100], borderRadius: radii.lg, border: `1px solid ${colours.neutral[200]}`, textAlign: 'center' }}>
                 <img src={logo.file_path} alt={logo.variant_name} style={{ maxWidth: '100%', height: 80, objectFit: 'contain', marginBottom: spacing[2] }} />
-                <div style={{ fontSize: typography.fontSize.sm, fontWeight: typography.fontWeight.medium, color: logo.background_type === 'dark' ? '#ffffff' : colours.neutral[900] }}>{logo.variant_name}</div>
-                <div style={{ fontSize: typography.fontSize.xs, color: logo.background_type === 'dark' ? '#a3a3a3' : colours.neutral[500] }}>{logo.logo_type} / {logo.background_type}</div>
+                <div style={{ fontSize: typography.fontSize.sm, fontWeight: typography.fontWeight.medium, color: logo.background_type === 'dark' ? colours.neutral[900] : colours.neutral[900] }}>{logo.variant_name}</div>
+                <div style={{ fontSize: typography.fontSize.xs, color: logo.background_type === 'dark' ? colours.neutral[500] : colours.neutral[500] }}>{logo.logo_type} / {logo.background_type}</div>
               </div>
             ))}
           </div>
@@ -320,7 +320,7 @@ function Section({ title, children }) {
 function ColourChip({ colour }) {
   return (
     <div style={{ textAlign: 'center' }}>
-      <div style={{ width: 64, height: 64, borderRadius: radii.lg, backgroundColor: colour.hex || '#888', border: `1px solid ${colours.neutral[300]}`, marginBottom: spacing[2] }} />
+      <div style={{ width: 64, height: 64, borderRadius: radii.lg, backgroundColor: colour.hex || colours.neutral[500], border: `1px solid ${colours.neutral[300]}`, marginBottom: spacing[2] }} />
       <div style={{ fontSize: typography.fontSize.xs, fontWeight: typography.fontWeight.medium, color: colours.neutral[900] }}>{colour.name}</div>
       <div style={{ fontSize: typography.fontSize.xs, color: colours.neutral[500], fontFamily: typography.fontFamily.mono }}>{colour.hex}</div>
       {colour.pantone && <div style={{ fontSize: typography.fontSize.xs, color: colours.neutral[500] }}>{colour.pantone}</div>}

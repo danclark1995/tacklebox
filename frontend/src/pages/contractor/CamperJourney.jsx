@@ -194,7 +194,7 @@ export default function CamperJourney() {
 
                     <div style={{
                       ...badgeNameStyle,
-                      color: earned ? '#ffffff' : colours.neutral[400],
+                      color: earned ? colours.neutral[900] : colours.neutral[400],
                     }}>
                       {badge.name}
                     </div>
@@ -264,7 +264,7 @@ function renderStars(rating) {
         key={i}
         size={13}
         color="#ffffff"
-        fill={i <= filled ? '#ffffff' : 'transparent'}
+        fill={i <= filled ? colours.neutral[900] : 'transparent'}
         style={{ opacity: i <= filled ? 1 : 0.25 }}
       />
     )
@@ -327,7 +327,7 @@ const sectionStyle = {
 const sectionTitleStyle = {
   fontSize: typography.fontSize.lg,
   fontWeight: typography.fontWeight.semibold,
-  color: '#ffffff',
+  color: colours.neutral[900],
   marginBottom: spacing[4],
   marginTop: 0,
   display: 'flex',
@@ -410,5 +410,5 @@ const statLabelStyle = {
 const statValueStyle = {
   fontSize: '16px',
   fontWeight: typography.fontWeight.bold,
-  color: '#ffffff',
+  color: colours.neutral[900],
 }

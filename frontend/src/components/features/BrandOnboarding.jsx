@@ -240,7 +240,7 @@ export default function BrandOnboarding() {
             <Check size={32} color="#ffffff" />
           </div>
 
-          <h1 style={{ fontSize: typography.fontSize['2xl'], fontWeight: typography.fontWeight.bold, color: '#ffffff', marginBottom: spacing[3] }}>
+          <h1 style={{ fontSize: typography.fontSize['2xl'], fontWeight: typography.fontWeight.bold, color: colours.neutral[900], marginBottom: spacing[3] }}>
             Brand Profile Created
           </h1>
           <p style={{ fontSize: typography.fontSize.base, color: colours.neutral[400], marginBottom: spacing[6], lineHeight: 1.6 }}>
@@ -250,11 +250,11 @@ export default function BrandOnboarding() {
           <GlowCard style={{ padding: spacing[5], textAlign: 'left', marginBottom: spacing[6] }}>
             <div style={{ marginBottom: spacing[3] }}>
               <div style={{ fontSize: typography.fontSize.xs, color: colours.neutral[500], marginBottom: '4px' }}>Client Login</div>
-              <div style={{ fontSize: typography.fontSize.sm, color: '#ffffff' }}>{result.email}</div>
+              <div style={{ fontSize: typography.fontSize.sm, color: colours.neutral[900] }}>{result.email}</div>
             </div>
             <div>
               <div style={{ fontSize: typography.fontSize.xs, color: colours.neutral[500], marginBottom: '4px' }}>Temporary Password</div>
-              <div style={{ fontSize: typography.fontSize.sm, color: '#ffffff', fontFamily: 'monospace' }}>{result.tempPassword}</div>
+              <div style={{ fontSize: typography.fontSize.sm, color: colours.neutral[900], fontFamily: 'monospace' }}>{result.tempPassword}</div>
             </div>
           </GlowCard>
 
@@ -294,20 +294,20 @@ export default function BrandOnboarding() {
                     alignItems: 'center',
                     justifyContent: 'center',
                     cursor: i <= step ? 'pointer' : 'default',
-                    backgroundColor: isCompleted ? '#ffffff' : 'transparent',
+                    backgroundColor: isCompleted ? colours.neutral[900] : 'transparent',
                     border: isFuture ? '2px dashed #333' : isCurrent ? '2px solid #ffffff' : '2px solid #ffffff',
                     boxShadow: isCurrent ? '0 0 12px rgba(255,255,255,0.3)' : 'none',
                     transition: 'all 0.3s ease',
                     fontSize: '11px',
                     fontWeight: 700,
-                    color: isCompleted ? '#000000' : isCurrent ? '#ffffff' : '#444',
+                    color: isCompleted ? colours.neutral[50] : isCurrent ? colours.neutral[900] : colours.neutral[400],
                   }}
                 >
                   {isCompleted ? <Check size={12} color="#000000" /> : i + 1}
                 </div>
                 <span style={{
                   fontSize: '10px',
-                  color: isCurrent ? '#ffffff' : colours.neutral[500],
+                  color: isCurrent ? colours.neutral[900] : colours.neutral[500],
                   marginTop: '6px',
                   whiteSpace: 'nowrap',
                   fontWeight: isCurrent ? 600 : 400,
@@ -319,7 +319,7 @@ export default function BrandOnboarding() {
                 <div style={{
                   flex: 1,
                   height: '1px',
-                  backgroundColor: isCompleted ? '#ffffff' : '#333',
+                  backgroundColor: isCompleted ? colours.neutral[900] : colours.neutral[300],
                   margin: '0 8px',
                   marginBottom: '20px',
                   transition: 'background-color 0.3s ease',
@@ -599,7 +599,7 @@ function StepReview({ data, goToStep, expanded, setExpanded }) {
                     <div style={{ fontSize: '11px', color: colours.neutral[500], marginBottom: '2px' }}>{item.label}</div>
                     <div style={{
                       fontSize: typography.fontSize.sm,
-                      color: item.value ? '#ffffff' : colours.neutral[600],
+                      color: item.value ? colours.neutral[900] : colours.neutral[600],
                       whiteSpace: 'pre-wrap',
                       lineHeight: 1.5,
                     }}>
@@ -628,7 +628,7 @@ const pageStyle = {
 const pageTitleStyle = {
   fontSize: typography.fontSize['2xl'],
   fontWeight: typography.fontWeight.bold,
-  color: '#ffffff',
+  color: colours.neutral[900],
   marginBottom: spacing[8],
   marginTop: 0,
 }
@@ -656,7 +656,7 @@ const navBarStyle = {
 const stepTitleStyle = {
   fontSize: typography.fontSize.lg,
   fontWeight: typography.fontWeight.semibold,
-  color: '#ffffff',
+  color: colours.neutral[900],
   marginTop: 0,
   marginBottom: spacing[5],
 }

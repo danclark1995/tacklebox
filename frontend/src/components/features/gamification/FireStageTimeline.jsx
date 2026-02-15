@@ -25,7 +25,7 @@ const FireStageTimeline = ({ currentStage, currentLevel = 1 }) => {
                 {index > 0 && (
                   <div style={{
                     ...connectorStyle,
-                    backgroundColor: isFuture ? 'transparent' : '#ffffff',
+                    backgroundColor: isFuture ? 'transparent' : colours.neutral[900],
                     opacity: isCompleted ? 0.5 : isCurrent ? 0.3 : 0.1,
                     borderTop: isFuture
                       ? '1px dashed rgba(255, 255, 255, 0.15)'
@@ -46,7 +46,7 @@ const FireStageTimeline = ({ currentStage, currentLevel = 1 }) => {
                     ...nodeStyle,
                     width: isCurrent ? '18px' : '12px',
                     height: isCurrent ? '18px' : '12px',
-                    backgroundColor: isFuture ? 'transparent' : '#ffffff',
+                    backgroundColor: isFuture ? 'transparent' : colours.neutral[900],
                     border: isFuture
                       ? '1.5px solid rgba(255, 255, 255, 0.25)'
                       : isCurrent
@@ -64,7 +64,7 @@ const FireStageTimeline = ({ currentStage, currentLevel = 1 }) => {
                   ...labelStyle,
                   color: isFuture
                     ? 'rgba(255, 255, 255, 0.35)'
-                    : '#ffffff',
+                    : colours.neutral[900],
                   fontWeight: isCurrent
                     ? typography.fontWeight.bold
                     : typography.fontWeight.normal,

@@ -80,7 +80,7 @@ export default function BrandBooklet({ brandProfile, clientName, companyName, lo
         maxWidth: '800px',
         height: inline ? 'auto' : '80vh',
         minHeight: inline ? '500px' : undefined,
-        backgroundColor: '#111',
+        backgroundColor: colours.neutral[100],
         border: '1px solid #1a1a1a',
         borderRadius: '4px',
         boxShadow: inline ? 'none' : '0 20px 80px rgba(0,0,0,0.8), 0 0 40px rgba(255,255,255,0.02)',
@@ -98,7 +98,7 @@ export default function BrandBooklet({ brandProfile, clientName, companyName, lo
               right: '12px',
               background: 'none',
               border: 'none',
-              color: '#555',
+              color: colours.neutral[400],
               cursor: 'pointer',
               padding: '4px',
               zIndex: 10,
@@ -135,7 +135,7 @@ export default function BrandBooklet({ brandProfile, clientName, companyName, lo
             style={{
               background: 'none',
               border: 'none',
-              color: currentPage === 0 ? '#333' : '#888',
+              color: currentPage === 0 ? colours.neutral[300] : colours.neutral[500],
               cursor: currentPage === 0 ? 'default' : 'pointer',
               padding: '8px',
               display: 'flex',
@@ -155,7 +155,7 @@ export default function BrandBooklet({ brandProfile, clientName, companyName, lo
                   width: i === currentPage ? '20px' : '6px',
                   height: '6px',
                   borderRadius: '3px',
-                  backgroundColor: i === currentPage ? '#ffffff' : '#333',
+                  backgroundColor: i === currentPage ? colours.neutral[900] : colours.neutral[300],
                   border: 'none',
                   cursor: 'pointer',
                   padding: 0,
@@ -171,7 +171,7 @@ export default function BrandBooklet({ brandProfile, clientName, companyName, lo
             style={{
               background: 'none',
               border: 'none',
-              color: currentPage === pages.length - 1 ? '#333' : '#888',
+              color: currentPage === pages.length - 1 ? colours.neutral[300] : colours.neutral[500],
               cursor: currentPage === pages.length - 1 ? 'default' : 'pointer',
               padding: '8px',
               display: 'flex',
@@ -196,7 +196,7 @@ export default function BrandBooklet({ brandProfile, clientName, companyName, lo
               transform: 'translateY(-50%)',
               background: 'none',
               border: 'none',
-              color: currentPage === 0 ? '#222' : '#555',
+              color: currentPage === 0 ? colours.neutral[200] : colours.neutral[400],
               cursor: currentPage === 0 ? 'default' : 'pointer',
               padding: '12px',
               display: 'flex',
@@ -215,7 +215,7 @@ export default function BrandBooklet({ brandProfile, clientName, companyName, lo
               transform: 'translateY(-50%)',
               background: 'none',
               border: 'none',
-              color: currentPage === pages.length - 1 ? '#222' : '#555',
+              color: currentPage === pages.length - 1 ? colours.neutral[200] : colours.neutral[400],
               cursor: currentPage === pages.length - 1 ? 'default' : 'pointer',
               padding: '12px',
               display: 'flex',
@@ -378,7 +378,7 @@ function CopyableText({ text, children }) {
           padding: '4px',
           display: 'flex',
           alignItems: 'center',
-          color: copied ? '#fff' : '#444',
+          color: copied ? colours.neutral[900] : colours.neutral[400],
           opacity: copied ? 0.8 : 0.3,
           transition: 'opacity 200ms ease, color 200ms ease',
         }}
@@ -400,7 +400,7 @@ function CopyableText({ text, children }) {
 const headingStyle = {
   fontSize: '24px',
   fontWeight: 700,
-  color: '#ffffff',
+  color: colours.neutral[900],
   marginBottom: '24px',
   letterSpacing: '-0.01em',
 }
@@ -408,7 +408,7 @@ const headingStyle = {
 const subHeadingStyle = {
   fontSize: '13px',
   fontWeight: 600,
-  color: '#666',
+  color: colours.neutral[500],
   textTransform: 'uppercase',
   letterSpacing: '0.08em',
   marginBottom: '12px',
@@ -418,7 +418,7 @@ const subHeadingStyle = {
 const bodyTextStyle = {
   fontSize: '15px',
   lineHeight: 1.7,
-  color: '#ccc',
+  color: colours.neutral[600],
   whiteSpace: 'pre-wrap',
 }
 
@@ -448,7 +448,7 @@ function CoverPage({ clientName, companyName, tagline, industry }) {
       <h1 style={{
         fontSize: '36px',
         fontWeight: 700,
-        color: '#ffffff',
+        color: colours.neutral[900],
         marginBottom: '12px',
         letterSpacing: '-0.02em',
         position: 'relative',
@@ -459,7 +459,7 @@ function CoverPage({ clientName, companyName, tagline, industry }) {
       {tagline && (
         <p style={{
           fontSize: '18px',
-          color: '#888',
+          color: colours.neutral[500],
           fontStyle: 'italic',
           marginBottom: '16px',
           maxWidth: '500px',
@@ -476,7 +476,7 @@ function CoverPage({ clientName, companyName, tagline, industry }) {
           border: '1px solid #333',
           borderRadius: '20px',
           fontSize: '14px',
-          color: '#888',
+          color: colours.neutral[500],
           marginBottom: '48px',
         }}>
           {industry}
@@ -487,7 +487,7 @@ function CoverPage({ clientName, companyName, tagline, industry }) {
         position: 'absolute',
         bottom: '48px',
         fontSize: '12px',
-        color: '#444',
+        color: colours.neutral[400],
         textTransform: 'uppercase',
         letterSpacing: '0.15em',
       }}>
@@ -509,7 +509,7 @@ function MissionPage({ mission, audience, objectives }) {
             borderLeft: '2px solid rgba(255,255,255,0.2)',
             marginBottom: '24px',
           }}>
-            <p style={{ ...bodyTextStyle, fontSize: '17px', fontStyle: 'italic', color: '#ddd' }}>
+            <p style={{ ...bodyTextStyle, fontSize: '17px', fontStyle: 'italic', color: colours.neutral[700] }}>
               {mission}
             </p>
           </div>
@@ -576,12 +576,12 @@ function IdentityPage({ archetypes, brandValues }) {
               <CopyableText key={i} text={`${a.name}: ${a.description || ''}`}>
                 <div style={{
                   padding: '16px',
-                  backgroundColor: '#0d0d0d',
+                  backgroundColor: colours.neutral[50],
                   border: '1px solid #1a1a1a',
                   borderRadius: '4px',
                 }}>
-                  <div style={{ fontSize: '14px', fontWeight: 600, color: '#fff', marginBottom: '6px' }}>{a.name}</div>
-                  {a.description && <p style={{ fontSize: '13px', lineHeight: 1.6, color: '#999', margin: 0 }}>{a.description}</p>}
+                  <div style={{ fontSize: '14px', fontWeight: 600, color: colours.neutral[900], marginBottom: '6px' }}>{a.name}</div>
+                  {a.description && <p style={{ fontSize: '13px', lineHeight: 1.6, color: colours.neutral[500], margin: 0 }}>{a.description}</p>}
                 </div>
               </CopyableText>
             ))}
@@ -600,7 +600,7 @@ function IdentityPage({ archetypes, brandValues }) {
                   border: '1px solid #222',
                   borderRadius: '20px',
                   fontSize: '14px',
-                  color: '#ccc',
+                  color: colours.neutral[600],
                 }}>
                   {typeof val === 'string' ? val : val.name}
                 </div>
@@ -626,7 +626,7 @@ function MessagingPage({ pillars }) {
           return (
             <CopyableText key={i} text={copyText}>
               <div>
-                <div style={{ fontSize: '16px', fontWeight: 600, color: '#fff', marginBottom: '10px' }}>
+                <div style={{ fontSize: '16px', fontWeight: 600, color: colours.neutral[900], marginBottom: '10px' }}>
                   {pillar.pillar_name}
                 </div>
                 {phrases.length > 0 && (
@@ -634,11 +634,11 @@ function MessagingPage({ pillars }) {
                     {phrases.map((phrase, j) => (
                       <span key={j} style={{
                         padding: '4px 12px',
-                        backgroundColor: '#0d0d0d',
+                        backgroundColor: colours.neutral[50],
                         border: '1px solid #222',
                         borderRadius: '20px',
                         fontSize: '13px',
-                        color: '#aaa',
+                        color: colours.neutral[500],
                       }}>
                         {phrase}
                       </span>
@@ -672,7 +672,7 @@ function VoicePage({ voiceTone, dos, donts }) {
           {dos && (
             <CopyableText text={dos}>
               <div>
-                <div style={{ fontSize: '16px', fontWeight: 600, color: '#ccc', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <div style={{ fontSize: '16px', fontWeight: 600, color: colours.neutral[600], marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <span style={{ fontSize: '20px' }}>+</span> Do
                 </div>
                 <p style={bodyTextStyle}>{dos}</p>
@@ -682,7 +682,7 @@ function VoicePage({ voiceTone, dos, donts }) {
           {donts && (
             <CopyableText text={donts}>
               <div>
-                <div style={{ fontSize: '16px', fontWeight: 600, color: '#ccc', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <div style={{ fontSize: '16px', fontWeight: 600, color: colours.neutral[600], marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <span style={{ fontSize: '20px' }}>-</span> Don't
                 </div>
                 <p style={bodyTextStyle}>{donts}</p>

@@ -280,22 +280,14 @@ export default function Sidebar() {
               <div style={roleBadgeStyle}>{ROLE_DISPLAY[user.role]}</div>
             </div>
             {(user.role === 'admin' || user.role === 'contractor') && (
-              <button
+              <Button
+                variant="ghost"
+                size="sm"
                 onClick={() => navigate(user.role === 'admin' ? '/admin/settings' : '/camper/profile')}
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  cursor: 'pointer',
-                  color: colours.neutral[600],
-                  padding: spacing[1],
-                  borderRadius: radii.sm,
-                  display: 'flex',
-                  alignItems: 'center',
-                  flexShrink: 0,
-                }}
+                style={{ padding: spacing[1], flexShrink: 0 }}
               >
                 <Settings size={16} />
-              </button>
+              </Button>
             )}
           </div>
           {user.role !== 'client' && xpData && (

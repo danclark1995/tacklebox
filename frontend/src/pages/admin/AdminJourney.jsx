@@ -185,7 +185,7 @@ export default function AdminJourney() {
 
                     <div style={{
                       ...badgeNameStyle,
-                      color: earned ? '#ffffff' : colours.neutral[400],
+                      color: earned ? colours.neutral[900] : colours.neutral[400],
                     }}>
                       {badge.name}
                     </div>
@@ -288,7 +288,7 @@ const sectionStyle = {
 const sectionTitleStyle = {
   fontSize: typography.fontSize.lg,
   fontWeight: typography.fontWeight.semibold,
-  color: '#ffffff',
+  color: colours.neutral[900],
   marginBottom: spacing[4],
   marginTop: 0,
   display: 'flex',
@@ -371,5 +371,5 @@ const statLabelStyle = {
 const statValueStyle = {
   fontSize: '16px',
   fontWeight: typography.fontWeight.bold,
-  color: '#ffffff',
+  color: colours.neutral[900],
 }

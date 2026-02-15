@@ -7,7 +7,7 @@ import ReviewSection from '@/components/features/tasks/ReviewSection'
 import AttachmentList from '@/components/features/tasks/AttachmentList'
 import { TASK_STATUSES, PRIORITIES, COMMENT_VISIBILITY, UPLOAD_TYPES } from '@/config/constants'
 import { formatDate, formatDateTime, formatFileSize } from '@/utils/formatters'
-import { colours, spacing } from '@/config/tokens'
+import { colours, spacing, typography, radii } from '@/config/tokens'
 import useAuth from '@/hooks/useAuth'
 
 function formatRelativeTime(dateStr) {
@@ -368,7 +368,7 @@ export default function TaskDetail({
           gap: '8px',
           fontSize: '18px',
           fontWeight: 600,
-          color: '#ffffff',
+          color: colours.neutral[900],
           marginBottom: spacing[4],
         }}>
           <MessageSquare size={18} />
@@ -401,7 +401,7 @@ export default function TaskDetail({
           <div style={{
             borderTop: '1px solid #222',
             padding: '12px 16px',
-            backgroundColor: '#0f0f0f',
+            backgroundColor: colours.neutral[50],
             position: 'relative',
           }}>
             {showMentions && (() => {
@@ -415,7 +415,7 @@ export default function TaskDetail({
                   bottom: '100%',
                   left: 0,
                   right: 0,
-                  backgroundColor: '#111',
+                  backgroundColor: colours.neutral[100],
                   border: '1px solid #2a2a2a',
                   borderRadius: '6px',
                   marginBottom: '4px',
@@ -434,12 +434,12 @@ export default function TaskDetail({
                         gap: '8px',
                         padding: '8px 12px',
                         cursor: 'pointer',
-                        backgroundColor: i === selectedMentionIdx ? '#1a1a1a' : 'transparent',
+                        backgroundColor: i === selectedMentionIdx ? colours.neutral[200] : 'transparent',
                       }}
                     >
                       <Avatar name={mentionUser.name} size="sm" />
-                      <span style={{ fontSize: '14px', fontWeight: 500, color: '#fff' }}>{mentionUser.name}</span>
-                      <span style={{ fontSize: '11px', color: '#666', marginLeft: 'auto' }}>{mentionUser.role}</span>
+                      <span style={{ fontSize: '14px', fontWeight: 500, color: colours.neutral[900] }}>{mentionUser.name}</span>
+                      <span style={{ fontSize: '11px', color: colours.neutral[500], marginLeft: 'auto' }}>{mentionUser.role}</span>
                     </div>
                   ))}
                 </div>
@@ -457,14 +457,14 @@ export default function TaskDetail({
                   flex: 1,
                   resize: 'none',
                   overflow: 'hidden',
-                  backgroundColor: '#111',
-                  border: '1px solid #222',
-                  borderRadius: '6px',
-                  padding: '10px 12px',
-                  color: '#ffffff',
-                  fontSize: '14px',
-                  fontFamily: 'inherit',
-                  lineHeight: 1.5,
+                  backgroundColor: colours.neutral[100],
+                  border: `1px solid ${colours.neutral[200]}`,
+                  borderRadius: radii.md,
+                  padding: `${spacing[3]} ${spacing[3]}`,
+                  color: colours.neutral[900],
+                  fontSize: typography.fontSize.sm,
+                  fontFamily: typography.fontFamily.sans,
+                  lineHeight: typography.lineHeight.normal,
                   outline: 'none',
                   maxHeight: '120px',
                 }}
@@ -553,7 +553,7 @@ function renderMentions(text) {
   let m
   while ((m = regex.exec(text)) !== null) {
     if (m.index > lastIdx) parts.push(text.substring(lastIdx, m.index))
-    parts.push(<strong key={m.index} style={{ color: '#ffffff', fontWeight: 700 }}>{m[0]}</strong>)
+    parts.push(<strong key={m.index} style={{ color: colours.neutral[900], fontWeight: 700 }}>{m[0]}</strong>)
     lastIdx = m.index + m[0].length
   }
   if (lastIdx < text.length) parts.push(text.substring(lastIdx))
@@ -566,13 +566,13 @@ function DiscussionComment({ comment, index, roleLabels = ROLE_LABELS_DEFAULT })
   return (
     <div style={{
       padding: '14px 16px',
-      backgroundColor: index % 2 === 0 ? '#111' : '#0f0f0f',
-      borderLeft: isInternal ? '2px solid rgba(255,255,255,0.15)' : '2px solid transparent',
+      backgroundColor: index % 2 === 0 ? colours.neutral[100] : colours.neutral[50],
+      borderLeft: isInternal ? `2px solid ${colours.neutral[300]}` : '2px solid transparent',
       animation: 'fadeIn 300ms ease',
     }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
         <Avatar name={comment.user_name} size="sm" />
-        <span style={{ fontSize: '14px', fontWeight: 600, color: '#ffffff' }}>
+        <span style={{ fontSize: '14px', fontWeight: 600, color: colours.neutral[900] }}>
           {comment.user_name}
         </span>
         <span style={{
@@ -595,7 +595,7 @@ function DiscussionComment({ comment, index, roleLabels = ROLE_LABELS_DEFAULT })
       </div>
       <div style={{
         fontSize: '14px',
-        color: '#ffffff',
+        color: colours.neutral[900],
         lineHeight: 1.6,
         whiteSpace: 'pre-wrap',
         paddingLeft: '36px',

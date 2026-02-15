@@ -113,6 +113,14 @@ export async function handleAuth(request, env, path, method) {
         )
       }
 
+      const VALID_ROLES = ['client', 'contractor', 'admin']
+      if (!VALID_ROLES.includes(role)) {
+        return jsonResponse(
+          { success: false, error: `Invalid role. Must be one of: ${VALID_ROLES.join(', ')}` },
+          400
+        )
+      }
+
       // Check if email already exists
       const existing = await env.DB.prepare(
         'SELECT id FROM users WHERE email = ?'

@@ -1,0 +1,1792 @@
+diff --git a/api/src/routes/auth.js b/api/src/routes/auth.js
+index 36b7b23..3890010 100644
+--- a/api/src/routes/auth.js
++++ b/api/src/routes/auth.js
+@@ -113,6 +113,14 @@ export async function handleAuth(request, env, path, method) {
+         )
+       }
+ 
++      const VALID_ROLES = ['client', 'contractor', 'admin']
++      if (!VALID_ROLES.includes(role)) {
++        return jsonResponse(
++          { success: false, error: `Invalid role. Must be one of: ${VALID_ROLES.join(', ')}` },
++          400
++        )
++      }
++
+       // Check if email already exists
+       const existing = await env.DB.prepare(
+         'SELECT id FROM users WHERE email = ?'
+diff --git a/api/src/routes/brand-profiles.js b/api/src/routes/brand-profiles.js
+index be419e6..49c7f4a 100644
+--- a/api/src/routes/brand-profiles.js
++++ b/api/src/routes/brand-profiles.js
+@@ -285,6 +285,18 @@ export async function handleBrandProfiles(request, env, auth, path, method) {
+     const authCheck = requireAuth(auth)
+     if (!authCheck.authorized) return jsonResponse({ success: false, error: authCheck.error }, authCheck.status)
+ 
++    // Ownership check
++    const user = auth.user
++    if (user.role === 'client' && user.id !== clientId) {
++      return jsonResponse({ success: false, error: 'Access denied' }, 403)
++    }
++    if (user.role === 'contractor') {
++      const link = await env.DB.prepare(
++        'SELECT 1 FROM tasks WHERE contractor_id = ? AND client_id = ? LIMIT 1'
++      ).bind(user.id, clientId).first()
++      if (!link) return jsonResponse({ success: false, error: 'Access denied' }, 403)
++    }
++
+     try {
+       const profile = await env.DB.prepare(
+         'SELECT brand_guide_path FROM brand_profiles WHERE client_id = ?'
+@@ -318,7 +330,7 @@ export async function handleBrandProfiles(request, env, auth, path, method) {
+     const authCheck = requireAuth(auth)
+     if (!authCheck.authorized) return jsonResponse({ success: false, error: authCheck.error }, authCheck.status)
+ 
+-    // Permission: admin always, contractor with level >= 7
++    // Permission: admin always, contractor with level >= 7 AND assigned to client
+     const user = auth.user
+     if (user.role === 'contractor') {
+       const xp = await env.DB.prepare(
+@@ -327,6 +339,13 @@ export async function handleBrandProfiles(request, env, auth, path, method) {
+       if (!xp || xp.current_level < 7) {
+         return jsonResponse({ success: false, error: 'Camp Leader rank (level 7+) required to upload brand guides' }, 403)
+       }
++      // Verify contractor is assigned to at least one task for this client
++      const link = await env.DB.prepare(
++        'SELECT 1 FROM tasks WHERE contractor_id = ? AND client_id = ? LIMIT 1'
++      ).bind(user.id, clientId).first()
++      if (!link) {
++        return jsonResponse({ success: false, error: 'You can only upload guides for clients you are assigned to' }, 403)
++      }
+     } else if (user.role !== 'admin') {
+       return jsonResponse({ success: false, error: 'Insufficient permissions' }, 403)
+     }
+diff --git a/api/src/routes/gamification.js b/api/src/routes/gamification.js
+index d965b25..cf63ded 100644
+--- a/api/src/routes/gamification.js
++++ b/api/src/routes/gamification.js
+@@ -180,9 +180,9 @@ export async function handleGamification(request, env, auth, path, method) {
+     }
+   }
+ 
+-  // GET /gamification/leaderboard - get leaderboard
++  // GET /gamification/leaderboard - get leaderboard (admin + contractor only)
+   if (path === '/gamification/leaderboard' && method === 'GET') {
+-    const authCheck = requireAuth(auth)
++    const authCheck = requireRole(auth, 'admin', 'contractor')
+     if (!authCheck.authorized) {
+       return jsonResponse(
+         { success: false, error: authCheck.error },
+@@ -254,7 +254,10 @@ export async function handleGamification(request, env, auth, path, method) {
+       )
+     }
+ 
+-    // Admin can view any, contractor own only
++    // Admin can view any, contractor own only, clients blocked
++    if (auth.user.role === 'client') {
++      return jsonResponse({ success: false, error: 'Access denied' }, 403)
++    }
+     if (auth.user.role === 'contractor' && auth.user.id !== userId) {
+       return jsonResponse(
+         { success: false, error: 'You can only view your own badges' },
+@@ -304,7 +307,10 @@ export async function handleGamification(request, env, auth, path, method) {
+       )
+     }
+ 
+-    // Admin can view any, contractor own only
++    // Admin can view any, contractor own only, clients blocked
++    if (auth.user.role === 'client') {
++      return jsonResponse({ success: false, error: 'Access denied' }, 403)
++    }
+     if (auth.user.role === 'contractor' && auth.user.id !== userId) {
+       return jsonResponse(
+         { success: false, error: 'You can only view your own XP profile' },
+diff --git a/api/src/routes/projects.js b/api/src/routes/projects.js
+index 5bf40a7..70485e1 100644
+--- a/api/src/routes/projects.js
++++ b/api/src/routes/projects.js
+@@ -39,6 +39,9 @@ export async function handleProjects(request, env, auth, path, method) {
+       if (auth.user.role === 'client') {
+         conditions.push('p.client_id = ?')
+         bindings.push(auth.user.id)
++      } else if (auth.user.role === 'contractor') {
++        conditions.push('p.client_id IN (SELECT DISTINCT client_id FROM tasks WHERE contractor_id = ?)')
++        bindings.push(auth.user.id)
+       }
+       // Admin sees all projects
+ 
+diff --git a/api/src/routes/storage.js b/api/src/routes/storage.js
+index 5378e82..6b092d7 100644
+--- a/api/src/routes/storage.js
++++ b/api/src/routes/storage.js
+@@ -1,11 +1,46 @@
+ /**
+  * Storage Routes — R2 file serving
+  * Download and preview files stored in R2.
++ * Per-file authorization: verifies user has access to the resource.
+  */
+ 
+ import { jsonResponse } from '../index.js'
+ import { requireAuth } from '../middleware/auth.js'
+ 
++async function canAccessFile(key, user, env) {
++  // Admins can access everything
++  if (user.role === 'admin') return true
++
++  // Attachment files: attachments/{taskId}/...
++  if (key.startsWith('attachments/')) {
++    const taskId = key.split('/')[1]
++    if (!taskId) return false
++    const task = await env.DB.prepare(
++      'SELECT client_id, contractor_id FROM tasks WHERE id = ?'
++    ).bind(taskId).first()
++    if (!task) return false
++    return user.id === task.client_id || user.id === task.contractor_id
++  }
++
++  // Brand guide files: brand-guides/{clientId}/...
++  if (key.startsWith('brand-guides/')) {
++    const clientId = key.split('/')[1]
++    if (!clientId) return false
++    // Client can access their own guides
++    if (user.role === 'client') return user.id === clientId
++    // Contractor can access guides for clients whose tasks they're assigned to
++    if (user.role === 'contractor') {
++      const link = await env.DB.prepare(
++        'SELECT 1 FROM tasks WHERE contractor_id = ? AND client_id = ? LIMIT 1'
++      ).bind(user.id, clientId).first()
++      return !!link
++    }
++  }
++
++  // Default deny for unknown paths
++  return false
++}
++
+ export async function handleStorage(request, env, auth, path, method) {
+   const check = requireAuth(auth)
+   if (!check.authorized) return jsonResponse({ success: false, error: check.error }, check.status)
+@@ -13,6 +48,10 @@ export async function handleStorage(request, env, auth, path, method) {
+   // GET /storage/download/... — download file
+   if (path.startsWith('/storage/download/') && method === 'GET') {
+     const key = decodeURIComponent(path.replace('/storage/download/', ''))
++
++    const allowed = await canAccessFile(key, auth.user, env)
++    if (!allowed) return jsonResponse({ success: false, error: 'Access denied' }, 403)
++
+     try {
+       const object = await env.tacklebox_storage.get(key)
+       if (!object) {
+@@ -35,6 +74,10 @@ export async function handleStorage(request, env, auth, path, method) {
+   // GET /storage/preview/... — inline preview (images/PDFs)
+   if (path.startsWith('/storage/preview/') && method === 'GET') {
+     const key = decodeURIComponent(path.replace('/storage/preview/', ''))
++
++    const allowed = await canAccessFile(key, auth.user, env)
++    if (!allowed) return jsonResponse({ success: false, error: 'Access denied' }, 403)
++
+     try {
+       const object = await env.tacklebox_storage.get(key)
+       if (!object) {
+diff --git a/frontend/src/components/features/BrandOnboarding.jsx b/frontend/src/components/features/BrandOnboarding.jsx
+index 4405261..d8b5689 100644
+--- a/frontend/src/components/features/BrandOnboarding.jsx
++++ b/frontend/src/components/features/BrandOnboarding.jsx
+@@ -240,7 +240,7 @@ export default function BrandOnboarding() {
+             <Check size={32} color="#ffffff" />
+           </div>
+ 
+-          <h1 style={{ fontSize: typography.fontSize['2xl'], fontWeight: typography.fontWeight.bold, color: '#ffffff', marginBottom: spacing[3] }}>
++          <h1 style={{ fontSize: typography.fontSize['2xl'], fontWeight: typography.fontWeight.bold, color: colours.neutral[900], marginBottom: spacing[3] }}>
+             Brand Profile Created
+           </h1>
+           <p style={{ fontSize: typography.fontSize.base, color: colours.neutral[400], marginBottom: spacing[6], lineHeight: 1.6 }}>
+@@ -250,11 +250,11 @@ export default function BrandOnboarding() {
+           <GlowCard style={{ padding: spacing[5], textAlign: 'left', marginBottom: spacing[6] }}>
+             <div style={{ marginBottom: spacing[3] }}>
+               <div style={{ fontSize: typography.fontSize.xs, color: colours.neutral[500], marginBottom: '4px' }}>Client Login</div>
+-              <div style={{ fontSize: typography.fontSize.sm, color: '#ffffff' }}>{result.email}</div>
++              <div style={{ fontSize: typography.fontSize.sm, color: colours.neutral[900] }}>{result.email}</div>
+             </div>
+             <div>
+               <div style={{ fontSize: typography.fontSize.xs, color: colours.neutral[500], marginBottom: '4px' }}>Temporary Password</div>
+-              <div style={{ fontSize: typography.fontSize.sm, color: '#ffffff', fontFamily: 'monospace' }}>{result.tempPassword}</div>
++              <div style={{ fontSize: typography.fontSize.sm, color: colours.neutral[900], fontFamily: 'monospace' }}>{result.tempPassword}</div>
+             </div>
+           </GlowCard>
+ 
+@@ -294,20 +294,20 @@ export default function BrandOnboarding() {
+                     alignItems: 'center',
+                     justifyContent: 'center',
+                     cursor: i <= step ? 'pointer' : 'default',
+-                    backgroundColor: isCompleted ? '#ffffff' : 'transparent',
++                    backgroundColor: isCompleted ? colours.neutral[900] : 'transparent',
+                     border: isFuture ? '2px dashed #333' : isCurrent ? '2px solid #ffffff' : '2px solid #ffffff',
+                     boxShadow: isCurrent ? '0 0 12px rgba(255,255,255,0.3)' : 'none',
+                     transition: 'all 0.3s ease',
+                     fontSize: '11px',
+                     fontWeight: 700,
+-                    color: isCompleted ? '#000000' : isCurrent ? '#ffffff' : '#444',
++                    color: isCompleted ? colours.neutral[50] : isCurrent ? colours.neutral[900] : colours.neutral[400],
+                   }}
+                 >
+                   {isCompleted ? <Check size={12} color="#000000" /> : i + 1}
+                 </div>
+                 <span style={{
+                   fontSize: '10px',
+-                  color: isCurrent ? '#ffffff' : colours.neutral[500],
++                  color: isCurrent ? colours.neutral[900] : colours.neutral[500],
+                   marginTop: '6px',
+                   whiteSpace: 'nowrap',
+                   fontWeight: isCurrent ? 600 : 400,
+@@ -319,7 +319,7 @@ export default function BrandOnboarding() {
+                 <div style={{
+                   flex: 1,
+                   height: '1px',
+-                  backgroundColor: isCompleted ? '#ffffff' : '#333',
++                  backgroundColor: isCompleted ? colours.neutral[900] : colours.neutral[300],
+                   margin: '0 8px',
+                   marginBottom: '20px',
+                   transition: 'background-color 0.3s ease',
+@@ -599,7 +599,7 @@ function StepReview({ data, goToStep, expanded, setExpanded }) {
+                     <div style={{ fontSize: '11px', color: colours.neutral[500], marginBottom: '2px' }}>{item.label}</div>
+                     <div style={{
+                       fontSize: typography.fontSize.sm,
+-                      color: item.value ? '#ffffff' : colours.neutral[600],
++                      color: item.value ? colours.neutral[900] : colours.neutral[600],
+                       whiteSpace: 'pre-wrap',
+                       lineHeight: 1.5,
+                     }}>
+@@ -628,7 +628,7 @@ const pageStyle = {
+ const pageTitleStyle = {
+   fontSize: typography.fontSize['2xl'],
+   fontWeight: typography.fontWeight.bold,
+-  color: '#ffffff',
++  color: colours.neutral[900],
+   marginBottom: spacing[8],
+   marginTop: 0,
+ }
+@@ -656,7 +656,7 @@ const navBarStyle = {
+ const stepTitleStyle = {
+   fontSize: typography.fontSize.lg,
+   fontWeight: typography.fontWeight.semibold,
+-  color: '#ffffff',
++  color: colours.neutral[900],
+   marginTop: 0,
+   marginBottom: spacing[5],
+ }
+diff --git a/frontend/src/components/features/PromptTips.jsx b/frontend/src/components/features/PromptTips.jsx
+index 8e45c54..28f874e 100644
+--- a/frontend/src/components/features/PromptTips.jsx
++++ b/frontend/src/components/features/PromptTips.jsx
+@@ -82,16 +82,16 @@ export default function PromptTips({ contentType }) {
+       </span>
+       {open && (
+         <div ref={ref} style={{ ...popoverStyle, top: pos.top, left: pos.left }}>
+-          <div style={{ fontSize: '13px', fontWeight: 600, color: '#ffffff', marginBottom: '10px' }}>Tips</div>
++          <div style={{ fontSize: '13px', fontWeight: 600, color: colours.neutral[900], marginBottom: '10px' }}>Tips</div>
+           {data.tips.map((tip, i) => (
+-            <div key={i} style={{ display: 'flex', gap: '8px', marginBottom: '8px', fontSize: '12px', color: '#ccc' }}>
++            <div key={i} style={{ display: 'flex', gap: '8px', marginBottom: '8px', fontSize: '12px', color: colours.neutral[600] }}>
+               <Lightbulb size={13} color="#666" style={{ flexShrink: 0, marginTop: '1px' }} />
+               <span>{tip}</span>
+             </div>
+           ))}
+           <div style={exampleBlockStyle}>
+-            <div style={{ fontSize: '11px', color: '#888', marginBottom: '4px' }}>Example</div>
+-            <div style={{ fontSize: '12px', color: '#aaa' }}>{data.example}</div>
++            <div style={{ fontSize: '11px', color: colours.neutral[500], marginBottom: '4px' }}>Example</div>
++            <div style={{ fontSize: '12px', color: colours.neutral[500] }}>{data.example}</div>
+           </div>
+           {/* Arrow pointing down */}
+           <div style={arrowStyle} />
+@@ -105,7 +105,7 @@ const popoverStyle = {
+   position: 'fixed',
+   transform: 'translateY(-100%)',
+   zIndex: 100,
+-  backgroundColor: '#1a1a1a',
++  backgroundColor: colours.neutral[200],
+   border: '1px solid #2a2a2a',
+   borderRadius: '8px',
+   padding: '16px',
+@@ -130,7 +130,7 @@ const arrowStyle = {
+ const exampleBlockStyle = {
+   marginTop: '12px',
+   padding: '10px',
+-  backgroundColor: '#111',
++  backgroundColor: colours.neutral[100],
+   borderRadius: '6px',
+   border: '1px solid #222',
+ }
+diff --git a/frontend/src/components/features/ToolboxGrid.jsx b/frontend/src/components/features/ToolboxGrid.jsx
+index f49c7e0..8f54353 100644
+--- a/frontend/src/components/features/ToolboxGrid.jsx
++++ b/frontend/src/components/features/ToolboxGrid.jsx
+@@ -105,12 +105,12 @@ export default function ToolboxGrid({ tools = [], editable = false, onEdit, onDe
+               )}
+ 
+               <div style={{ marginBottom: spacing[3] }}>
+-                <Icon size={24} style={{ color: '#ffffff' }} />
++                <Icon size={24} style={{ color: colours.neutral[900] }} />
+               </div>
+               <div style={{
+                 fontSize: '15px',
+                 fontWeight: 600,
+-                color: '#ffffff',
++                color: colours.neutral[900],
+                 marginBottom: spacing[1],
+               }}>
+                 {tool.name}
+diff --git a/frontend/src/components/features/brand/BrandBooklet.jsx b/frontend/src/components/features/brand/BrandBooklet.jsx
+index 976630f..15a634d 100644
+--- a/frontend/src/components/features/brand/BrandBooklet.jsx
++++ b/frontend/src/components/features/brand/BrandBooklet.jsx
+@@ -80,7 +80,7 @@ export default function BrandBooklet({ brandProfile, clientName, companyName, lo
+         maxWidth: '800px',
+         height: inline ? 'auto' : '80vh',
+         minHeight: inline ? '500px' : undefined,
+-        backgroundColor: '#111',
++        backgroundColor: colours.neutral[100],
+         border: '1px solid #1a1a1a',
+         borderRadius: '4px',
+         boxShadow: inline ? 'none' : '0 20px 80px rgba(0,0,0,0.8), 0 0 40px rgba(255,255,255,0.02)',
+@@ -98,7 +98,7 @@ export default function BrandBooklet({ brandProfile, clientName, companyName, lo
+               right: '12px',
+               background: 'none',
+               border: 'none',
+-              color: '#555',
++              color: colours.neutral[400],
+               cursor: 'pointer',
+               padding: '4px',
+               zIndex: 10,
+@@ -135,7 +135,7 @@ export default function BrandBooklet({ brandProfile, clientName, companyName, lo
+             style={{
+               background: 'none',
+               border: 'none',
+-              color: currentPage === 0 ? '#333' : '#888',
++              color: currentPage === 0 ? colours.neutral[300] : colours.neutral[500],
+               cursor: currentPage === 0 ? 'default' : 'pointer',
+               padding: '8px',
+               display: 'flex',
+@@ -155,7 +155,7 @@ export default function BrandBooklet({ brandProfile, clientName, companyName, lo
+                   width: i === currentPage ? '20px' : '6px',
+                   height: '6px',
+                   borderRadius: '3px',
+-                  backgroundColor: i === currentPage ? '#ffffff' : '#333',
++                  backgroundColor: i === currentPage ? colours.neutral[900] : colours.neutral[300],
+                   border: 'none',
+                   cursor: 'pointer',
+                   padding: 0,
+@@ -171,7 +171,7 @@ export default function BrandBooklet({ brandProfile, clientName, companyName, lo
+             style={{
+               background: 'none',
+               border: 'none',
+-              color: currentPage === pages.length - 1 ? '#333' : '#888',
++              color: currentPage === pages.length - 1 ? colours.neutral[300] : colours.neutral[500],
+               cursor: currentPage === pages.length - 1 ? 'default' : 'pointer',
+               padding: '8px',
+               display: 'flex',
+@@ -196,7 +196,7 @@ export default function BrandBooklet({ brandProfile, clientName, companyName, lo
+               transform: 'translateY(-50%)',
+               background: 'none',
+               border: 'none',
+-              color: currentPage === 0 ? '#222' : '#555',
++              color: currentPage === 0 ? colours.neutral[200] : colours.neutral[400],
+               cursor: currentPage === 0 ? 'default' : 'pointer',
+               padding: '12px',
+               display: 'flex',
+@@ -215,7 +215,7 @@ export default function BrandBooklet({ brandProfile, clientName, companyName, lo
+               transform: 'translateY(-50%)',
+               background: 'none',
+               border: 'none',
+-              color: currentPage === pages.length - 1 ? '#222' : '#555',
++              color: currentPage === pages.length - 1 ? colours.neutral[200] : colours.neutral[400],
+               cursor: currentPage === pages.length - 1 ? 'default' : 'pointer',
+               padding: '12px',
+               display: 'flex',
+@@ -378,7 +378,7 @@ function CopyableText({ text, children }) {
+           padding: '4px',
+           display: 'flex',
+           alignItems: 'center',
+-          color: copied ? '#fff' : '#444',
++          color: copied ? colours.neutral[900] : colours.neutral[400],
+           opacity: copied ? 0.8 : 0.3,
+           transition: 'opacity 200ms ease, color 200ms ease',
+         }}
+@@ -400,7 +400,7 @@ function CopyableText({ text, children }) {
+ const headingStyle = {
+   fontSize: '24px',
+   fontWeight: 700,
+-  color: '#ffffff',
++  color: colours.neutral[900],
+   marginBottom: '24px',
+   letterSpacing: '-0.01em',
+ }
+@@ -408,7 +408,7 @@ const headingStyle = {
+ const subHeadingStyle = {
+   fontSize: '13px',
+   fontWeight: 600,
+-  color: '#666',
++  color: colours.neutral[500],
+   textTransform: 'uppercase',
+   letterSpacing: '0.08em',
+   marginBottom: '12px',
+@@ -418,7 +418,7 @@ const subHeadingStyle = {
+ const bodyTextStyle = {
+   fontSize: '15px',
+   lineHeight: 1.7,
+-  color: '#ccc',
++  color: colours.neutral[600],
+   whiteSpace: 'pre-wrap',
+ }
+ 
+@@ -448,7 +448,7 @@ function CoverPage({ clientName, companyName, tagline, industry }) {
+       <h1 style={{
+         fontSize: '36px',
+         fontWeight: 700,
+-        color: '#ffffff',
++        color: colours.neutral[900],
+         marginBottom: '12px',
+         letterSpacing: '-0.02em',
+         position: 'relative',
+@@ -459,7 +459,7 @@ function CoverPage({ clientName, companyName, tagline, industry }) {
+       {tagline && (
+         <p style={{
+           fontSize: '18px',
+-          color: '#888',
++          color: colours.neutral[500],
+           fontStyle: 'italic',
+           marginBottom: '16px',
+           maxWidth: '500px',
+@@ -476,7 +476,7 @@ function CoverPage({ clientName, companyName, tagline, industry }) {
+           border: '1px solid #333',
+           borderRadius: '20px',
+           fontSize: '14px',
+-          color: '#888',
++          color: colours.neutral[500],
+           marginBottom: '48px',
+         }}>
+           {industry}
+@@ -487,7 +487,7 @@ function CoverPage({ clientName, companyName, tagline, industry }) {
+         position: 'absolute',
+         bottom: '48px',
+         fontSize: '12px',
+-        color: '#444',
++        color: colours.neutral[400],
+         textTransform: 'uppercase',
+         letterSpacing: '0.15em',
+       }}>
+@@ -509,7 +509,7 @@ function MissionPage({ mission, audience, objectives }) {
+             borderLeft: '2px solid rgba(255,255,255,0.2)',
+             marginBottom: '24px',
+           }}>
+-            <p style={{ ...bodyTextStyle, fontSize: '17px', fontStyle: 'italic', color: '#ddd' }}>
++            <p style={{ ...bodyTextStyle, fontSize: '17px', fontStyle: 'italic', color: colours.neutral[700] }}>
+               {mission}
+             </p>
+           </div>
+@@ -576,12 +576,12 @@ function IdentityPage({ archetypes, brandValues }) {
+               <CopyableText key={i} text={`${a.name}: ${a.description || ''}`}>
+                 <div style={{
+                   padding: '16px',
+-                  backgroundColor: '#0d0d0d',
++                  backgroundColor: colours.neutral[50],
+                   border: '1px solid #1a1a1a',
+                   borderRadius: '4px',
+                 }}>
+-                  <div style={{ fontSize: '14px', fontWeight: 600, color: '#fff', marginBottom: '6px' }}>{a.name}</div>
+-                  {a.description && <p style={{ fontSize: '13px', lineHeight: 1.6, color: '#999', margin: 0 }}>{a.description}</p>}
++                  <div style={{ fontSize: '14px', fontWeight: 600, color: colours.neutral[900], marginBottom: '6px' }}>{a.name}</div>
++                  {a.description && <p style={{ fontSize: '13px', lineHeight: 1.6, color: colours.neutral[500], margin: 0 }}>{a.description}</p>}
+                 </div>
+               </CopyableText>
+             ))}
+@@ -600,7 +600,7 @@ function IdentityPage({ archetypes, brandValues }) {
+                   border: '1px solid #222',
+                   borderRadius: '20px',
+                   fontSize: '14px',
+-                  color: '#ccc',
++                  color: colours.neutral[600],
+                 }}>
+                   {typeof val === 'string' ? val : val.name}
+                 </div>
+@@ -626,7 +626,7 @@ function MessagingPage({ pillars }) {
+           return (
+             <CopyableText key={i} text={copyText}>
+               <div>
+-                <div style={{ fontSize: '16px', fontWeight: 600, color: '#fff', marginBottom: '10px' }}>
++                <div style={{ fontSize: '16px', fontWeight: 600, color: colours.neutral[900], marginBottom: '10px' }}>
+                   {pillar.pillar_name}
+                 </div>
+                 {phrases.length > 0 && (
+@@ -634,11 +634,11 @@ function MessagingPage({ pillars }) {
+                     {phrases.map((phrase, j) => (
+                       <span key={j} style={{
+                         padding: '4px 12px',
+-                        backgroundColor: '#0d0d0d',
++                        backgroundColor: colours.neutral[50],
+                         border: '1px solid #222',
+                         borderRadius: '20px',
+                         fontSize: '13px',
+-                        color: '#aaa',
++                        color: colours.neutral[500],
+                       }}>
+                         {phrase}
+                       </span>
+@@ -672,7 +672,7 @@ function VoicePage({ voiceTone, dos, donts }) {
+           {dos && (
+             <CopyableText text={dos}>
+               <div>
+-                <div style={{ fontSize: '16px', fontWeight: 600, color: '#ccc', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
++                <div style={{ fontSize: '16px', fontWeight: 600, color: colours.neutral[600], marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                   <span style={{ fontSize: '20px' }}>+</span> Do
+                 </div>
+                 <p style={bodyTextStyle}>{dos}</p>
+@@ -682,7 +682,7 @@ function VoicePage({ voiceTone, dos, donts }) {
+           {donts && (
+             <CopyableText text={donts}>
+               <div>
+-                <div style={{ fontSize: '16px', fontWeight: 600, color: '#ccc', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
++                <div style={{ fontSize: '16px', fontWeight: 600, color: colours.neutral[600], marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                   <span style={{ fontSize: '20px' }}>-</span> Don't
+                 </div>
+                 <p style={bodyTextStyle}>{donts}</p>
+diff --git a/frontend/src/components/features/brand/BrandProfileView.jsx b/frontend/src/components/features/brand/BrandProfileView.jsx
+index d3269d2..8c9a13e 100644
+--- a/frontend/src/components/features/brand/BrandProfileView.jsx
++++ b/frontend/src/components/features/brand/BrandProfileView.jsx
+@@ -248,8 +248,8 @@ export default function BrandProfileView({ profile, clientName, companyName, log
+             {logos.map(logo => (
+               <div key={logo.id} style={{ padding: spacing[4], backgroundColor: logo.background_type === 'dark' ? '#0a0a0a' : logo.background_type === 'light' ? '#ffffff' : colours.neutral[100], borderRadius: radii.lg, border: `1px solid ${colours.neutral[200]}`, textAlign: 'center' }}>
+                 <img src={logo.file_path} alt={logo.variant_name} style={{ maxWidth: '100%', height: 80, objectFit: 'contain', marginBottom: spacing[2] }} />
+-                <div style={{ fontSize: typography.fontSize.sm, fontWeight: typography.fontWeight.medium, color: logo.background_type === 'dark' ? '#ffffff' : colours.neutral[900] }}>{logo.variant_name}</div>
+-                <div style={{ fontSize: typography.fontSize.xs, color: logo.background_type === 'dark' ? '#a3a3a3' : colours.neutral[500] }}>{logo.logo_type} / {logo.background_type}</div>
++                <div style={{ fontSize: typography.fontSize.sm, fontWeight: typography.fontWeight.medium, color: logo.background_type === 'dark' ? colours.neutral[900] : colours.neutral[900] }}>{logo.variant_name}</div>
++                <div style={{ fontSize: typography.fontSize.xs, color: logo.background_type === 'dark' ? colours.neutral[500] : colours.neutral[500] }}>{logo.logo_type} / {logo.background_type}</div>
+               </div>
+             ))}
+           </div>
+@@ -320,7 +320,7 @@ function Section({ title, children }) {
+ function ColourChip({ colour }) {
+   return (
+     <div style={{ textAlign: 'center' }}>
+-      <div style={{ width: 64, height: 64, borderRadius: radii.lg, backgroundColor: colour.hex || '#888', border: `1px solid ${colours.neutral[300]}`, marginBottom: spacing[2] }} />
++      <div style={{ width: 64, height: 64, borderRadius: radii.lg, backgroundColor: colour.hex || colours.neutral[500], border: `1px solid ${colours.neutral[300]}`, marginBottom: spacing[2] }} />
+       <div style={{ fontSize: typography.fontSize.xs, fontWeight: typography.fontWeight.medium, color: colours.neutral[900] }}>{colour.name}</div>
+       <div style={{ fontSize: typography.fontSize.xs, color: colours.neutral[500], fontFamily: typography.fontFamily.mono }}>{colour.hex}</div>
+       {colour.pantone && <div style={{ fontSize: typography.fontSize.xs, color: colours.neutral[500] }}>{colour.pantone}</div>}
+diff --git a/frontend/src/components/features/gamification/FireStageTimeline.jsx b/frontend/src/components/features/gamification/FireStageTimeline.jsx
+index c5e9715..15a4a4e 100644
+--- a/frontend/src/components/features/gamification/FireStageTimeline.jsx
++++ b/frontend/src/components/features/gamification/FireStageTimeline.jsx
+@@ -25,7 +25,7 @@ const FireStageTimeline = ({ currentStage, currentLevel = 1 }) => {
+                 {index > 0 && (
+                   <div style={{
+                     ...connectorStyle,
+-                    backgroundColor: isFuture ? 'transparent' : '#ffffff',
++                    backgroundColor: isFuture ? 'transparent' : colours.neutral[900],
+                     opacity: isCompleted ? 0.5 : isCurrent ? 0.3 : 0.1,
+                     borderTop: isFuture
+                       ? '1px dashed rgba(255, 255, 255, 0.15)'
+@@ -46,7 +46,7 @@ const FireStageTimeline = ({ currentStage, currentLevel = 1 }) => {
+                     ...nodeStyle,
+                     width: isCurrent ? '18px' : '12px',
+                     height: isCurrent ? '18px' : '12px',
+-                    backgroundColor: isFuture ? 'transparent' : '#ffffff',
++                    backgroundColor: isFuture ? 'transparent' : colours.neutral[900],
+                     border: isFuture
+                       ? '1.5px solid rgba(255, 255, 255, 0.25)'
+                       : isCurrent
+@@ -64,7 +64,7 @@ const FireStageTimeline = ({ currentStage, currentLevel = 1 }) => {
+                   ...labelStyle,
+                   color: isFuture
+                     ? 'rgba(255, 255, 255, 0.35)'
+-                    : '#ffffff',
++                    : colours.neutral[900],
+                   fontWeight: isCurrent
+                     ? typography.fontWeight.bold
+                     : typography.fontWeight.normal,
+diff --git a/frontend/src/components/features/projects/ProjectCard.jsx b/frontend/src/components/features/projects/ProjectCard.jsx
+index 3c3ca4d..6a8a9ae 100644
+--- a/frontend/src/components/features/projects/ProjectCard.jsx
++++ b/frontend/src/components/features/projects/ProjectCard.jsx
+@@ -29,7 +29,7 @@ export default function ProjectCard({ project, onClick }) {
+       }}
+       onMouseEnter={(e) => {
+         e.currentTarget.style.boxShadow = '0 4px 16px rgba(255, 255, 255, 0.05)'
+-        e.currentTarget.style.borderColor = '#333'
++        e.currentTarget.style.borderColor = colours.neutral[300]
+         e.currentTarget.style.transform = 'translateY(-2px)'
+       }}
+       onMouseLeave={(e) => {
+diff --git a/frontend/src/components/features/tasks/AIAssistantPanel.jsx b/frontend/src/components/features/tasks/AIAssistantPanel.jsx
+index f03d034..8115e04 100644
+--- a/frontend/src/components/features/tasks/AIAssistantPanel.jsx
++++ b/frontend/src/components/features/tasks/AIAssistantPanel.jsx
+@@ -197,7 +197,7 @@ export default function AIAssistantPanel({ task, brandProfile, onAttachmentAdded
+ 
+   const panelStyle = {
+     marginBottom: spacing[4],
+-    border: `1px solid ${isAiAssist ? '#333' : colours.neutral[200]}`,
++    border: `1px solid ${isAiAssist ? colours.neutral[300] : colours.neutral[200]}`,
+     borderRadius: radii.xl,
+     backgroundColor: colours.surface,
+     overflow: 'hidden',
+@@ -242,7 +242,7 @@ export default function AIAssistantPanel({ task, brandProfile, onAttachmentAdded
+   const selectStyle = {
+     width: '100%',
+     padding: '10px 14px',
+-    backgroundColor: '#111111',
++    backgroundColor: colours.neutral[100],
+     border: '1px solid #2a2a2a',
+     borderRadius: radii.md,
+     color: colours.neutral[900],
+diff --git a/frontend/src/components/features/tasks/TaskCard.jsx b/frontend/src/components/features/tasks/TaskCard.jsx
+index 0b83f5c..9f02d92 100644
+--- a/frontend/src/components/features/tasks/TaskCard.jsx
++++ b/frontend/src/components/features/tasks/TaskCard.jsx
+@@ -53,8 +53,8 @@ export default function TaskCard({ task, onClick }) {
+               padding: '2px 6px',
+               borderRadius: '4px',
+               border: '1px solid #333',
+-              backgroundColor: '#111',
+-              color: task.complexity_level === 0 ? '#ffffff' : colours.neutral[500],
++              backgroundColor: colours.neutral[100],
++              color: task.complexity_level === 0 ? colours.neutral[900] : colours.neutral[500],
+               boxShadow: task.complexity_level === 0 ? '0 0 6px rgba(255,255,255,0.3)' : 'none',
+               fontWeight: 600,
+             }}>
+diff --git a/frontend/src/components/features/tasks/TaskDetail.jsx b/frontend/src/components/features/tasks/TaskDetail.jsx
+index 07f605a..083824d 100644
+--- a/frontend/src/components/features/tasks/TaskDetail.jsx
++++ b/frontend/src/components/features/tasks/TaskDetail.jsx
+@@ -7,7 +7,7 @@ import ReviewSection from '@/components/features/tasks/ReviewSection'
+ import AttachmentList from '@/components/features/tasks/AttachmentList'
+ import { TASK_STATUSES, PRIORITIES, COMMENT_VISIBILITY, UPLOAD_TYPES } from '@/config/constants'
+ import { formatDate, formatDateTime, formatFileSize } from '@/utils/formatters'
+-import { colours, spacing } from '@/config/tokens'
++import { colours, spacing, typography, radii } from '@/config/tokens'
+ import useAuth from '@/hooks/useAuth'
+ 
+ function formatRelativeTime(dateStr) {
+@@ -368,7 +368,7 @@ export default function TaskDetail({
+           gap: '8px',
+           fontSize: '18px',
+           fontWeight: 600,
+-          color: '#ffffff',
++          color: colours.neutral[900],
+           marginBottom: spacing[4],
+         }}>
+           <MessageSquare size={18} />
+@@ -401,7 +401,7 @@ export default function TaskDetail({
+           <div style={{
+             borderTop: '1px solid #222',
+             padding: '12px 16px',
+-            backgroundColor: '#0f0f0f',
++            backgroundColor: colours.neutral[50],
+             position: 'relative',
+           }}>
+             {showMentions && (() => {
+@@ -415,7 +415,7 @@ export default function TaskDetail({
+                   bottom: '100%',
+                   left: 0,
+                   right: 0,
+-                  backgroundColor: '#111',
++                  backgroundColor: colours.neutral[100],
+                   border: '1px solid #2a2a2a',
+                   borderRadius: '6px',
+                   marginBottom: '4px',
+@@ -434,12 +434,12 @@ export default function TaskDetail({
+                         gap: '8px',
+                         padding: '8px 12px',
+                         cursor: 'pointer',
+-                        backgroundColor: i === selectedMentionIdx ? '#1a1a1a' : 'transparent',
++                        backgroundColor: i === selectedMentionIdx ? colours.neutral[200] : 'transparent',
+                       }}
+                     >
+                       <Avatar name={mentionUser.name} size="sm" />
+-                      <span style={{ fontSize: '14px', fontWeight: 500, color: '#fff' }}>{mentionUser.name}</span>
+-                      <span style={{ fontSize: '11px', color: '#666', marginLeft: 'auto' }}>{mentionUser.role}</span>
++                      <span style={{ fontSize: '14px', fontWeight: 500, color: colours.neutral[900] }}>{mentionUser.name}</span>
++                      <span style={{ fontSize: '11px', color: colours.neutral[500], marginLeft: 'auto' }}>{mentionUser.role}</span>
+                     </div>
+                   ))}
+                 </div>
+@@ -457,14 +457,14 @@ export default function TaskDetail({
+                   flex: 1,
+                   resize: 'none',
+                   overflow: 'hidden',
+-                  backgroundColor: '#111',
+-                  border: '1px solid #222',
+-                  borderRadius: '6px',
+-                  padding: '10px 12px',
+-                  color: '#ffffff',
+-                  fontSize: '14px',
+-                  fontFamily: 'inherit',
+-                  lineHeight: 1.5,
++                  backgroundColor: colours.neutral[100],
++                  border: `1px solid ${colours.neutral[200]}`,
++                  borderRadius: radii.md,
++                  padding: `${spacing[3]} ${spacing[3]}`,
++                  color: colours.neutral[900],
++                  fontSize: typography.fontSize.sm,
++                  fontFamily: typography.fontFamily.sans,
++                  lineHeight: typography.lineHeight.normal,
+                   outline: 'none',
+                   maxHeight: '120px',
+                 }}
+@@ -553,7 +553,7 @@ function renderMentions(text) {
+   let m
+   while ((m = regex.exec(text)) !== null) {
+     if (m.index > lastIdx) parts.push(text.substring(lastIdx, m.index))
+-    parts.push(<strong key={m.index} style={{ color: '#ffffff', fontWeight: 700 }}>{m[0]}</strong>)
++    parts.push(<strong key={m.index} style={{ color: colours.neutral[900], fontWeight: 700 }}>{m[0]}</strong>)
+     lastIdx = m.index + m[0].length
+   }
+   if (lastIdx < text.length) parts.push(text.substring(lastIdx))
+@@ -566,13 +566,13 @@ function DiscussionComment({ comment, index, roleLabels = ROLE_LABELS_DEFAULT })
+   return (
+     <div style={{
+       padding: '14px 16px',
+-      backgroundColor: index % 2 === 0 ? '#111' : '#0f0f0f',
+-      borderLeft: isInternal ? '2px solid rgba(255,255,255,0.15)' : '2px solid transparent',
++      backgroundColor: index % 2 === 0 ? colours.neutral[100] : colours.neutral[50],
++      borderLeft: isInternal ? `2px solid ${colours.neutral[300]}` : '2px solid transparent',
+       animation: 'fadeIn 300ms ease',
+     }}>
+       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+         <Avatar name={comment.user_name} size="sm" />
+-        <span style={{ fontSize: '14px', fontWeight: 600, color: '#ffffff' }}>
++        <span style={{ fontSize: '14px', fontWeight: 600, color: colours.neutral[900] }}>
+           {comment.user_name}
+         </span>
+         <span style={{
+@@ -595,7 +595,7 @@ function DiscussionComment({ comment, index, roleLabels = ROLE_LABELS_DEFAULT })
+       </div>
+       <div style={{
+         fontSize: '14px',
+-        color: '#ffffff',
++        color: colours.neutral[900],
+         lineHeight: 1.6,
+         whiteSpace: 'pre-wrap',
+         paddingLeft: '36px',
+diff --git a/frontend/src/components/layout/Sidebar.jsx b/frontend/src/components/layout/Sidebar.jsx
+index beb4da1..951bb78 100644
+--- a/frontend/src/components/layout/Sidebar.jsx
++++ b/frontend/src/components/layout/Sidebar.jsx
+@@ -280,22 +280,14 @@ export default function Sidebar() {
+               <div style={roleBadgeStyle}>{ROLE_DISPLAY[user.role]}</div>
+             </div>
+             {(user.role === 'admin' || user.role === 'contractor') && (
+-              <button
++              <Button
++                variant="ghost"
++                size="sm"
+                 onClick={() => navigate(user.role === 'admin' ? '/admin/settings' : '/camper/profile')}
+-                style={{
+-                  background: 'none',
+-                  border: 'none',
+-                  cursor: 'pointer',
+-                  color: colours.neutral[600],
+-                  padding: spacing[1],
+-                  borderRadius: radii.sm,
+-                  display: 'flex',
+-                  alignItems: 'center',
+-                  flexShrink: 0,
+-                }}
++                style={{ padding: spacing[1], flexShrink: 0 }}
+               >
+                 <Settings size={16} />
+-              </button>
++              </Button>
+             )}
+           </div>
+           {user.role !== 'client' && xpData && (
+diff --git a/frontend/src/hooks/useAnalytics.js b/frontend/src/hooks/useAnalytics.js
+deleted file mode 100644
+index 3057015..0000000
+--- a/frontend/src/hooks/useAnalytics.js
++++ /dev/null
+@@ -1,15 +0,0 @@
+-/**
+- * useAnalytics Hook — Stub
+- * Will provide analytics data to dashboard components.
+- * Implementation in Phase 1D.
+- */
+-
+-export default function useAnalytics() {
+-  return {
+-    data: null,
+-    isLoading: true,
+-    error: null,
+-    filters: {},
+-    setFilters: () => {},
+-  }
+-}
+diff --git a/frontend/src/hooks/useOnboarding.js b/frontend/src/hooks/useOnboarding.js
+deleted file mode 100644
+index 8e98682..0000000
+--- a/frontend/src/hooks/useOnboarding.js
++++ /dev/null
+@@ -1,17 +0,0 @@
+-/**
+- * useOnboarding Hook — Stub
+- * Will manage onboarding wizard state for first-login clients.
+- * Implementation in Phase 1D.
+- */
+-
+-export default function useOnboarding() {
+-  return {
+-    isOnboarding: false,
+-    currentStep: 0,
+-    totalSteps: 4,
+-    nextStep: () => {},
+-    prevStep: () => {},
+-    completeOnboarding: async () => {},
+-    skipOnboarding: async () => {},
+-  }
+-}
+diff --git a/frontend/src/hooks/useProjects.js b/frontend/src/hooks/useProjects.js
+deleted file mode 100644
+index 6006934..0000000
+--- a/frontend/src/hooks/useProjects.js
++++ /dev/null
+@@ -1,15 +0,0 @@
+-/**
+- * useProjects Hook — Stub
+- * Will provide project data and actions to components.
+- * Implementation in Phase 1B.
+- */
+-
+-export default function useProjects() {
+-  return {
+-    projects: [],
+-    isLoading: true,
+-    error: null,
+-    fetchProjects: async () => {},
+-    createProject: async () => {},
+-  }
+-}
+diff --git a/frontend/src/hooks/useTasks.js b/frontend/src/hooks/useTasks.js
+deleted file mode 100644
+index f7c820c..0000000
+--- a/frontend/src/hooks/useTasks.js
++++ /dev/null
+@@ -1,16 +0,0 @@
+-/**
+- * useTasks Hook — Stub
+- * Will provide task data and actions to components.
+- * Implementation in Phase 1B.
+- */
+-
+-export default function useTasks() {
+-  return {
+-    tasks: [],
+-    isLoading: true,
+-    error: null,
+-    fetchTasks: async () => {},
+-    createTask: async () => {},
+-    updateTask: async () => {},
+-  }
+-}
+diff --git a/frontend/src/hooks/useTimeTracking.js b/frontend/src/hooks/useTimeTracking.js
+deleted file mode 100644
+index 92c022c..0000000
+--- a/frontend/src/hooks/useTimeTracking.js
++++ /dev/null
+@@ -1,17 +0,0 @@
+-/**
+- * useTimeTracking Hook — Stub
+- * Will provide time tracking data and actions to components.
+- * Implementation in Phase 1C.
+- */
+-
+-export default function useTimeTracking() {
+-  return {
+-    entries: [],
+-    totalMinutes: 0,
+-    isLoading: true,
+-    error: null,
+-    logTime: async () => {},
+-    updateEntry: async () => {},
+-    deleteEntry: async () => {},
+-  }
+-}
+diff --git a/frontend/src/pages/ForbiddenPage.jsx b/frontend/src/pages/ForbiddenPage.jsx
+index b44836d..660e69e 100644
+--- a/frontend/src/pages/ForbiddenPage.jsx
++++ b/frontend/src/pages/ForbiddenPage.jsx
+@@ -1,6 +1,10 @@
++import { useNavigate } from 'react-router-dom'
++import { Button } from '@/components/ui'
+ import { colours, spacing, typography } from '@/config/tokens'
+ 
+ export default function ForbiddenPage() {
++  const navigate = useNavigate()
++
+   const containerStyle = {
+     display: 'flex',
+     flexDirection: 'column',
+@@ -33,36 +37,16 @@ export default function ForbiddenPage() {
+     maxWidth: '500px',
+   }
+ 
+-  const linkStyle = {
+-    color: colours.neutral[700],
+-    textDecoration: 'none',
+-    fontSize: typography.fontSize.lg,
+-    fontWeight: typography.fontWeight.semibold,
+-    padding: `${spacing[3]} ${spacing[6]}`,
+-    borderRadius: '8px',
+-    border: `2px solid ${colours.neutral[700]}`,
+-    transition: 'all 200ms ease',
+-    display: 'inline-block',
+-  }
+-
+-  const linkHoverStyle = `
+-    .forbidden-link:hover {
+-      background-color: ${colours.neutral[700]};
+-      color: ${colours.white};
+-    }
+-  `
+-
+   return (
+     <div style={containerStyle}>
+-      <style>{linkHoverStyle}</style>
+       <div style={errorCodeStyle}>403</div>
+       <h1 style={headingStyle}>Access Denied</h1>
+       <p style={messageStyle}>
+         You don't have permission to view this page.
+       </p>
+-      <a href="/" style={linkStyle} className="forbidden-link">
++      <Button variant="secondary" onClick={() => navigate('/')}>
+         Back to Dashboard
+-      </a>
++      </Button>
+     </div>
+   )
+ }
+diff --git a/frontend/src/pages/NotFoundPage.jsx b/frontend/src/pages/NotFoundPage.jsx
+index 3fc3add..debc3d1 100644
+--- a/frontend/src/pages/NotFoundPage.jsx
++++ b/frontend/src/pages/NotFoundPage.jsx
+@@ -1,6 +1,10 @@
++import { useNavigate } from 'react-router-dom'
++import { Button } from '@/components/ui'
+ import { colours, spacing, typography } from '@/config/tokens'
+ 
+ export default function NotFoundPage() {
++  const navigate = useNavigate()
++
+   const containerStyle = {
+     display: 'flex',
+     flexDirection: 'column',
+@@ -60,9 +64,9 @@ export default function NotFoundPage() {
+       <p style={messageStyle}>
+         The page you're looking for doesn't exist or has been moved.
+       </p>
+-      <a href="/" style={linkStyle}>
++      <Button variant="secondary" onClick={() => navigate('/')}>
+         Back to Dashboard
+-      </a>
++      </Button>
+     </div>
+   )
+ }
+diff --git a/frontend/src/pages/admin/AdminBrandProfileEdit.jsx b/frontend/src/pages/admin/AdminBrandProfileEdit.jsx
+index cf404de..014d2a2 100644
+--- a/frontend/src/pages/admin/AdminBrandProfileEdit.jsx
++++ b/frontend/src/pages/admin/AdminBrandProfileEdit.jsx
+@@ -342,26 +342,15 @@ export default function AdminBrandProfileEdit() {
+                       style={{ display: 'none' }}
+                     />
+                   </label>
+-                  <button
++                  <Button
++                    variant="ghost"
++                    size="sm"
+                     onClick={handleRemoveGuide}
+                     disabled={saving}
+-                    style={{
+-                      display: 'inline-flex',
+-                      alignItems: 'center',
+-                      gap: '6px',
+-                      cursor: 'pointer',
+-                      fontSize: typography.fontSize.sm,
+-                      color: colours.neutral[500],
+-                      padding: `${spacing[2]} ${spacing[3]}`,
+-                      border: '1px solid #333',
+-                      borderRadius: radii.md,
+-                      background: 'none',
+-                      transition: `color ${transitions.fast}`,
+-                    }}
+                   >
+                     <X size={14} />
+                     Remove
+-                  </button>
++                  </Button>
+                 </div>
+               </div>
+             ) : (
+diff --git a/frontend/src/pages/admin/AdminJourney.jsx b/frontend/src/pages/admin/AdminJourney.jsx
+index 11075d5..4219caa 100644
+--- a/frontend/src/pages/admin/AdminJourney.jsx
++++ b/frontend/src/pages/admin/AdminJourney.jsx
+@@ -185,7 +185,7 @@ export default function AdminJourney() {
+ 
+                     <div style={{
+                       ...badgeNameStyle,
+-                      color: earned ? '#ffffff' : colours.neutral[400],
++                      color: earned ? colours.neutral[900] : colours.neutral[400],
+                     }}>
+                       {badge.name}
+                     </div>
+@@ -288,7 +288,7 @@ const sectionStyle = {
+ const sectionTitleStyle = {
+   fontSize: typography.fontSize.lg,
+   fontWeight: typography.fontWeight.semibold,
+-  color: '#ffffff',
++  color: colours.neutral[900],
+   marginBottom: spacing[4],
+   marginTop: 0,
+   display: 'flex',
+@@ -371,5 +371,5 @@ const statLabelStyle = {
+ const statValueStyle = {
+   fontSize: '16px',
+   fontWeight: typography.fontWeight.bold,
+-  color: '#ffffff',
++  color: colours.neutral[900],
+ }
+diff --git a/frontend/src/pages/admin/AdminToolsPage.jsx b/frontend/src/pages/admin/AdminToolsPage.jsx
+index 18b9fa9..e4758b1 100644
+--- a/frontend/src/pages/admin/AdminToolsPage.jsx
++++ b/frontend/src/pages/admin/AdminToolsPage.jsx
+@@ -203,12 +203,12 @@ export default function AdminToolsPage() {
+               bottom: spacing[6],
+               left: '50%',
+               transform: 'translateX(-50%)',
+-              backgroundColor: '#111',
++              backgroundColor: colours.neutral[100],
+               border: '1px solid #333',
+               borderRadius: '8px',
+               padding: `${spacing[3]} ${spacing[5]}`,
+               fontSize: typography.fontSize.sm,
+-              color: '#ffffff',
++              color: colours.neutral[900],
+               zIndex: 1000,
+               display: 'flex',
+               alignItems: 'center',
+diff --git a/frontend/src/pages/client/ClientBrandHub.jsx b/frontend/src/pages/client/ClientBrandHub.jsx
+index 20bc577..a2a5a13 100644
+--- a/frontend/src/pages/client/ClientBrandHub.jsx
++++ b/frontend/src/pages/client/ClientBrandHub.jsx
+@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
+ import useAuth from '@/hooks/useAuth'
+ import useToast from '@/hooks/useToast'
+ import PageHeader from '@/components/ui/PageHeader'
+-import EmberLoader from '@/components/ui/EmberLoader'
++import Spinner from '@/components/ui/Spinner'
+ import EmptyState from '@/components/ui/EmptyState'
+ import BrandBooklet from '@/components/features/brand/BrandBooklet'
+ import BrandGuideCard from '@/components/features/brand/BrandGuideCard'
+@@ -52,7 +52,7 @@ export default function ClientBrandHub() {
+   if (loading) {
+     return (
+       <div style={{ display: 'flex', justifyContent: 'center', padding: spacing[8] }}>
+-        <EmberLoader size="lg" />
++        <Spinner size="lg" />
+       </div>
+     )
+   }
+diff --git a/frontend/src/pages/client/ClientDashboard.jsx b/frontend/src/pages/client/ClientDashboard.jsx
+index 7e7453c..b87dac4 100644
+--- a/frontend/src/pages/client/ClientDashboard.jsx
++++ b/frontend/src/pages/client/ClientDashboard.jsx
+@@ -4,7 +4,7 @@ import useAuth from '@/hooks/useAuth'
+ import useToast from '@/hooks/useToast'
+ import GlowCard from '@/components/ui/GlowCard'
+ import Button from '@/components/ui/Button'
+-import EmberLoader from '@/components/ui/EmberLoader'
++import Spinner from '@/components/ui/Spinner'
+ import EmptyState from '@/components/ui/EmptyState'
+ import TaskProgressTracker from '@/components/ui/TaskProgressTracker'
+ import TaskList from '@/components/features/tasks/TaskList'
+@@ -38,7 +38,7 @@ export default function ClientDashboard() {
+   if (loading) {
+     return (
+       <div style={{ display: 'flex', justifyContent: 'center', padding: spacing[8] }}>
+-        <EmberLoader size="lg" />
++        <Spinner size="lg" />
+       </div>
+     )
+   }
+diff --git a/frontend/src/pages/client/ClientProjectDetail.jsx b/frontend/src/pages/client/ClientProjectDetail.jsx
+index 0432966..68c45ed 100644
+--- a/frontend/src/pages/client/ClientProjectDetail.jsx
++++ b/frontend/src/pages/client/ClientProjectDetail.jsx
+@@ -1,7 +1,7 @@
+ import { useState, useEffect } from 'react'
+ import { useParams, useNavigate, Link } from 'react-router-dom'
+ import useToast from '@/hooks/useToast'
+-import EmberLoader from '@/components/ui/EmberLoader'
++import Spinner from '@/components/ui/Spinner'
+ import ProjectDetail from '@/components/features/projects/ProjectDetail'
+ import { apiEndpoint } from '@/config/env'
+ import { getAuthHeaders } from '@/services/auth'
+@@ -40,7 +40,7 @@ export default function ClientProjectDetail() {
+   if (loading) {
+     return (
+       <div style={{ display: 'flex', justifyContent: 'center', padding: spacing[8] }}>
+-        <EmberLoader size="lg" />
++        <Spinner size="lg" />
+       </div>
+     )
+   }
+diff --git a/frontend/src/pages/client/ClientProjects.jsx b/frontend/src/pages/client/ClientProjects.jsx
+index 8bc3a0d..cccf8c9 100644
+--- a/frontend/src/pages/client/ClientProjects.jsx
++++ b/frontend/src/pages/client/ClientProjects.jsx
+@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
+ import { useNavigate } from 'react-router-dom'
+ import useToast from '@/hooks/useToast'
+ import PageHeader from '@/components/ui/PageHeader'
+-import EmberLoader from '@/components/ui/EmberLoader'
++import Spinner from '@/components/ui/Spinner'
+ import ProjectList from '@/components/features/projects/ProjectList'
+ import { apiEndpoint } from '@/config/env'
+ import { getAuthHeaders } from '@/services/auth'
+@@ -32,7 +32,7 @@ export default function ClientProjects() {
+   if (loading) {
+     return (
+       <div style={{ display: 'flex', justifyContent: 'center', padding: spacing[8] }}>
+-        <EmberLoader size="lg" />
++        <Spinner size="lg" />
+       </div>
+     )
+   }
+diff --git a/frontend/src/pages/client/ClientTaskDetail.jsx b/frontend/src/pages/client/ClientTaskDetail.jsx
+index 79e2c1e..d2428ff 100644
+--- a/frontend/src/pages/client/ClientTaskDetail.jsx
++++ b/frontend/src/pages/client/ClientTaskDetail.jsx
+@@ -1,7 +1,7 @@
+ import { useState, useEffect } from 'react'
+ import { useParams, Link } from 'react-router-dom'
+ import useToast from '@/hooks/useToast'
+-import EmberLoader from '@/components/ui/EmberLoader'
++import Spinner from '@/components/ui/Spinner'
+ import TaskDetail from '@/components/features/tasks/TaskDetail'
+ import { apiEndpoint } from '@/config/env'
+ import { getAuthHeaders } from '@/services/auth'
+@@ -71,7 +71,7 @@ export default function ClientTaskDetail() {
+   if (loading) {
+     return (
+       <div style={{ display: 'flex', justifyContent: 'center', padding: spacing[8] }}>
+-        <EmberLoader size="lg" />
++        <Spinner size="lg" />
+       </div>
+     )
+   }
+diff --git a/frontend/src/pages/client/ClientTaskNew.jsx b/frontend/src/pages/client/ClientTaskNew.jsx
+index 6bd1c2a..bf00e44 100644
+--- a/frontend/src/pages/client/ClientTaskNew.jsx
++++ b/frontend/src/pages/client/ClientTaskNew.jsx
+@@ -3,7 +3,7 @@ import { useNavigate, Link } from 'react-router-dom'
+ import useAuth from '@/hooks/useAuth'
+ import useToast from '@/hooks/useToast'
+ import PageHeader from '@/components/ui/PageHeader'
+-import EmberLoader from '@/components/ui/EmberLoader'
++import Spinner from '@/components/ui/Spinner'
+ import TaskForm from '@/components/features/tasks/TaskForm'
+ import { apiEndpoint } from '@/config/env'
+ import { getAuthHeaders } from '@/services/auth'
+@@ -74,7 +74,7 @@ export default function ClientTaskNew() {
+   if (loading) {
+     return (
+       <div style={{ display: 'flex', justifyContent: 'center', padding: spacing[8] }}>
+-        <EmberLoader size="lg" />
++        <Spinner size="lg" />
+       </div>
+     )
+   }
+diff --git a/frontend/src/pages/client/ClientTasks.jsx b/frontend/src/pages/client/ClientTasks.jsx
+index 93798a1..7f790c2 100644
+--- a/frontend/src/pages/client/ClientTasks.jsx
++++ b/frontend/src/pages/client/ClientTasks.jsx
+@@ -4,7 +4,7 @@ import useToast from '@/hooks/useToast'
+ import PageHeader from '@/components/ui/PageHeader'
+ import Button from '@/components/ui/Button'
+ import Select from '@/components/ui/Select'
+-import EmberLoader from '@/components/ui/EmberLoader'
++import Spinner from '@/components/ui/Spinner'
+ import TaskList from '@/components/features/tasks/TaskList'
+ import { apiEndpoint } from '@/config/env'
+ import { getAuthHeaders } from '@/services/auth'
+@@ -54,7 +54,7 @@ export default function ClientTasks() {
+   if (loading) {
+     return (
+       <div style={{ display: 'flex', justifyContent: 'center', padding: spacing[8] }}>
+-        <EmberLoader size="lg" />
++        <Spinner size="lg" />
+       </div>
+     )
+   }
+diff --git a/frontend/src/pages/contractor/CamperJourney.jsx b/frontend/src/pages/contractor/CamperJourney.jsx
+index 81c58bf..ea63195 100644
+--- a/frontend/src/pages/contractor/CamperJourney.jsx
++++ b/frontend/src/pages/contractor/CamperJourney.jsx
+@@ -194,7 +194,7 @@ export default function CamperJourney() {
+ 
+                     <div style={{
+                       ...badgeNameStyle,
+-                      color: earned ? '#ffffff' : colours.neutral[400],
++                      color: earned ? colours.neutral[900] : colours.neutral[400],
+                     }}>
+                       {badge.name}
+                     </div>
+@@ -264,7 +264,7 @@ function renderStars(rating) {
+         key={i}
+         size={13}
+         color="#ffffff"
+-        fill={i <= filled ? '#ffffff' : 'transparent'}
++        fill={i <= filled ? colours.neutral[900] : 'transparent'}
+         style={{ opacity: i <= filled ? 1 : 0.25 }}
+       />
+     )
+@@ -327,7 +327,7 @@ const sectionStyle = {
+ const sectionTitleStyle = {
+   fontSize: typography.fontSize.lg,
+   fontWeight: typography.fontWeight.semibold,
+-  color: '#ffffff',
++  color: colours.neutral[900],
+   marginBottom: spacing[4],
+   marginTop: 0,
+   display: 'flex',
+@@ -410,5 +410,5 @@ const statLabelStyle = {
+ const statValueStyle = {
+   fontSize: '16px',
+   fontWeight: typography.fontWeight.bold,
+-  color: '#ffffff',
++  color: colours.neutral[900],
+ }
+diff --git a/frontend/src/pages/contractor/ContractorDashboard.jsx b/frontend/src/pages/contractor/ContractorDashboard.jsx
+index 6643645..51818b5 100644
+--- a/frontend/src/pages/contractor/ContractorDashboard.jsx
++++ b/frontend/src/pages/contractor/ContractorDashboard.jsx
+@@ -223,7 +223,7 @@ export default function ContractorDashboard() {
+     fontFamily: typography.fontFamily.sans,
+     fontSize: typography.fontSize.sm,
+     fontWeight: typography.fontWeight.medium,
+-    color: '#ffffff',
++    color: colours.neutral[900],
+     textDecoration: 'none',
+   }
+ 
+@@ -333,7 +333,7 @@ export default function ContractorDashboard() {
+                   <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                     {/* Left: title + meta */}
+                     <div style={{ flex: 1, minWidth: 0 }}>
+-                      <div style={{ fontSize: '15px', fontWeight: 600, color: '#ffffff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
++                      <div style={{ fontSize: '15px', fontWeight: 600, color: colours.neutral[900], whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                         {task.title}
+                       </div>
+                       <div style={{ fontSize: '12px', color: colours.neutral[500], marginTop: '2px' }}>
+@@ -346,8 +346,8 @@ export default function ContractorDashboard() {
+                       {task.priority && (
+                         <span style={{
+                           fontSize: '11px',
+-                          color: '#ffffff',
+-                          backgroundColor: '#222',
++                          color: colours.neutral[900],
++                          backgroundColor: colours.neutral[200],
+                           padding: '2px 8px',
+                           borderRadius: '4px',
+                           border: '1px solid #333',
+diff --git a/frontend/src/pages/contractor/ContractorTasks.jsx b/frontend/src/pages/contractor/ContractorTasks.jsx
+index 6a65402..5197137 100644
+--- a/frontend/src/pages/contractor/ContractorTasks.jsx
++++ b/frontend/src/pages/contractor/ContractorTasks.jsx
+@@ -174,7 +174,7 @@ export default function ContractorTasks() {
+                   <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                     {/* Left: title + meta */}
+                     <div style={{ flex: 1, minWidth: 0 }}>
+-                      <div style={{ fontSize: '15px', fontWeight: 600, color: '#ffffff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
++                      <div style={{ fontSize: '15px', fontWeight: 600, color: colours.neutral[900], whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                         {task.title}
+                       </div>
+                       <div style={{ fontSize: '12px', color: colours.neutral[500], marginTop: '2px' }}>
+@@ -187,8 +187,8 @@ export default function ContractorTasks() {
+                       {task.priority && (
+                         <span style={{
+                           fontSize: '11px',
+-                          color: '#ffffff',
+-                          backgroundColor: '#222',
++                          color: colours.neutral[900],
++                          backgroundColor: colours.neutral[200],
+                           padding: '2px 8px',
+                           borderRadius: '4px',
+                           border: '1px solid #333',
+diff --git a/frontend/src/pages/create/CreateAd.jsx b/frontend/src/pages/create/CreateAd.jsx
+index e023605..6a0e1da 100644
+--- a/frontend/src/pages/create/CreateAd.jsx
++++ b/frontend/src/pages/create/CreateAd.jsx
+@@ -105,7 +105,7 @@ export default function CreateAd() {
+ 
+   const selectStyle = {
+     width: '100%', padding: `${spacing[2]} ${spacing[3]}`,
+-    backgroundColor: '#111111', border: '1px solid #2a2a2a',
++    backgroundColor: colours.neutral[100], border: `1px solid ${colours.neutral[200]}`,
+     borderRadius: radii.md, color: colours.neutral[900], fontSize: typography.fontSize.sm,
+     marginBottom: spacing[4], outline: 'none',
+   }
+diff --git a/frontend/src/pages/create/CreateDocument.jsx b/frontend/src/pages/create/CreateDocument.jsx
+index a5f6bc6..5e218b6 100644
+--- a/frontend/src/pages/create/CreateDocument.jsx
++++ b/frontend/src/pages/create/CreateDocument.jsx
+@@ -103,7 +103,7 @@ export default function CreateDocument() {
+ 
+   const selectStyle = {
+     width: '100%', padding: `${spacing[2]} ${spacing[3]}`,
+-    backgroundColor: '#111111', border: '1px solid #2a2a2a',
++    backgroundColor: colours.neutral[100], border: `1px solid ${colours.neutral[200]}`,
+     borderRadius: radii.md, color: colours.neutral[900], fontSize: typography.fontSize.sm,
+     marginBottom: spacing[4], outline: 'none',
+   }
+diff --git a/frontend/src/pages/create/CreatePresentation.jsx b/frontend/src/pages/create/CreatePresentation.jsx
+index 28828ad..a87c369 100644
+--- a/frontend/src/pages/create/CreatePresentation.jsx
++++ b/frontend/src/pages/create/CreatePresentation.jsx
+@@ -105,7 +105,7 @@ export default function CreatePresentation() {
+ 
+   const selectStyle = {
+     width: '100%', padding: `${spacing[2]} ${spacing[3]}`,
+-    backgroundColor: '#111111', border: '1px solid #2a2a2a',
++    backgroundColor: colours.neutral[100], border: `1px solid ${colours.neutral[200]}`,
+     borderRadius: radii.md, color: colours.neutral[900], fontSize: typography.fontSize.sm,
+     marginBottom: spacing[4], outline: 'none',
+   }
+@@ -221,7 +221,7 @@ export default function CreatePresentation() {
+                   src={apiEndpoint(`/storage/${result.result_path}`)}
+                   style={{
+                     width: '100%', minHeight: '500px', border: 'none',
+-                    borderRadius: radii.lg, backgroundColor: '#0a0a0a',
++                    borderRadius: radii.lg, backgroundColor: colours.neutral[50],
+                   }}
+                   title="Generated presentation"
+                 />
+diff --git a/frontend/src/pages/create/CreateSocial.jsx b/frontend/src/pages/create/CreateSocial.jsx
+index 70af316..176f29f 100644
+--- a/frontend/src/pages/create/CreateSocial.jsx
++++ b/frontend/src/pages/create/CreateSocial.jsx
+@@ -126,7 +126,7 @@ export default function CreateSocial() {
+ 
+   const selectStyle = {
+     width: '100%', padding: `${spacing[2]} ${spacing[3]}`,
+-    backgroundColor: '#111111', border: '1px solid #2a2a2a',
++    backgroundColor: colours.neutral[100], border: `1px solid ${colours.neutral[200]}`,
+     borderRadius: radii.md, color: colours.neutral[900], fontSize: typography.fontSize.sm,
+     marginBottom: spacing[4], outline: 'none',
+   }
+diff --git a/frontend/src/services/ai.js b/frontend/src/services/ai.js
+deleted file mode 100644
+index fb67b95..0000000
+--- a/frontend/src/services/ai.js
++++ /dev/null
+@@ -1,77 +0,0 @@
+-/**
+- * AI Service — Workers AI Abstraction Layer
+- *
+- * Phase 1D: One test case integration (task summary, categorisation, or brief analysis).
+- * Phase 3: Full AI expansion (assignment, predictions, suggestions, reminders).
+- *
+- * All AI operations go through this service.
+- * UI → API → AI → store → display
+- */
+-
+-import { apiEndpoint } from '@/config/env'
+-import { getAuthHeaders } from './auth'
+-
+-/**
+- * Analyse a task brief and return AI insights
+- * @param {string} taskId - Task ID to analyse
+- * @returns {Promise<object>} AI analysis result
+- */
+-export async function analyseTaskBrief(taskId) {
+-  const res = await fetch(apiEndpoint(`/ai/analyse-brief/${taskId}`), {
+-    method: 'POST',
+-    headers: {
+-      'Content-Type': 'application/json',
+-      ...getAuthHeaders(),
+-    },
+-  })
+-  const data = await res.json()
+-  if (!data.success) throw new Error(data.error || 'AI analysis failed')
+-  return data.data
+-}
+-
+-/**
+- * Generate a task summary from description
+- * @param {string} description - Task description text
+- * @returns {Promise<object>} Summary result
+- */
+-export async function summariseTask(description) {
+-  const res = await fetch(apiEndpoint('/ai/summarise'), {
+-    method: 'POST',
+-    headers: {
+-      'Content-Type': 'application/json',
+-      ...getAuthHeaders(),
+-    },
+-    body: JSON.stringify({ description }),
+-  })
+-  const data = await res.json()
+-  if (!data.success) throw new Error(data.error || 'AI summarisation failed')
+-  return data.data
+-}
+-
+-/**
+- * Suggest a category for a task based on title and description
+- * @param {string} title
+- * @param {string} description
+- * @returns {Promise<object>} Suggested category
+- */
+-export async function suggestCategory(title, description) {
+-  const res = await fetch(apiEndpoint('/ai/suggest-category'), {
+-    method: 'POST',
+-    headers: {
+-      'Content-Type': 'application/json',
+-      ...getAuthHeaders(),
+-    },
+-    body: JSON.stringify({ title, description }),
+-  })
+-  const data = await res.json()
+-  if (!data.success) throw new Error(data.error || 'AI suggestion failed')
+-  return data.data
+-}
+-
+-const aiService = {
+-  analyseTaskBrief,
+-  summariseTask,
+-  suggestCategory,
+-}
+-
+-export default aiService
+diff --git a/frontend/src/services/notifications.js b/frontend/src/services/notifications.js
+deleted file mode 100644
+index ec9e2ff..0000000
+--- a/frontend/src/services/notifications.js
++++ /dev/null
+@@ -1,72 +0,0 @@
+-/**
+- * Notifications Service — No-Op Stub (Phase 1)
+- *
+- * Phase 1: All notification methods are no-ops that log to console.
+- * Phase 2: Swap to Resend for transactional email without touching UI or API logic.
+- *
+- * State changes emit events → this service decides what to do with them.
+- */
+-
+-/**
+- * Send a notification (no-op in Phase 1)
+- * @param {string} userId - Recipient user ID
+- * @param {string} type - Notification type
+- * @param {object} payload - Notification data
+- */
+-export async function send(userId, type, payload = {}) {
+-  // Phase 1: No-op — log only
+-  console.log(`[Notifications] No-op: ${type} → user ${userId}`, payload)
+-  return { sent: false, reason: 'no-op' }
+-}
+-
+-/**
+- * Notify on task status change
+- */
+-export async function onTaskStatusChange(task, fromStatus, toStatus) {
+-  console.log(`[Notifications] Task ${task.id}: ${fromStatus} → ${toStatus}`)
+-  return send(task.client_id, 'task_status_change', { taskId: task.id, fromStatus, toStatus })
+-}
+-
+-/**
+- * Notify on new comment
+- */
+-export async function onNewComment(taskId, comment, recipientIds) {
+-  console.log(`[Notifications] New comment on task ${taskId}`)
+-  return Promise.all(recipientIds.map(id => send(id, 'new_comment', { taskId, commentId: comment.id })))
+-}
+-
+-/**
+- * Notify on task assignment
+- */
+-export async function onTaskAssigned(task, contractorId) {
+-  console.log(`[Notifications] Task ${task.id} assigned to ${contractorId}`)
+-  return send(contractorId, 'task_assigned', { taskId: task.id })
+-}
+-
+-/**
+- * Notify on review request (task closed)
+- */
+-export async function onReviewRequested(task) {
+-  console.log(`[Notifications] Review requested for task ${task.id}`)
+-  return send(task.contractor_id, 'review_requested', { taskId: task.id })
+-}
+-
+-/**
+- * Notify on deliverable uploaded
+- */
+-export async function onDeliverableUploaded(task) {
+-  console.log(`[Notifications] Deliverable uploaded for task ${task.id}`)
+-  // Notify admin(s) — in Phase 2 this would look up admin users
+-  return send('admin', 'deliverable_uploaded', { taskId: task.id })
+-}
+-
+-const notificationsService = {
+-  send,
+-  onTaskStatusChange,
+-  onNewComment,
+-  onTaskAssigned,
+-  onReviewRequested,
+-  onDeliverableUploaded,
+-}
+-
+-export default notificationsService
+diff --git a/frontend/src/services/search.js b/frontend/src/services/search.js
+deleted file mode 100644
+index 798fc65..0000000
+--- a/frontend/src/services/search.js
++++ /dev/null
+@@ -1,102 +0,0 @@
+-/**
+- * Search Service — Abstraction Layer
+- *
+- * Global search across tasks, users, brand guides, and projects.
+- * Respects role-based permissions (server-side filtering).
+- *
+- * Phase 1: D1 LIKE queries.
+- * Future: Full-text search index if needed for scale.
+- */
+-
+-import { apiEndpoint } from '@/config/env'
+-import { getAuthHeaders } from './auth'
+-import { SEARCH_DEBOUNCE_MS } from '@/config/constants'
+-
+-/**
+- * Global search across all entity types
+- * @param {string} query - Search query
+- * @param {object} options - { type, limit, offset }
+- * @returns {Promise<object>} Search results grouped by type with counts
+- */
+-export async function search(query, options = {}) {
+-  if (!query || query.trim().length === 0) {
+-    return { tasks: [], users: [], brandGuides: [], projects: [], total: 0 }
+-  }
+-
+-  const params = new URLSearchParams({ q: query.trim() })
+-  if (options.type) params.append('type', options.type)
+-  if (options.limit) params.append('limit', options.limit)
+-  if (options.offset) params.append('offset', options.offset)
+-
+-  const res = await fetch(apiEndpoint(`/search?${params.toString()}`), {
+-    headers: { ...getAuthHeaders() },
+-  })
+-  const data = await res.json()
+-  if (!data.success) throw new Error(data.error || 'Search failed')
+-  return data.data
+-}
+-
+-/**
+- * Search tasks only
+- * @param {string} query
+- * @param {object} filters - { status, priority, categoryId, projectId }
+- */
+-export async function searchTasks(query, filters = {}) {
+-  return search(query, { type: 'tasks', ...filters })
+-}
+-
+-/**
+- * Search users only
+- * @param {string} query
+- */
+-export async function searchUsers(query) {
+-  return search(query, { type: 'users' })
+-}
+-
+-/**
+- * Search brand guides only
+- * @param {string} query
+- */
+-export async function searchBrandGuides(query) {
+-  return search(query, { type: 'brand_guides' })
+-}
+-
+-/**
+- * Search projects only
+- * @param {string} query
+- */
+-export async function searchProjects(query) {
+-  return search(query, { type: 'projects' })
+-}
+-
+-/**
+- * Create a debounced search function
+- * @param {function} callback - Function to call with results
+- * @param {number} delay - Debounce delay in ms (default from constants)
+- * @returns {function} Debounced search function
+- */
+-export function createDebouncedSearch(callback, delay = SEARCH_DEBOUNCE_MS) {
+-  let timeoutId = null
+-  return (query, options = {}) => {
+-    if (timeoutId) clearTimeout(timeoutId)
+-    timeoutId = setTimeout(async () => {
+-      try {
+-        const results = await search(query, options)
+-        callback(results, null)
+-      } catch (err) {
+-        callback(null, err)
+-      }
+-    }, delay)
+-  }
+-}
+-
+-const searchService = {
+-  search,
+-  searchTasks,
+-  searchUsers,
+-  searchBrandGuides,
+-  searchProjects,
+-  createDebouncedSearch,
+-}
+-
+-export default searchService
+diff --git a/frontend/src/services/storage.js b/frontend/src/services/storage.js
+deleted file mode 100644
+index 8b943d3..0000000
+--- a/frontend/src/services/storage.js
++++ /dev/null
+@@ -1,127 +0,0 @@
+-/**
+- * Storage Service — R2 Abstraction Layer
+- *
+- * All file operations go through this service.
+- * Abstracts R2 so the provider can be swapped without touching UI.
+- *
+- * Supports: upload, download, delete, presigned URLs.
+- * Phase 1C adds chunked/multipart for large files.
+- */
+-
+-import { apiEndpoint } from '@/config/env'
+-import { getAuthHeaders } from './auth'
+-import { MAX_FILE_SIZE_BYTES, MAX_FILES_PER_UPLOAD, FILE_UPLOAD_TIMEOUT_MS } from '@/config/constants'
+-
+-/**
+- * Upload a single file
+- * @param {File} file - File object
+- * @param {string} type - Upload context ('attachment', 'deliverable', 'brand-guide', 'avatar', 'logo')
+- * @param {object} metadata - Additional metadata (taskId, clientId, etc.)
+- * @param {function} onProgress - Progress callback (0-100)
+- * @returns {Promise<object>} Upload result with file_path, file_name, file_size, file_type
+- */
+-export async function uploadFile(file, type, metadata = {}, onProgress = null) {
+-  if (file.size > MAX_FILE_SIZE_BYTES) {
+-    throw new Error(`File exceeds maximum size of 5 GB`)
+-  }
+-
+-  const formData = new FormData()
+-  formData.append('file', file)
+-  formData.append('type', type)
+-  Object.entries(metadata).forEach(([key, value]) => {
+-    formData.append(key, value)
+-  })
+-
+-  const controller = new AbortController()
+-  const timeoutId = setTimeout(() => controller.abort(), FILE_UPLOAD_TIMEOUT_MS)
+-
+-  try {
+-    const res = await fetch(apiEndpoint('/storage/upload'), {
+-      method: 'POST',
+-      headers: getAuthHeaders(),
+-      body: formData,
+-      signal: controller.signal,
+-    })
+-    clearTimeout(timeoutId)
+-
+-    const data = await res.json()
+-    if (!data.success) throw new Error(data.error || 'Upload failed')
+-    return data.data
+-  } catch (err) {
+-    clearTimeout(timeoutId)
+-    if (err.name === 'AbortError') throw new Error('Upload timed out')
+-    throw err
+-  }
+-}
+-
+-/**
+- * Upload multiple files
+- * @param {FileList|File[]} files
+- * @param {string} type
+- * @param {object} metadata
+- * @param {function} onProgress - Progress callback (0-100)
+- * @returns {Promise<object[]>} Array of upload results
+- */
+-export async function uploadFiles(files, type, metadata = {}, onProgress = null) {
+-  const fileArray = Array.from(files)
+-  if (fileArray.length > MAX_FILES_PER_UPLOAD) {
+-    throw new Error(`Maximum ${MAX_FILES_PER_UPLOAD} files per upload`)
+-  }
+-
+-  const results = []
+-  for (let i = 0; i < fileArray.length; i++) {
+-    const result = await uploadFile(fileArray[i], type, metadata, (pct) => {
+-      if (onProgress) {
+-        const overallProgress = ((i + pct / 100) / fileArray.length) * 100
+-        onProgress(Math.round(overallProgress))
+-      }
+-    })
+-    results.push(result)
+-  }
+-  return results
+-}
+-
+-/**
+- * Get a download URL for a file
+- * @param {string} filePath - R2 key
+- * @returns {string} Download URL
+- */
+-export function getDownloadUrl(filePath) {
+-  return apiEndpoint(`/storage/download/${encodeURIComponent(filePath)}`)
+-}
+-
+-/**
+- * Get a preview URL for a file (images/PDFs)
+- * @param {string} filePath - R2 key
+- * @returns {string} Preview URL
+- */
+-export function getPreviewUrl(filePath) {
+-  return apiEndpoint(`/storage/preview/${encodeURIComponent(filePath)}`)
+-}
+-
+-/**
+- * Delete a file
+- * @param {string} filePath - R2 key
+- */
+-export async function deleteFile(filePath) {
+-  const res = await fetch(apiEndpoint(`/storage/delete/${encodeURIComponent(filePath)}`), {
+-    method: 'DELETE',
+-    headers: {
+-      'Content-Type': 'application/json',
+-      ...getAuthHeaders(),
+-    },
+-  })
+-  const data = await res.json()
+-  if (!data.success) throw new Error(data.error || 'Delete failed')
+-  return data.data
+-}
+-
+-const storageService = {
+-  uploadFile,
+-  uploadFiles,
+-  getDownloadUrl,
+-  getPreviewUrl,
+-  deleteFile,
+-}
+-
+-export default storageService

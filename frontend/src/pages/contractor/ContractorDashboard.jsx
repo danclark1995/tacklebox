@@ -223,7 +223,7 @@ export default function ContractorDashboard() {
     fontFamily: typography.fontFamily.sans,
     fontSize: typography.fontSize.sm,
     fontWeight: typography.fontWeight.medium,
-    color: '#ffffff',
+    color: colours.neutral[900],
     textDecoration: 'none',
   }
 
@@ -333,7 +333,7 @@ export default function ContractorDashboard() {
                   <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
                     {/* Left: title + meta */}
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: '15px', fontWeight: 600, color: '#ffffff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      <div style={{ fontSize: '15px', fontWeight: 600, color: colours.neutral[900], whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                         {task.title}
                       </div>
                       <div style={{ fontSize: '12px', color: colours.neutral[500], marginTop: '2px' }}>
@@ -346,8 +346,8 @@ export default function ContractorDashboard() {
                       {task.priority && (
                         <span style={{
                           fontSize: '11px',
-                          color: '#ffffff',
-                          backgroundColor: '#222',
+                          color: colours.neutral[900],
+                          backgroundColor: colours.neutral[200],
                           padding: '2px 8px',
                           borderRadius: '4px',
                           border: '1px solid #333',

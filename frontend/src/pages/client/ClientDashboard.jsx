@@ -4,7 +4,7 @@ import useAuth from '@/hooks/useAuth'
 import useToast from '@/hooks/useToast'
 import GlowCard from '@/components/ui/GlowCard'
 import Button from '@/components/ui/Button'
-import EmberLoader from '@/components/ui/EmberLoader'
+import Spinner from '@/components/ui/Spinner'
 import EmptyState from '@/components/ui/EmptyState'
 import TaskProgressTracker from '@/components/ui/TaskProgressTracker'
 import TaskList from '@/components/features/tasks/TaskList'
@@ -38,7 +38,7 @@ export default function ClientDashboard() {
   if (loading) {
     return (
       <div style={{ display: 'flex', justifyContent: 'center', padding: spacing[8] }}>
-        <EmberLoader size="lg" />
+        <Spinner size="lg" />
       </div>
     )
   }

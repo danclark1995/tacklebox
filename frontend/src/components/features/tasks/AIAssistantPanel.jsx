@@ -197,7 +197,7 @@ export default function AIAssistantPanel({ task, brandProfile, onAttachmentAdded
 
   const panelStyle = {
     marginBottom: spacing[4],
-    border: `1px solid ${isAiAssist ? '#333' : colours.neutral[200]}`,
+    border: `1px solid ${isAiAssist ? colours.neutral[300] : colours.neutral[200]}`,
     borderRadius: radii.xl,
     backgroundColor: colours.surface,
     overflow: 'hidden',
@@ -242,7 +242,7 @@ export default function AIAssistantPanel({ task, brandProfile, onAttachmentAdded
   const selectStyle = {
     width: '100%',
     padding: '10px 14px',
-    backgroundColor: '#111111',
+    backgroundColor: colours.neutral[100],
     border: '1px solid #2a2a2a',
     borderRadius: radii.md,
     color: colours.neutral[900],

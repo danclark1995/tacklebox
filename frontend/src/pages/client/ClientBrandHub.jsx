@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import useAuth from '@/hooks/useAuth'
 import useToast from '@/hooks/useToast'
 import PageHeader from '@/components/ui/PageHeader'
-import EmberLoader from '@/components/ui/EmberLoader'
+import Spinner from '@/components/ui/Spinner'
 import EmptyState from '@/components/ui/EmptyState'
 import BrandBooklet from '@/components/features/brand/BrandBooklet'
 import BrandGuideCard from '@/components/features/brand/BrandGuideCard'
@@ -52,7 +52,7 @@ export default function ClientBrandHub() {
   if (loading) {
     return (
       <div style={{ display: 'flex', justifyContent: 'center', padding: spacing[8] }}>
-        <EmberLoader size="lg" />
+        <Spinner size="lg" />
       </div>
     )
   }

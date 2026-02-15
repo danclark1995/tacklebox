@@ -180,9 +180,9 @@ export async function handleGamification(request, env, auth, path, method) {
     }
   }
 
-  // GET /gamification/leaderboard - get leaderboard
+  // GET /gamification/leaderboard - get leaderboard (admin + contractor only)
   if (path === '/gamification/leaderboard' && method === 'GET') {
-    const authCheck = requireAuth(auth)
+    const authCheck = requireRole(auth, 'admin', 'contractor')
     if (!authCheck.authorized) {
       return jsonResponse(
         { success: false, error: authCheck.error },
@@ -254,7 +254,10 @@ export async function handleGamification(request, env, auth, path, method) {
       )
     }
 
-    // Admin can view any, contractor own only
+    // Admin can view any, contractor own only, clients blocked
+    if (auth.user.role === 'client') {
+      return jsonResponse({ success: false, error: 'Access denied' }, 403)
+    }
     if (auth.user.role === 'contractor' && auth.user.id !== userId) {
       return jsonResponse(
         { success: false, error: 'You can only view your own badges' },
@@ -304,7 +307,10 @@ export async function handleGamification(request, env, auth, path, method) {
       )
     }
 
-    // Admin can view any, contractor own only
+    // Admin can view any, contractor own only, clients blocked
+    if (auth.user.role === 'client') {
+      return jsonResponse({ success: false, error: 'Access denied' }, 403)
+    }
     if (auth.user.role === 'contractor' && auth.user.id !== userId) {
       return jsonResponse(
         { success: false, error: 'You can only view your own XP profile' },

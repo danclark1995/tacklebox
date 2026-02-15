@@ -342,26 +342,15 @@ export default function AdminBrandProfileEdit() {
                       style={{ display: 'none' }}
                     />
                   </label>
-                  <button
+                  <Button
+                    variant="ghost"
+                    size="sm"
                     onClick={handleRemoveGuide}
                     disabled={saving}
-                    style={{
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: '6px',
-                      cursor: 'pointer',
-                      fontSize: typography.fontSize.sm,
-                      color: colours.neutral[500],
-                      padding: `${spacing[2]} ${spacing[3]}`,
-                      border: '1px solid #333',
-                      borderRadius: radii.md,
-                      background: 'none',
-                      transition: `color ${transitions.fast}`,
-                    }}
                   >
                     <X size={14} />
                     Remove
-                  </button>
+                  </Button>
                 </div>
               </div>
             ) : (

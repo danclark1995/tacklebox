@@ -82,16 +82,16 @@ export default function PromptTips({ contentType }) {
       </span>
       {open && (
         <div ref={ref} style={{ ...popoverStyle, top: pos.top, left: pos.left }}>
-          <div style={{ fontSize: '13px', fontWeight: 600, color: '#ffffff', marginBottom: '10px' }}>Tips</div>
+          <div style={{ fontSize: '13px', fontWeight: 600, color: colours.neutral[900], marginBottom: '10px' }}>Tips</div>
           {data.tips.map((tip, i) => (
-            <div key={i} style={{ display: 'flex', gap: '8px', marginBottom: '8px', fontSize: '12px', color: '#ccc' }}>
+            <div key={i} style={{ display: 'flex', gap: '8px', marginBottom: '8px', fontSize: '12px', color: colours.neutral[600] }}>
               <Lightbulb size={13} color="#666" style={{ flexShrink: 0, marginTop: '1px' }} />
               <span>{tip}</span>
             </div>
           ))}
           <div style={exampleBlockStyle}>
-            <div style={{ fontSize: '11px', color: '#888', marginBottom: '4px' }}>Example</div>
-            <div style={{ fontSize: '12px', color: '#aaa' }}>{data.example}</div>
+            <div style={{ fontSize: '11px', color: colours.neutral[500], marginBottom: '4px' }}>Example</div>
+            <div style={{ fontSize: '12px', color: colours.neutral[500] }}>{data.example}</div>
           </div>
           {/* Arrow pointing down */}
           <div style={arrowStyle} />
@@ -105,7 +105,7 @@ const popoverStyle = {
   position: 'fixed',
   transform: 'translateY(-100%)',
   zIndex: 100,
-  backgroundColor: '#1a1a1a',
+  backgroundColor: colours.neutral[200],
   border: '1px solid #2a2a2a',
   borderRadius: '8px',
   padding: '16px',
@@ -130,7 +130,7 @@ const arrowStyle = {
 const exampleBlockStyle = {
   marginTop: '12px',
   padding: '10px',
-  backgroundColor: '#111',
+  backgroundColor: colours.neutral[100],
   borderRadius: '6px',
   border: '1px solid #222',
 }
