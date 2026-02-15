@@ -110,7 +110,7 @@ export async function handleTemplates(request, env, auth, path, method) {
 
     try {
       const body = await request.json()
-      const { name, category_id, default_title, default_description, default_priority, checklist } = body
+      const { name, category_id, default_title, default_description, default_priority, checklist, estimated_hours, hourly_rate, min_level } = body
 
       if (!name || !category_id) {
         return jsonResponse(
@@ -145,8 +145,8 @@ export async function handleTemplates(request, env, auth, path, method) {
       const checklistJson = checklist ? JSON.stringify(checklist) : null
 
       await env.DB.prepare(`
-        INSERT INTO task_templates (id, name, category_id, default_title, default_description, default_priority, checklist, created_by, is_active)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1)
+        INSERT INTO task_templates (id, name, category_id, default_title, default_description, default_priority, checklist, created_by, is_active, estimated_hours, hourly_rate, min_level)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?)
       `).bind(
         templateId,
         name,
@@ -155,7 +155,10 @@ export async function handleTemplates(request, env, auth, path, method) {
         default_description || null,
         default_priority || null,
         checklistJson,
-        auth.user.id
+        auth.user.id,
+        estimated_hours ? Number(estimated_hours) : null,
+        hourly_rate ? Number(hourly_rate) : null,
+        min_level ? Number(min_level) : 1
       ).run()
 
       const newTemplate = await env.DB.prepare(`
@@ -245,6 +248,18 @@ export async function handleTemplates(request, env, auth, path, method) {
       if (body.is_active !== undefined) {
         updates.push('is_active = ?')
         bindings.push(body.is_active ? 1 : 0)
+      }
+      if (body.estimated_hours !== undefined) {
+        updates.push('estimated_hours = ?')
+        bindings.push(body.estimated_hours ? Number(body.estimated_hours) : null)
+      }
+      if (body.hourly_rate !== undefined) {
+        updates.push('hourly_rate = ?')
+        bindings.push(body.hourly_rate ? Number(body.hourly_rate) : null)
+      }
+      if (body.min_level !== undefined) {
+        updates.push('min_level = ?')
+        bindings.push(body.min_level ? Number(body.min_level) : 1)
       }
 
       if (updates.length === 0) {

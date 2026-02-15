@@ -486,3 +486,41 @@ Auth: admin. **Request:** `{ name?, description?, url?, icon_name?, display_orde
 
 ### DELETE /tools/:id
 Auth: admin.
+
+---
+
+## Credits
+
+### GET /credits/me
+Auth: client. Returns credit balance (total, available, held) and recent transactions (last 50).
+
+### GET /credits/packs
+Auth: any. Returns active Keeper Fish credit packs ordered by tier.
+
+### POST /credits/purchase
+Auth: client. **Request:** `{ pack_id, stripe_payment_id? }`. Purchases a credit pack and adds credits to balance. Returns `{ credits_added, new_balance, pack }`. Stripe-ready (payment verification TODO).
+
+### POST /credits/grant
+Auth: admin. **Request:** `{ user_id, amount, description? }`. Grants credits to a client. Sends notification.
+
+### GET /credits/:userId
+Auth: admin. Returns client credit balance and full transaction history (last 100).
+
+---
+
+## Notifications
+
+### GET /notifications
+Auth: any. **Query:** `limit` (default 50, max 100), `unread=true`. Returns `{ notifications, unread_count }`.
+
+### PATCH /notifications/read-all
+Auth: any. Marks all notifications as read.
+
+### PATCH /notifications/:id/read
+Auth: any. Marks single notification as read.
+
+### DELETE /notifications/:id
+Auth: any. Deletes a notification.
+
+**Notification types:** task_assigned, task_status, comment, bonus, deadline, credits_low, system.
+**Auto-triggers:** task status changes, new comments, @mentions, bonus awards, credit grants.

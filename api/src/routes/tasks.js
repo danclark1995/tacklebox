@@ -9,7 +9,8 @@
 
 import { jsonResponse } from '../index.js'
 import { requireAuth, requireRole } from '../middleware/auth.js'
-import { notifyTaskStatusChange } from '../services/notifications.js'
+import { createNotification } from './notifications.js'
+import { holdCreditsForTask, finalizeCredits, releaseCredits } from './credits.js'
 
 // Task state machine transitions
 const TRANSITIONS = {
@@ -254,12 +255,12 @@ export async function handleTasks(request, env, auth, path, method) {
       `).bind(taskId).first()
       // Non-blocking notification
       try {
-        const recipients = []
         if (task.client_id) {
-          const client = await env.DB.prepare('SELECT id, email, display_name FROM users WHERE id = ?').bind(task.client_id).first()
-          if (client) recipients.push(client)
+          await createNotification(env.DB, task.client_id, 'task_status',
+            'Task Returned to Campfire',
+            `"${task.title}" has been returned to the campfire.`,
+            `/client/tasks/${taskId}`)
         }
-        if (recipients.length > 0) notifyTaskStatusChange(updated, 'submitted', recipients)
       } catch (e) { /* notification errors are non-critical */ }
       return jsonResponse({ success: true, data: updated })
     } catch (err) {
@@ -525,14 +526,28 @@ export async function handleTasks(request, env, auth, path, method) {
       const hRate = hourly_rate ? Number(hourly_rate) : null
       const totalPayout = (estHours && hRate) ? Math.round(estHours * hRate * 100) / 100 : null
       const minLvl = min_level ? Number(min_level) : 1
+      const creditCost = totalPayout // 1 credit = $1
+
+      // Hold credits from client balance (required for clients, optional for admin)
+      if (creditCost && creditCost > 0) {
+        const holdResult = await holdCreditsForTask(env.DB, finalClientId, creditCost, taskId)
+        if (!holdResult.success) {
+          return jsonResponse({
+            success: false,
+            error: holdResult.error,
+            available_credits: holdResult.available,
+            needed_credits: holdResult.needed,
+          }, 402)
+        }
+      }
 
       await env.DB.prepare(`
         INSERT INTO tasks (
           id, title, description, status, priority, category_id, project_id,
           client_id, created_by, template_id, deadline, ai_metadata, campfire_eligible, complexity_level,
-          estimated_hours, hourly_rate, total_payout, min_level, scheduled_start, scheduled_end
+          estimated_hours, hourly_rate, total_payout, min_level, scheduled_start, scheduled_end, credit_cost
         )
-        VALUES (?, ?, ?, 'submitted', ?, ?, ?, ?, ?, ?, ?, NULL, ?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, 'submitted', ?, ?, ?, ?, ?, ?, ?, NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `).bind(
         taskId,
         title,
@@ -551,7 +566,8 @@ export async function handleTasks(request, env, auth, path, method) {
         totalPayout,
         minLvl,
         scheduled_start || null,
-        scheduled_end || null
+        scheduled_end || null,
+        creditCost
       ).run()
 
       // Create initial history entry
@@ -899,26 +915,50 @@ export async function handleTasks(request, env, auth, path, method) {
 
       // Credit earnings when task is closed
       if (newStatus === 'closed' && task.contractor_id) {
-        const fullTask = await env.DB.prepare('SELECT total_payout FROM tasks WHERE id = ?').bind(taskId).first()
+        const fullTask = await env.DB.prepare('SELECT total_payout, min_level, credit_cost, client_id FROM tasks WHERE id = ?').bind(taskId).first()
         const payout = fullTask?.total_payout || 0
         if (payout > 0) {
+          // Calculate kickback for Level 7+ tasks (40% to campsite)
+          const taskLevel = fullTask?.min_level || 1
+          let campsiteShare = 0
+          let camperShare = payout
+          if (taskLevel >= 7) {
+            campsiteShare = Math.round(payout * 0.4 * 100) / 100
+            camperShare = Math.round(payout * 0.6 * 100) / 100
+          }
+
           await env.DB.prepare(`
-            INSERT INTO earnings (id, user_id, task_id, type, amount, description)
-            VALUES (?, ?, ?, 'task_completion', ?, ?)
+            INSERT INTO earnings (id, user_id, task_id, type, amount, description, campsite_share, camper_share)
+            VALUES (?, ?, ?, 'task_completion', ?, ?, ?, ?)
           `).bind(
             crypto.randomUUID(),
             task.contractor_id,
             taskId,
-            payout,
-            `Task completed: ${task.title}`
+            camperShare,
+            `Task completed: ${task.title}`,
+            campsiteShare,
+            camperShare
           ).run()
 
-          // Update cached balance
+          // Update cached balance (camper gets their share)
           await env.DB.prepare(`
             UPDATE contractor_xp 
             SET total_earnings = total_earnings + ?, available_balance = available_balance + ?, updated_at = datetime('now')
             WHERE user_id = ?
-          `).bind(payout, payout, task.contractor_id).run()
+          `).bind(camperShare, camperShare, task.contractor_id).run()
+
+          // Finalize client credits (move from held to deducted)
+          if (fullTask.credit_cost && fullTask.client_id) {
+            await finalizeCredits(env.DB, fullTask.client_id, fullTask.credit_cost, taskId)
+          }
+        }
+      }
+
+      // Release credits when task is cancelled
+      if (newStatus === 'cancelled') {
+        const fullTask = await env.DB.prepare('SELECT credit_cost, client_id FROM tasks WHERE id = ?').bind(taskId).first()
+        if (fullTask?.credit_cost && fullTask.client_id) {
+          await releaseCredits(env.DB, fullTask.client_id, fullTask.credit_cost, taskId)
         }
       }
 
@@ -935,6 +975,42 @@ export async function handleTasks(request, env, auth, path, method) {
         LEFT JOIN projects p ON t.project_id = p.id
         WHERE t.id = ?
       `).bind(taskId).first()
+
+      // Non-blocking notifications
+      try {
+        const statusLabels = {
+          assigned: 'assigned to you',
+          in_progress: 'started',
+          review: 'submitted for review',
+          revision: 'needs revision',
+          approved: 'approved',
+          closed: 'completed',
+          cancelled: 'cancelled',
+        }
+        const label = statusLabels[newStatus] || newStatus
+
+        // Notify contractor on assignment
+        if (newStatus === 'assigned' && contractor_id) {
+          await createNotification(env.DB, contractor_id, 'task_assigned',
+            'New Task Assigned',
+            `"${task.title}" has been assigned to you.`,
+            `/camper/tasks/${taskId}`)
+        }
+        // Notify contractor on other status changes from client/admin
+        if (task.contractor_id && task.contractor_id !== auth.user.id && newStatus !== 'assigned') {
+          await createNotification(env.DB, task.contractor_id, 'task_status',
+            'Task Updated',
+            `"${task.title}" has been ${label}.`,
+            `/camper/tasks/${taskId}`)
+        }
+        // Notify client on status changes from contractor/admin
+        if (task.client_id && task.client_id !== auth.user.id) {
+          await createNotification(env.DB, task.client_id, 'task_status',
+            'Task Updated',
+            `"${task.title}" has been ${label}.`,
+            `/client/tasks/${taskId}`)
+        }
+      } catch (e) { /* notification errors are non-critical */ }
 
       return jsonResponse({
         success: true,

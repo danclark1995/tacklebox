@@ -88,6 +88,9 @@ export default function TaskForm({
         title: template.default_title || prev.title,
         description: template.default_description || prev.description,
         priority: template.default_priority || prev.priority,
+        estimated_hours: template.estimated_hours ? String(template.estimated_hours) : prev.estimated_hours,
+        hourly_rate: template.hourly_rate ? String(template.hourly_rate) : prev.hourly_rate,
+        min_level: template.min_level ? String(template.min_level) : prev.min_level,
       }))
     } else {
       setFormData(prev => ({ ...prev, template_id: '' }))
@@ -422,6 +425,26 @@ export default function TaskForm({
             />
           </div>
         </>
+      )}
+
+      {/* Credit cost display (for clients) */}
+      {!isAdmin && formData.estimated_hours && formData.hourly_rate && (
+        <div style={{
+          padding: spacing[4],
+          backgroundColor: colours.brand.primary + '08',
+          border: `1px solid ${colours.brand.primary}25`,
+          borderRadius: '8px',
+        }}>
+          <div style={{ fontSize: '14px', fontWeight: 500, color: colours.neutral[700], marginBottom: spacing[1] }}>
+            Credit Cost
+          </div>
+          <div style={{ fontSize: '24px', fontWeight: 700, color: colours.brand.primary }}>
+            {Math.round(Number(formData.estimated_hours) * Number(formData.hourly_rate)).toLocaleString()} credits
+          </div>
+          <div style={{ fontSize: '12px', color: colours.neutral[500], marginTop: spacing[1] }}>
+            {formData.estimated_hours}hrs × ${formData.hourly_rate}/hr — deducted from your balance at submission
+          </div>
+        </div>
       )}
 
       {/* Attachments */}

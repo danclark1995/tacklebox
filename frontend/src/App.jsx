@@ -12,6 +12,7 @@ import ClientTaskNew from '@/pages/client/ClientTaskNew'
 import ClientTaskDetail from '@/pages/client/ClientTaskDetail'
 import ClientBrandHub from '@/pages/client/ClientBrandHub'
 import ClientProfile from '@/pages/client/ClientProfile'
+import ClientCredits from '@/pages/client/ClientCredits'
 
 // Camper (contractor) pages
 import ContractorDashboard from '@/pages/contractor/ContractorDashboard'
@@ -117,6 +118,7 @@ function App() {
               <Route path="/client/tasks/new" element={<ClientTaskNew />} />
               <Route path="/client/tasks/:id" element={<ClientTaskDetail />} />
               <Route path="/client/brand-hub" element={<ClientBrandHub />} />
+              <Route path="/client/credits" element={<ClientCredits />} />
               <Route path="/client/profile" element={<ClientProfile />} />
             </Route>
 

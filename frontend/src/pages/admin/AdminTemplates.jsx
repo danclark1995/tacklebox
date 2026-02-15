@@ -11,9 +11,7 @@ import EmberLoader from '@/components/ui/EmberLoader'
 import DataTable from '@/components/ui/DataTable'
 import Badge from '@/components/ui/Badge'
 import ConfirmAction from '@/components/ui/ConfirmAction'
-import { apiEndpoint } from '@/config/env'
 import { apiFetch } from '@/services/apiFetch'
-import { getAuthHeaders } from '@/services/auth'
 import { colours, spacing, typography, radii, transitions } from '@/config/tokens'
 
 const PRIORITY_OPTIONS = [
@@ -37,6 +35,9 @@ const INITIAL_FORM = {
   default_description: '',
   default_priority: 'medium',
   checklist: [],
+  estimated_hours: '',
+  hourly_rate: '',
+  min_level: '1',
 }
 
 export default function AdminTemplates() {
@@ -114,6 +115,9 @@ export default function AdminTemplates() {
       default_description: template.default_description || '',
       default_priority: template.default_priority || 'medium',
       checklist: Array.isArray(checklist) ? checklist : [],
+      estimated_hours: template.estimated_hours != null ? String(template.estimated_hours) : '',
+      hourly_rate: template.hourly_rate != null ? String(template.hourly_rate) : '',
+      min_level: template.min_level != null ? String(template.min_level) : '1',
     })
     setNewChecklistItem('')
     setShowModal(true)
@@ -131,9 +135,9 @@ export default function AdminTemplates() {
 
     setSubmitting(true)
     try {
-      const url = editingTemplate
-        ? apiEndpoint(`/templates/${editingTemplate.id}`)
-        : apiEndpoint('/templates')
+      const path = editingTemplate
+        ? `/templates/${editingTemplate.id}`
+        : '/templates'
 
       const method = editingTemplate ? 'PUT' : 'POST'
 
@@ -144,18 +148,15 @@ export default function AdminTemplates() {
         default_description: formData.default_description || null,
         default_priority: formData.default_priority || null,
         checklist: formData.checklist.length > 0 ? formData.checklist : null,
+        estimated_hours: formData.estimated_hours ? Number(formData.estimated_hours) : null,
+        hourly_rate: formData.hourly_rate ? Number(formData.hourly_rate) : null,
+        min_level: formData.min_level ? Number(formData.min_level) : 1,
       }
 
-      const res = await fetch(url, {
+      const json = await apiFetch(path, {
         method,
-        headers: {
-          ...getAuthHeaders(),
-          'Content-Type': 'application/json',
-        },
         body: JSON.stringify(payload),
       })
-
-      const json = await res.json()
 
       if (json.success) {
         addToast(
@@ -292,6 +293,20 @@ export default function AdminTemplates() {
           {row.is_active ? 'Active' : 'Inactive'}
         </Badge>
       ),
+    },
+    {
+      key: 'credit_cost',
+      label: 'Credits',
+      render: (_, row) => {
+        if (row.estimated_hours && row.hourly_rate) {
+          return (
+            <span style={{ fontWeight: typography.fontWeight.medium }}>
+              {Math.round(row.estimated_hours * row.hourly_rate).toLocaleString()}
+            </span>
+          )
+        }
+        return '-'
+      },
     },
     {
       key: 'actions',
@@ -475,6 +490,52 @@ export default function AdminTemplates() {
                 options={PRIORITY_OPTIONS}
               />
             </div>
+
+            {/* Pricing & Level */}
+            <div style={{ ...fieldStyle, display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: spacing[3] }}>
+              <Input
+                label="Est. Hours"
+                type="number"
+                step="0.5"
+                min="0.5"
+                value={formData.estimated_hours}
+                onChange={(e) => setFormData({ ...formData, estimated_hours: e.target.value })}
+                placeholder="e.g. 6"
+              />
+              <Input
+                label="Hourly Rate ($)"
+                type="number"
+                step="1"
+                min="0"
+                value={formData.hourly_rate}
+                onChange={(e) => setFormData({ ...formData, hourly_rate: e.target.value })}
+                placeholder="e.g. 24"
+              />
+              <Select
+                label="Min Level"
+                value={formData.min_level}
+                onChange={(e) => setFormData({ ...formData, min_level: e.target.value })}
+                options={[
+                  { value: '1', label: 'L1 — Volunteer' },
+                  { value: '2', label: 'L2 — Apprentice' },
+                  { value: '3', label: 'L3 — Junior' },
+                  { value: '4', label: 'L4 — Intermediate' },
+                  { value: '5', label: 'L5 — Senior' },
+                  { value: '6', label: 'L6 — Specialist' },
+                  { value: '7', label: 'L7 — Camp Leader' },
+                  { value: '8', label: 'L8 — Guide' },
+                  { value: '9', label: 'L9 — Trailblazer' },
+                  { value: '10', label: 'L10 — Pioneer' },
+                  { value: '11', label: 'L11 — Legend' },
+                  { value: '12', label: 'L12 — Legacy' },
+                ]}
+              />
+            </div>
+            {formData.estimated_hours && formData.hourly_rate && (
+              <div style={{ ...fieldStyle, padding: `${spacing[2]} ${spacing[3]}`, backgroundColor: colours.neutral[50], borderRadius: '6px', fontSize: typography.fontSize.sm }}>
+                Credit cost: <strong>{Math.round(Number(formData.estimated_hours) * Number(formData.hourly_rate)).toLocaleString()} credits</strong> ({formData.estimated_hours}hrs × ${formData.hourly_rate}/hr)
+              </div>
+            )}
 
             {/* Checklist items */}
             <div style={fieldStyle}>

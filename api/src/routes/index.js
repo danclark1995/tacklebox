@@ -27,6 +27,8 @@ import { handleTools } from './tools.js'
 import { handleGuidance } from './guidance.js'
 import { handleEarnings } from './earnings.js'
 import { handleSchedule } from './schedule.js'
+import { handleCredits } from './credits.js'
+import { handleNotifications } from './notifications.js'
 
 export async function handleApiRequest(request, env, ctx) {
   const url = new URL(request.url)
@@ -80,6 +82,8 @@ export async function handleApiRequest(request, env, ctx) {
   if (path.startsWith('/guidance')) return handleGuidance(request, env, auth, path, method)
   if (path.startsWith('/earnings')) return handleEarnings(request, env, auth, path, method)
   if (path.startsWith('/schedule')) return handleSchedule(request, env, auth, path, method)
+  if (path.startsWith('/credits')) return handleCredits(request, env, auth, path, method)
+  if (path.startsWith('/notifications')) return handleNotifications(request, env, auth, path, method)
 
   return jsonResponse({ success: false, error: 'Route not found' }, 404)
 }

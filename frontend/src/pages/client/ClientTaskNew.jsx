@@ -53,7 +53,11 @@ export default function ClientTaskNew() {
         addToast(json.message || 'Failed to create task', 'error')
       }
     } catch (err) {
-      addToast(err.message, 'error')
+      if (err.message?.includes('Insufficient credits')) {
+        addToast('Not enough credits — visit the Credits page to purchase more.', 'error')
+      } else {
+        addToast(err.message, 'error')
+      }
     } finally {
       setSubmitting(false)
     }

@@ -6,7 +6,7 @@
 
 import { jsonResponse } from '../index.js'
 import { requireAuth } from '../middleware/auth.js'
-import { notifyNewComment, notifyMention } from '../services/notifications.js'
+import { createNotification } from './notifications.js'
 
 export async function handleComments(request, env, auth, path, method) {
   // GET /comments?task_id= - list comments for a task
@@ -178,30 +178,35 @@ export async function handleComments(request, env, auth, path, method) {
       // Notify other task participants (non-blocking)
       try {
         const participants = await env.DB.prepare(`
-          SELECT DISTINCT u.id, u.email, u.display_name
+          SELECT DISTINCT u.id, u.role
           FROM users u
           WHERE (u.id IN (?, ?) OR u.role = 'admin') AND u.id != ? AND u.is_active = 1
         `).bind(task.client_id, task.contractor_id || '', auth.user.id).all()
-        const recipients = (participants.results || []).filter(p => p.email)
-        if (recipients.length > 0) {
-          notifyNewComment(task, newComment, recipients)
+
+        for (const p of (participants.results || [])) {
+          const linkPrefix = p.role === 'client' ? '/client' : p.role === 'contractor' ? '/camper' : '/admin'
+          await createNotification(env.DB, p.id, 'comment',
+            'New Comment',
+            `${auth.user.display_name || 'Someone'} commented on "${task.title}".`,
+            `${linkPrefix}/tasks/${task_id}`)
         }
       } catch (e) { /* notification errors are non-critical */ }
 
       // Parse @mentions and send notifications
-      // TODO: Send real email/push notification for @mentions when email service is configured
       try {
         const mentions = content.match(/@([A-Za-z]+(?:\s[A-Za-z]+)*)/g)
         if (mentions && mentions.length > 0) {
           const mentionNames = mentions.map(m => m.substring(1))
           const placeholders = mentionNames.map(() => '?').join(',')
           const mentionedUsers = await env.DB.prepare(
-            `SELECT id, email, display_name FROM users WHERE display_name IN (${placeholders})`
+            `SELECT id, role, display_name FROM users WHERE display_name IN (${placeholders})`
           ).bind(...mentionNames).all()
-          if (mentionedUsers.results?.length > 0) {
-            for (const mentioned of mentionedUsers.results) {
-              notifyMention(task, mentioned, auth.user, content)
-            }
+          for (const mentioned of (mentionedUsers.results || [])) {
+            const linkPrefix = mentioned.role === 'client' ? '/client' : mentioned.role === 'contractor' ? '/camper' : '/admin'
+            await createNotification(env.DB, mentioned.id, 'comment',
+              'You were mentioned',
+              `${auth.user.display_name || 'Someone'} mentioned you in a comment on "${task.title}".`,
+              `${linkPrefix}/tasks/${task_id}`)
           }
         }
       } catch (e) { /* mention notification errors are non-critical */ }

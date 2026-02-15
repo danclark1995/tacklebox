@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { NavLink, useNavigate } from 'react-router-dom'
-import { Home, CheckSquare, Users, Palette, Wrench, Settings, BookOpen, User, Compass, Menu, Flame, DollarSign, Calendar } from 'lucide-react'
+import { Home, CheckSquare, Users, Palette, Wrench, Settings, BookOpen, User, Compass, Menu, Flame, DollarSign, Calendar, CreditCard } from 'lucide-react'
 import useAuth from '@/hooks/useAuth'
 import Avatar from '@/components/ui/Avatar'
 import Button from '@/components/ui/Button'
@@ -15,6 +15,7 @@ const navItemsByRole = {
   [ROLES.CLIENT]: [
     { path: '/client', label: 'Home', icon: <Home size={ICON_SIZE} /> },
     { path: '/client/tasks', label: 'Tasks', icon: <CheckSquare size={ICON_SIZE} /> },
+    { path: '/client/credits', label: 'Credits', icon: <CreditCard size={ICON_SIZE} /> },
     { path: '/client/brand-hub', label: 'Brand Hub', icon: <BookOpen size={ICON_SIZE} /> },
     { path: '/client/profile', label: 'Profile', icon: <User size={ICON_SIZE} /> },
   ],

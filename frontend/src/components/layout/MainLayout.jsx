@@ -5,6 +5,7 @@ import SearchBar from '@/components/ui/SearchBar'
 import Avatar from '@/components/ui/Avatar'
 import SearchDropdown from '@/components/features/search/SearchDropdown'
 import useAuth from '@/hooks/useAuth'
+import NotificationBell from '@/components/features/notifications/NotificationBell'
 import { colours, spacing, typography, shadows } from '@/config/tokens'
 import { SEARCH_DEBOUNCE_MS } from '@/config/constants'
 import { apiFetch } from '@/services/apiFetch'
@@ -177,6 +178,7 @@ export default function MainLayout({ children }) {
             />
           </div>
           <div style={userInfoStyle}>
+            <NotificationBell />
             <span style={userNameStyle}>{user?.display_name}</span>
             <Avatar name={user?.display_name} size="sm" />
           </div>

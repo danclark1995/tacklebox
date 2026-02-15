@@ -485,6 +485,24 @@ export default function AdminAnalytics() {
         </div>
       )}
 
+      {/* Kickback Breakdown (Director-only view) */}
+      {earningsAnalytics?.earnings_summary?.total_campsite_share > 0 && (
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: spacing[4], marginTop: spacing[4] }}>
+          <StatTile
+            icon={DollarSign}
+            label="Campsite Share (40%)"
+            value={`$${fmtCount(earningsAnalytics.earnings_summary.total_campsite_share || 0)}`}
+            sublabel="from Level 7+ tasks"
+          />
+          <StatTile
+            icon={DollarSign}
+            label="Camper Share (60%)"
+            value={`$${fmtCount(earningsAnalytics.earnings_summary.total_camper_share || 0)}`}
+            sublabel="paid to camp leaders"
+          />
+        </div>
+      )}
+
       {/* Reward Panel */}
       <GlowCard style={{ marginTop: spacing[6] }}>
         <h3 style={{ fontSize: typography.fontSize.lg, fontWeight: typography.fontWeight.semibold, color: colours.neutral[900], marginBottom: spacing[4] }}>

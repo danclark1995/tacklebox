@@ -12,6 +12,9 @@ Cloudflare D1 (SQLite). Database name: `tacklebox-db`.
 | `0004_campfire.sql` | Adds campfire_eligible column to tasks (duplicate-safe). |
 | `0005_communication.sql` | support_messages table. |
 | `0006_toolbox.sql` | tool_links table with 10 seed entries. |
+| `0007_guidance.sql` | guidance_sections table for editable guidance page content. |
+| `0008_earnings_system.sql` | earnings, cashout_requests tables. Adds total_earnings, available_balance to contractor_xp. Task schedule columns (estimated_hours, hourly_rate, total_payout, min_level, scheduled_start, scheduled_end) on tasks. |
+| `0009_credits_notifications.sql` | credit_packs, client_credits, credit_transactions, notifications tables. Adds estimated_hours/hourly_rate/min_level to task_templates. Adds campsite_share/camper_share to earnings. Adds credit_cost to tasks. Seeds 12 Keeper Fish credit packs. |
 | `seed_test_users.sql` | 3 test users (admin, client, contractor), 1 project, 1 task, 1 XP record. |
 | `seed_rstudios_brand.sql` | Sample brand profile data. |
 
@@ -364,3 +367,58 @@ Cloudflare D1 (SQLite). Database name: `tacklebox-db`.
 | created_at | TEXT | | datetime('now') |
 
 **Seed data:** 10 tool links (Adobe Creative Suite, Canva, Figma, Notion, Google Drive, Slack, Loom, Unsplash, Coolors, Type Scale)
+
+### credit_packs
+| Column | Type | Constraints | Default |
+|--------|------|-------------|---------|
+| id | TEXT | PRIMARY KEY | |
+| name | TEXT | NOT NULL | |
+| tier | INTEGER | NOT NULL | |
+| credits | INTEGER | NOT NULL | |
+| price | REAL | NOT NULL | |
+| hours_per_week | REAL | | |
+| savings_percent | REAL | | 0 |
+| description | TEXT | | |
+| is_active | INTEGER | NOT NULL | 1 |
+| created_at | TEXT | NOT NULL | datetime('now') |
+
+**Seed data:** 12 Keeper Fish credit packs (Minnow through Whale, tiers 1-12, credits 4,800-230,400, prices $4,000-$132,000, savings 17-43%)
+
+### client_credits
+| Column | Type | Constraints | Default |
+|--------|------|-------------|---------|
+| user_id | TEXT | PRIMARY KEY, FK users(id) | |
+| total_credits | REAL | NOT NULL | 0 |
+| available_credits | REAL | NOT NULL | 0 |
+| held_credits | REAL | NOT NULL | 0 |
+| updated_at | TEXT | NOT NULL | datetime('now') |
+
+### credit_transactions
+| Column | Type | Constraints | Default |
+|--------|------|-------------|---------|
+| id | TEXT | PRIMARY KEY | |
+| user_id | TEXT | NOT NULL, FK users(id) | |
+| type | TEXT | NOT NULL, CHECK ('purchase','admin_grant','task_hold','task_release','task_deduct','refund') | |
+| amount | REAL | NOT NULL | |
+| balance_after | REAL | NOT NULL | |
+| task_id | TEXT | FK tasks(id) | |
+| pack_id | TEXT | FK credit_packs(id) | |
+| description | TEXT | | |
+| created_by | TEXT | FK users(id) | |
+| created_at | TEXT | NOT NULL | datetime('now') |
+
+**Indexes:** idx_credit_transactions_user, idx_credit_transactions_type, idx_credit_transactions_task
+
+### notifications
+| Column | Type | Constraints | Default |
+|--------|------|-------------|---------|
+| id | TEXT | PRIMARY KEY | |
+| user_id | TEXT | NOT NULL, FK users(id) | |
+| type | TEXT | NOT NULL, CHECK ('task_assigned','task_status','comment','bonus','deadline','credits_low','system') | |
+| title | TEXT | NOT NULL | |
+| message | TEXT | | |
+| link | TEXT | | |
+| is_read | INTEGER | NOT NULL | 0 |
+| created_at | TEXT | NOT NULL | datetime('now') |
+
+**Indexes:** idx_notifications_user, idx_notifications_user_read, idx_notifications_created

@@ -10,6 +10,7 @@
 
 import { jsonResponse } from '../index.js'
 import { requireAuth, requireRole } from '../middleware/auth.js'
+import { createNotification } from './notifications.js'
 
 export async function handleEarnings(request, env, auth, path, method) {
 
@@ -176,6 +177,15 @@ export async function handleEarnings(request, env, auth, path, method) {
           `).bind(newTotalXp, newLevel?.level || xpData.current_level, target_user_id).run()
         }
       }
+
+      // Notify camper of bonus
+      try {
+        const bonusLabel = type === 'bonus_cash' ? `$${cashAmount}` : `${xpAmt} XP`
+        await createNotification(env.DB, target_user_id, 'bonus',
+          'Bonus Awarded!',
+          `You received a ${bonusLabel} bonus${description ? ': ' + description : ''}.`,
+          '/camper/earnings')
+      } catch (e) { /* non-critical */ }
 
       return jsonResponse({
         success: true,
@@ -356,7 +366,9 @@ export async function handleEarnings(request, env, auth, path, method) {
           SUM(CASE WHEN type = 'task_completion' THEN amount ELSE 0 END) as task_earnings,
           SUM(CASE WHEN type = 'bonus_cash' THEN amount ELSE 0 END) as bonus_earnings,
           SUM(xp_amount) as total_bonus_xp,
-          COUNT(DISTINCT user_id) as unique_earners
+          COUNT(DISTINCT user_id) as unique_earners,
+          ROUND(SUM(COALESCE(campsite_share, 0)), 2) as total_campsite_share,
+          ROUND(SUM(COALESCE(camper_share, 0)), 2) as total_camper_share
         FROM earnings
       `).first()
 
