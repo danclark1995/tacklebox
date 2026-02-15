@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { Star } from 'lucide-react'
 import useAuth from '@/hooks/useAuth'
 import useToast from '@/hooks/useToast'
 import PageHeader from '@/components/ui/PageHeader'
@@ -104,7 +105,7 @@ export default function ContractorStats() {
           <div style={statLabelStyle}>Avg Quality Rating</div>
           <div style={statValueStyle}>
             {avgQuality > 0 ? avgQuality.toFixed(1) : '-'}
-            {avgQuality > 0 && <span style={starStyle}> {'\u2B50'}</span>}
+            {avgQuality > 0 && <Star size={16} style={{ marginLeft: '4px', display: 'inline', verticalAlign: 'middle' }} />}
           </div>
         </GlowCard>
 
@@ -192,10 +193,6 @@ const statValueStyle = {
 const statUnitStyle = {
   fontSize: typography.fontSize.xl,
   fontWeight: typography.fontWeight.semibold,
-}
-
-const starStyle = {
-  fontSize: typography.fontSize.xl,
 }
 
 const emptyTextStyle = {

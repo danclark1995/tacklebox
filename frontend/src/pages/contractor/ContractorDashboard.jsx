@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { Flame, Wrench, ChevronDown } from 'lucide-react'
 import useAuth from '@/hooks/useAuth'

@@ -1,0 +1,2475 @@
+diff --git a/api/src/migrations/0007_guidance.sql b/api/src/migrations/0007_guidance.sql
+new file mode 100644
+index 0000000..9530b29
+--- /dev/null
++++ b/api/src/migrations/0007_guidance.sql
+@@ -0,0 +1,20 @@
++-- Guidance content table for editable guidance sections
++CREATE TABLE IF NOT EXISTS guidance_sections (
++  id TEXT PRIMARY KEY,
++  section_key TEXT UNIQUE NOT NULL,
++  title TEXT NOT NULL,
++  content TEXT NOT NULL DEFAULT '{}',
++  display_order INTEGER DEFAULT 0,
++  updated_by TEXT,
++  updated_at TEXT DEFAULT (datetime('now')),
++  created_at TEXT DEFAULT (datetime('now'))
++);
++
++-- Seed with default guidance content
++INSERT OR IGNORE INTO guidance_sections (id, section_key, title, content, display_order) VALUES
++  ('gs-001', 'prompt_social', 'Social Media', '[{"tip":"Specify the platform","example":"\"Create an Instagram carousel post\" is better than \"Create a social media post\""},{"tip":"Include the goal","example":"\"Drive traffic to our new product launch page\" gives the AI clear intent"},{"tip":"Reference the brand voice","example":"\"Use a playful, conversational tone consistent with the brand profile\" keeps output on-brand"},{"tip":"Mention format constraints","example":"\"Keep caption under 150 characters with 3-5 relevant hashtags\""},{"tip":"Provide context on the audience","example":"\"Target: small business owners aged 25-40 who value sustainability\""}]', 1),
++  ('gs-002', 'prompt_documents', 'Documents', '[{"tip":"Define the document type clearly","example":"\"Write a one-page executive summary\" vs \"Write a document\""},{"tip":"Specify the reading level","example":"\"Write for a general audience with no technical jargon\""},{"tip":"Include structural requirements","example":"\"Use headers, bullet points, and a call-to-action at the end\""},{"tip":"State the key message upfront","example":"\"The main takeaway should be that our Q3 results exceeded projections by 15%\""}]', 2),
++  ('gs-003', 'prompt_presentations', 'Presentations', '[{"tip":"Define the slide count and flow","example":"\"Create a 10-slide pitch deck: problem, solution, market, traction, team, ask\""},{"tip":"Specify text density","example":"\"Keep each slide to 3-4 bullet points maximum, 6-8 words each\""},{"tip":"Include speaker notes guidance","example":"\"Add speaker notes with talking points for each slide\""},{"tip":"Reference visual style","example":"\"Minimalist design, use brand colours, one image per slide maximum\""}]', 3),
++  ('gs-004', 'prompt_ads', 'Ad Creatives', '[{"tip":"State the ad placement","example":"\"Facebook feed ad, 1080x1080\" is more useful than \"Create an ad\""},{"tip":"Include the value proposition","example":"\"Highlight our 30-day free trial and no credit card required\""},{"tip":"Define the CTA","example":"\"CTA button: Start Free Trial\" removes ambiguity"},{"tip":"Mention compliance needs","example":"\"Must include disclaimer text and comply with financial advertising rules\""},{"tip":"A/B testing variations","example":"\"Create two headline variations: one benefit-focused, one urgency-focused\""}]', 4),
++  ('gs-005', 'brand_checklist', 'Brand Voice Guidelines', '["Brand story and origin narrative","Brand archetypes (personality framework)","Core messaging pillars","Tone of voice guidelines","Visual identity guidelines","Target audience profiles","Competitor differentiation points"]', 5),
++  ('gs-006', 'quality_checklist', 'Quality Standards', '["Content aligns with the brand voice and tone","Key messaging pillars are represented","No factual errors or hallucinated claims","Appropriate length and format for the platform","Call-to-action is clear and compelling","Grammar and spelling are correct","Visual elements match brand guidelines","Content is original and not generic filler"]', 6);
+diff --git a/api/src/routes/brand-guides.js b/api/src/routes/brand-guides.js
+index 40fe7c9..c0b3878 100644
+--- a/api/src/routes/brand-guides.js
++++ b/api/src/routes/brand-guides.js
+@@ -17,40 +17,45 @@ export async function handleBrandGuides(request, env, auth, path, method) {
+     const clientId = url.searchParams.get('client_id')
+     const user = auth.user
+ 
+-    // Role-based filtering
+-    if (user.role === 'client') {
+-      const guides = await env.DB.prepare(
+-        'SELECT * FROM brand_guides WHERE client_id = ? ORDER BY created_at DESC'
+-      ).bind(user.id).all()
+-      return jsonResponse({ success: true, data: guides.results })
+-    }
++    try {
++      // Role-based filtering
++      if (user.role === 'client') {
++        const guides = await env.DB.prepare(
++          'SELECT * FROM brand_guides WHERE client_id = ? ORDER BY created_at DESC'
++        ).bind(user.id).all()
++        return jsonResponse({ success: true, data: guides.results })
++      }
+ 
+-    if (user.role === 'contractor') {
+-      // Contractor can see guides for clients whose tasks they're assigned to
+-      let query = `SELECT bg.* FROM brand_guides bg
+-        WHERE bg.client_id IN (SELECT DISTINCT client_id FROM tasks WHERE contractor_id = ?)`
+-      const params = [user.id]
++      if (user.role === 'contractor') {
++        // Contractor can see guides for clients whose tasks they're assigned to
++        let query = `SELECT bg.* FROM brand_guides bg
++          WHERE bg.client_id IN (SELECT DISTINCT client_id FROM tasks WHERE contractor_id = ?)`
++        const params = [user.id]
++        if (clientId) {
++          query += ' AND bg.client_id = ?'
++          params.push(clientId)
++        }
++        query += ' ORDER BY bg.created_at DESC'
++        const guides = await env.DB.prepare(query).bind(...params).all()
++        return jsonResponse({ success: true, data: guides.results })
++      }
++
++      // Admin sees all or filtered by client
++      let query = 'SELECT * FROM brand_guides'
++      const params = []
+       if (clientId) {
+-        query += ' AND bg.client_id = ?'
++        query += ' WHERE client_id = ?'
+         params.push(clientId)
+       }
+-      query += ' ORDER BY bg.created_at DESC'
+-      const guides = await env.DB.prepare(query).bind(...params).all()
++      query += ' ORDER BY created_at DESC'
++      const guides = params.length
++        ? await env.DB.prepare(query).bind(...params).all()
++        : await env.DB.prepare(query).all()
+       return jsonResponse({ success: true, data: guides.results })
++    } catch (err) {
++      console.error('List brand guides error:', err)
++      return jsonResponse({ success: false, error: 'Failed to fetch brand guides' }, 500)
+     }
+-
+-    // Admin sees all or filtered by client
+-    let query = 'SELECT * FROM brand_guides'
+-    const params = []
+-    if (clientId) {
+-      query += ' WHERE client_id = ?'
+-      params.push(clientId)
+-    }
+-    query += ' ORDER BY created_at DESC'
+-    const guides = params.length
+-      ? await env.DB.prepare(query).bind(...params).all()
+-      : await env.DB.prepare(query).all()
+-    return jsonResponse({ success: true, data: guides.results })
+   }
+ 
+   // POST /brand-guides — admin only, upload guide
+@@ -111,18 +116,24 @@ export async function handleBrandGuides(request, env, auth, path, method) {
+     if (!check.authorized) return jsonResponse({ success: false, error: check.error }, check.status)
+ 
+     const guideId = deleteMatch[1]
+-    const guide = await env.DB.prepare('SELECT * FROM brand_guides WHERE id = ?').bind(guideId).first()
+-    if (!guide) {
+-      return jsonResponse({ success: false, error: 'Brand guide not found' }, 404)
+-    }
+ 
+-    // Delete from R2
+-    await env.tacklebox_storage.delete(guide.file_path)
++    try {
++      const guide = await env.DB.prepare('SELECT * FROM brand_guides WHERE id = ?').bind(guideId).first()
++      if (!guide) {
++        return jsonResponse({ success: false, error: 'Brand guide not found' }, 404)
++      }
+ 
+-    // Delete DB record
+-    await env.DB.prepare('DELETE FROM brand_guides WHERE id = ?').bind(guideId).run()
++      // Delete from R2
++      await env.tacklebox_storage.delete(guide.file_path)
+ 
+-    return jsonResponse({ success: true, data: { deleted: true } })
++      // Delete DB record
++      await env.DB.prepare('DELETE FROM brand_guides WHERE id = ?').bind(guideId).run()
++
++      return jsonResponse({ success: true, data: { deleted: true } })
++    } catch (err) {
++      console.error('Delete brand guide error:', err)
++      return jsonResponse({ success: false, error: 'Failed to delete brand guide' }, 500)
++    }
+   }
+ 
+   return jsonResponse({ success: false, error: 'Route not found' }, 404)
+diff --git a/api/src/routes/comments.js b/api/src/routes/comments.js
+index d0a503f..121fd6e 100644
+--- a/api/src/routes/comments.js
++++ b/api/src/routes/comments.js
+@@ -180,8 +180,8 @@ export async function handleComments(request, env, auth, path, method) {
+         const participants = await env.DB.prepare(`
+           SELECT DISTINCT u.id, u.email, u.display_name
+           FROM users u
+-          WHERE u.id IN (?, ?, ?) AND u.id != ?
+-        `).bind(task.client_id, task.contractor_id || '', 'admin', auth.user.id).all()
++          WHERE (u.id IN (?, ?) OR u.role = 'admin') AND u.id != ? AND u.is_active = 1
++        `).bind(task.client_id, task.contractor_id || '', auth.user.id).all()
+         const recipients = (participants.results || []).filter(p => p.email)
+         if (recipients.length > 0) {
+           notifyNewComment(task, newComment, recipients)
+diff --git a/api/src/routes/guidance.js b/api/src/routes/guidance.js
+new file mode 100644
+index 0000000..4aad3a5
+--- /dev/null
++++ b/api/src/routes/guidance.js
+@@ -0,0 +1,118 @@
++/**
++ * Guidance Routes
++ * GET    /guidance          - list all guidance sections (any authenticated user)
++ * PUT    /guidance/:key     - update a guidance section (admin or Camp Leader level 7+)
++ */
++
++import { jsonResponse } from '../index.js'
++import { requireAuth, requireRole } from '../middleware/auth.js'
++
++async function canEditGuidance(auth, env) {
++  // Admin can always edit
++  if (auth.user.role === 'admin') return true
++
++  // Contractors at level 7+ (Camp Leader) can edit
++  if (auth.user.role === 'contractor') {
++    const xp = await env.DB.prepare(
++      'SELECT cx.total_xp, xl.level FROM contractor_xp cx JOIN xp_levels xl ON cx.total_xp >= xl.xp_required WHERE cx.contractor_id = ? ORDER BY xl.level DESC LIMIT 1'
++    ).bind(auth.user.id).first()
++
++    return xp && xp.level >= 7
++  }
++
++  return false
++}
++
++export async function handleGuidance(request, env, auth, path, method) {
++  // GET /guidance - list all sections
++  if (path === '/guidance' && method === 'GET') {
++    const authCheck = requireAuth(auth)
++    if (!authCheck.authorized) {
++      return jsonResponse({ success: false, error: authCheck.error }, authCheck.status)
++    }
++
++    try {
++      const result = await env.DB.prepare(
++        'SELECT * FROM guidance_sections ORDER BY display_order ASC'
++      ).all()
++
++      const sections = (result.results || []).map(s => ({
++        ...s,
++        content: (() => { try { return JSON.parse(s.content) } catch { return s.content } })(),
++      }))
++
++      return jsonResponse({ success: true, data: sections })
++    } catch (err) {
++      console.error('List guidance error:', err)
++      return jsonResponse({ success: false, error: 'Failed to fetch guidance' }, 500)
++    }
++  }
++
++  // PUT /guidance/:key - update a section
++  const updateMatch = path.match(/^\/guidance\/([^/]+)$/)
++  if (updateMatch && method === 'PUT') {
++    const sectionKey = decodeURIComponent(updateMatch[1])
++
++    const authCheck = requireAuth(auth)
++    if (!authCheck.authorized) {
++      return jsonResponse({ success: false, error: authCheck.error }, authCheck.status)
++    }
++
++    const allowed = await canEditGuidance(auth, env)
++    if (!allowed) {
++      return jsonResponse({ success: false, error: 'Only Admin or Camp Leader (Lv.7+) can edit guidance' }, 403)
++    }
++
++    try {
++      const existing = await env.DB.prepare(
++        'SELECT id FROM guidance_sections WHERE section_key = ?'
++      ).bind(sectionKey).first()
++
++      if (!existing) {
++        return jsonResponse({ success: false, error: 'Section not found' }, 404)
++      }
++
++      const body = await request.json()
++      const { title, content } = body
++
++      const updates = []
++      const values = []
++
++      if (title !== undefined) { updates.push('title = ?'); values.push(title) }
++      if (content !== undefined) {
++        updates.push('content = ?')
++        values.push(typeof content === 'string' ? content : JSON.stringify(content))
++      }
++
++      if (updates.length === 0) {
++        return jsonResponse({ success: false, error: 'No fields to update' }, 400)
++      }
++
++      updates.push('updated_by = ?')
++      values.push(auth.user.id)
++      updates.push("updated_at = datetime('now')")
++
++      values.push(sectionKey)
++      await env.DB.prepare(
++        `UPDATE guidance_sections SET ${updates.join(', ')} WHERE section_key = ?`
++      ).bind(...values).run()
++
++      const updated = await env.DB.prepare(
++        'SELECT * FROM guidance_sections WHERE section_key = ?'
++      ).bind(sectionKey).first()
++
++      return jsonResponse({
++        success: true,
++        data: {
++          ...updated,
++          content: (() => { try { return JSON.parse(updated.content) } catch { return updated.content } })(),
++        },
++      })
++    } catch (err) {
++      console.error('Update guidance error:', err)
++      return jsonResponse({ success: false, error: 'Failed to update guidance' }, 500)
++    }
++  }
++
++  return jsonResponse({ success: false, error: 'Route not found' }, 404)
++}
+diff --git a/api/src/routes/index.js b/api/src/routes/index.js
+index 7d0f16b..79997b9 100644
+--- a/api/src/routes/index.js
++++ b/api/src/routes/index.js
+@@ -24,6 +24,7 @@ import { handleAI } from './ai.js'
+ import { handleGenerate, handleGenerateContent } from './generate.js'
+ import { handleSupport } from './support.js'
+ import { handleTools } from './tools.js'
++import { handleGuidance } from './guidance.js'
+ 
+ export async function handleApiRequest(request, env, ctx) {
+   const url = new URL(request.url)
+@@ -74,6 +75,7 @@ export async function handleApiRequest(request, env, ctx) {
+   if (path.startsWith('/generate')) return handleGenerate(request, env, auth, path, method)
+   if (path.startsWith('/support')) return handleSupport(request, env, auth, path, method)
+   if (path.startsWith('/tools')) return handleTools(request, env, auth, path, method)
++  if (path.startsWith('/guidance')) return handleGuidance(request, env, auth, path, method)
+ 
+   return jsonResponse({ success: false, error: 'Route not found' }, 404)
+ }
+diff --git a/api/src/routes/tasks.js b/api/src/routes/tasks.js
+index 6d0e0a7..6fe61a3 100644
+--- a/api/src/routes/tasks.js
++++ b/api/src/routes/tasks.js
+@@ -875,9 +875,19 @@ export async function handleTasks(request, env, auth, path, method) {
+       await env.DB.prepare('DELETE FROM task_comments WHERE task_id = ?').bind(taskId).run()
+       await env.DB.prepare('DELETE FROM task_history WHERE task_id = ?').bind(taskId).run()
+       await env.DB.prepare('DELETE FROM time_entries WHERE task_id = ?').bind(taskId).run()
+-      await env.DB.prepare('DELETE FROM reviews WHERE task_id = ?').bind(taskId).run()
++      await env.DB.prepare('DELETE FROM task_reviews WHERE task_id = ?').bind(taskId).run()
++
++      // Clean up attachments from R2 and DB
++      const attachments = await env.DB.prepare('SELECT storage_key FROM task_attachments WHERE task_id = ?').bind(taskId).all()
++      for (const att of (attachments.results || [])) {
++        if (att.storage_key) {
++          try { await env.STORAGE.delete(att.storage_key) } catch {}
++        }
++      }
++      await env.DB.prepare('DELETE FROM task_attachments WHERE task_id = ?').bind(taskId).run()
++
+       await env.DB.prepare('DELETE FROM tasks WHERE id = ?').bind(taskId).run()
+-      return jsonResponse({ success: true })
++      return jsonResponse({ success: true, data: { deleted: true } })
+     } catch (err) {
+       console.error('Delete task error:', err)
+       return jsonResponse({ success: false, error: 'Failed to delete task' }, 500)
+diff --git a/frontend/src/components/features/brand/BrandProfileEditor.jsx b/frontend/src/components/features/brand/BrandProfileEditor.jsx
+index a1fa11a..cb1de22 100644
+--- a/frontend/src/components/features/brand/BrandProfileEditor.jsx
++++ b/frontend/src/components/features/brand/BrandProfileEditor.jsx
+@@ -160,7 +160,7 @@ export default function BrandProfileEditor({ profile, clientId, onSaveSection, o
+   const renderField = (label, field, placeholder, rows = 3) => (
+     <div style={{ marginBottom: spacing[4] }}>
+       <Label>{label}</Label>
+-      <Textarea value={form[field]} onChange={e => set(field, e.target.value)} placeholder={placeholder} rows={rows} disabled={saving} />
++      <Textarea value={form[field]} onChange={e => set(field, e.target.value)} placeholder={placeholder} rows={rows} disabled={saving} autoGrow />
+     </div>
+   )
+ 
+@@ -213,7 +213,7 @@ export default function BrandProfileEditor({ profile, clientId, onSaveSection, o
+         renderItem={(item, i) => (
+           <div style={dynamicRowStyle}>
+             <Input value={item.name} onChange={e => updateItem('metaphors', i, 'name', e.target.value)} placeholder="Metaphor name" disabled={saving} />
+-            <Textarea value={item.description} onChange={e => updateItem('metaphors', i, 'description', e.target.value)} placeholder="Description..." rows={2} disabled={saving} />
++            <Textarea value={item.description} onChange={e => updateItem('metaphors', i, 'description', e.target.value)} placeholder="Description..." rows={2} disabled={saving} autoGrow />
+           </div>
+         )}
+       />
+@@ -232,7 +232,7 @@ export default function BrandProfileEditor({ profile, clientId, onSaveSection, o
+           <div style={dynamicRowStyle}>
+             <Input value={item.name} onChange={e => updateItem('brand_values', i, 'name', e.target.value)} placeholder="Value name" disabled={saving} />
+             <Input value={item.tagline} onChange={e => updateItem('brand_values', i, 'tagline', e.target.value)} placeholder="Value tagline" disabled={saving} />
+-            <Textarea value={item.narrative} onChange={e => updateItem('brand_values', i, 'narrative', e.target.value)} placeholder="Value narrative..." rows={2} disabled={saving} />
++            <Textarea value={item.narrative} onChange={e => updateItem('brand_values', i, 'narrative', e.target.value)} placeholder="Value narrative..." rows={2} disabled={saving} autoGrow />
+           </div>
+         )}
+       />
+@@ -250,7 +250,7 @@ export default function BrandProfileEditor({ profile, clientId, onSaveSection, o
+         renderItem={(item, i) => (
+           <div style={dynamicRowStyle}>
+             <Input value={item.name} onChange={e => updateItem('archetypes', i, 'name', e.target.value)} placeholder="Archetype name" disabled={saving} />
+-            <Textarea value={item.description} onChange={e => updateItem('archetypes', i, 'description', e.target.value)} placeholder="Description..." rows={2} disabled={saving} />
++            <Textarea value={item.description} onChange={e => updateItem('archetypes', i, 'description', e.target.value)} placeholder="Description..." rows={2} disabled={saving} autoGrow />
+           </div>
+         )}
+       />
+@@ -373,7 +373,7 @@ export default function BrandProfileEditor({ profile, clientId, onSaveSection, o
+         </div>
+         <div>
+           <Label>Notes</Label>
+-          <Textarea value={img.notes || ''} onChange={e => setImg({ ...img, notes: e.target.value })} placeholder="General imagery notes..." rows={4} disabled={saving} />
++          <Textarea value={img.notes || ''} onChange={e => setImg({ ...img, notes: e.target.value })} placeholder="General imagery notes..." rows={4} disabled={saving} autoGrow />
+         </div>
+         <div>
+           <Label>Template Descriptions</Label>
+@@ -390,6 +390,7 @@ export default function BrandProfileEditor({ profile, clientId, onSaveSection, o
+                 placeholder="Describe a visual template..."
+                 rows={2}
+                 disabled={saving}
++                autoGrow
+               />
+             )}
+           />
+diff --git a/frontend/src/components/ui/Textarea.jsx b/frontend/src/components/ui/Textarea.jsx
+index 461a64d..ed1286b 100644
+--- a/frontend/src/components/ui/Textarea.jsx
++++ b/frontend/src/components/ui/Textarea.jsx
+@@ -13,8 +13,19 @@ const Textarea = ({
+   maxLength = null,
+   className = '',
+   placeholder = '',
++  autoGrow = false,
++  style: styleProp = {},
+ }) => {
+   const [isFocused, setIsFocused] = React.useState(false)
++  const textareaRef = React.useRef(null)
++
++  React.useEffect(() => {
++    if (autoGrow && textareaRef.current) {
++      const el = textareaRef.current
++      el.style.height = 'auto'
++      el.style.height = el.scrollHeight + 'px'
++    }
++  }, [value, autoGrow])
+ 
+   const wrapperStyles = {
+     display: 'flex',
+@@ -73,6 +84,7 @@ const Textarea = ({
+         </label>
+       )}
+       <textarea
++        ref={textareaRef}
+         value={value}
+         onChange={onChange}
+         rows={rows}
+@@ -82,7 +94,11 @@ const Textarea = ({
+         placeholder={placeholder}
+         onFocus={() => setIsFocused(true)}
+         onBlur={() => setIsFocused(false)}
+-        style={textareaStyles}
++        style={{
++          ...textareaStyles,
++          ...(autoGrow ? { resize: 'none', overflow: 'hidden' } : {}),
++          ...styleProp,
++        }}
+       />
+       <div style={footerStyles}>
+         <div>{error && <span style={errorStyles}>{error}</span>}</div>
+@@ -109,6 +125,8 @@ Textarea.propTypes = {
+   maxLength: PropTypes.number,
+   className: PropTypes.string,
+   placeholder: PropTypes.string,
++  autoGrow: PropTypes.bool,
++  style: PropTypes.object,
+ }
+ 
+ export default Textarea
+diff --git a/frontend/src/pages/SearchResults.jsx b/frontend/src/pages/SearchResults.jsx
+index 0cf1cbd..00aee69 100644
+--- a/frontend/src/pages/SearchResults.jsx
++++ b/frontend/src/pages/SearchResults.jsx
+@@ -177,7 +177,7 @@ export default function SearchResults() {
+       <div style={resultTitleStyle}>{user.display_name || user.name}</div>
+       {user.role && (
+         <Badge variant={ROLE_VARIANTS[user.role] || 'neutral'} size="sm">
+-          {user.role}
++          {user.role === 'contractor' ? 'Camper' : user.role}
+         </Badge>
+       )}
+       {user.email && <span style={resultMetaStyle}>{user.email}</span>}
+diff --git a/frontend/src/pages/admin/AdminAnalytics.jsx b/frontend/src/pages/admin/AdminAnalytics.jsx
+index 3589f37..a47b2dd 100644
+--- a/frontend/src/pages/admin/AdminAnalytics.jsx
++++ b/frontend/src/pages/admin/AdminAnalytics.jsx
+@@ -1,25 +1,17 @@
+ import { useState, useEffect, useCallback } from 'react'
+-import {
+-  LineChart, Line, BarChart, Bar, PieChart, Pie, Cell,
+-  XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
+-} from 'recharts'
+-import { Cpu, Sparkles } from 'lucide-react'
++import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip } from 'recharts'
++import { CheckCircle, Clock, Users, Star, TrendingUp, Calendar } from 'lucide-react'
+ import useAuth from '@/hooks/useAuth'
+ import useToast from '@/hooks/useToast'
+-import { GlowCard, Select, DatePicker, EmberLoader, PageHeader, DataTable, Button } from '@/components/ui'
+-import StatCard from '@/components/features/analytics/StatCard'
+-import { apiEndpoint } from '@/config/env'
+-import { getAuthHeaders } from '@/services/auth'
++import { GlowCard, EmberLoader, PageHeader, DatePicker, Button } from '@/components/ui'
+ import {
+   getTaskOverview,
+   getTurnaround,
+-  getCategoryBreakdown,
+-  getProjectProgress,
+   getContractorPerformance,
+   getTimeTracking,
+   getReviewInsights,
+ } from '@/services/analytics'
+-import { colours, spacing, typography, radii, shadows, breakpoints } from '@/config/tokens'
++import { colours, spacing, typography, radii } from '@/config/tokens'
+ 
+ // ── Formatting helpers ────────────────────────────────────────────
+ function fmtCount(n) {
+@@ -37,26 +29,51 @@ function fmtDecimal(n, decimals = 1) {
+ 
+ function fmtPct(n) {
+   if (n == null) return '0%'
+-  return `${fmtDecimal(n, 1)}%`
++  return `${fmtDecimal(n, 0)}%`
+ }
+ 
+-// ── Chart colour palettes ─────────────────────────────────────────
+-const STATUS_COLOURS = [
+-  colours.neutral[900],
+-  colours.neutral[700],
+-  colours.neutral[700],
+-  colours.neutral[700],
+-  colours.neutral[700],
+-  colours.neutral[700],
+-  colours.neutral[400],
+-  colours.neutral[600],
+-]
+-
+-const PRIORITY_COLOUR_MAP = {
+-  urgent: colours.neutral[700],
+-  high: colours.neutral[700],
+-  medium: colours.neutral[700],
+-  low: colours.neutral[400],
++// ── Stat tile ───────────────────────────────────────────────────────
++function StatTile({ icon: Icon, label, value, sublabel }) {
++  return (
++    <GlowCard>
++      <div style={{ display: 'flex', alignItems: 'center', gap: spacing[4] }}>
++        <div style={{
++          width: 44, height: 44, borderRadius: radii.lg,
++          backgroundColor: colours.neutral[100],
++          display: 'flex', alignItems: 'center', justifyContent: 'center',
++          color: colours.neutral[600], flexShrink: 0,
++        }}>
++          <Icon size={22} />
++        </div>
++        <div style={{ minWidth: 0 }}>
++          <div style={{
++            fontSize: typography.fontSize['2xl'],
++            fontWeight: typography.fontWeight.bold,
++            color: colours.neutral[900],
++            lineHeight: typography.lineHeight.tight,
++          }}>
++            {value}
++          </div>
++          <div style={{
++            fontSize: typography.fontSize.sm,
++            color: colours.neutral[500],
++            marginTop: '2px',
++          }}>
++            {label}
++          </div>
++          {sublabel && (
++            <div style={{
++              fontSize: typography.fontSize.xs,
++              color: colours.neutral[400],
++              marginTop: '2px',
++            }}>
++              {sublabel}
++            </div>
++          )}
++        </div>
++      </div>
++    </GlowCard>
++  )
+ }
+ 
+ // ── Custom Recharts tooltip ───────────────────────────────────────
+@@ -64,44 +81,132 @@ function ChartTooltip({ active, payload, label }) {
+   if (!active || !payload || payload.length === 0) return null
+   return (
+     <div style={{
+-      backgroundColor: colours.white,
++      backgroundColor: colours.neutral[100],
+       border: `1px solid ${colours.neutral[200]}`,
+       borderRadius: radii.md,
+-      padding: spacing[3],
+-      boxShadow: shadows.md,
+-      fontFamily: typography.fontFamily.sans,
++      padding: `${spacing[2]} ${spacing[3]}`,
+       fontSize: typography.fontSize.sm,
++      color: colours.neutral[900],
+     }}>
+-      {label && (
+-        <p style={{ fontWeight: typography.fontWeight.semibold, color: colours.neutral[900], margin: 0, marginBottom: spacing[1] }}>
+-          {label}
+-        </p>
+-      )}
++      <div style={{ fontWeight: typography.fontWeight.semibold, marginBottom: '2px' }}>{label}</div>
+       {payload.map((entry, i) => (
+-        <p key={i} style={{ color: entry.color || colours.neutral[700], margin: 0 }}>
++        <div key={i} style={{ color: colours.neutral[700] }}>
+           {entry.name}: {typeof entry.value === 'number' ? fmtDecimal(entry.value) : entry.value}
+-        </p>
++        </div>
+       ))}
+     </div>
+   )
+ }
+ 
+-// ── Section wrapper ───────────────────────────────────────────────
+-function Section({ title, children }) {
++// ── Status bar (horizontal stacked) ─────────────────────────────
++function StatusBar({ data }) {
++  if (!data || data.length === 0) return null
++
++  const total = data.reduce((sum, s) => sum + (s.count || 0), 0)
++  if (total === 0) return null
++
++  const shades = {
++    completed: colours.neutral[900],
++    in_review: colours.neutral[700],
++    in_progress: colours.neutral[500],
++    assigned: colours.neutral[400],
++    pending: colours.neutral[300],
++  }
++
+   return (
+-    <GlowCard padding="24px">
+-      <h3 style={{
+-        fontFamily: typography.fontFamily.sans,
+-        fontSize: typography.fontSize.lg,
++    <div>
++      <div style={{
++        display: 'flex', height: 12, borderRadius: radii.lg, overflow: 'hidden',
++        backgroundColor: colours.neutral[100],
++      }}>
++        {data.map((s) => {
++          const pct = (s.count / total) * 100
++          if (pct === 0) return null
++          return (
++            <div
++              key={s.status}
++              style={{
++                width: `${pct}%`,
++                backgroundColor: shades[s.status] || colours.neutral[400],
++                transition: 'width 0.3s ease',
++              }}
++              title={`${s.status.replace(/_/g, ' ')}: ${s.count}`}
++            />
++          )
++        })}
++      </div>
++      <div style={{
++        display: 'flex', flexWrap: 'wrap', gap: `${spacing[2]} ${spacing[5]}`,
++        marginTop: spacing[3],
++      }}>
++        {data.map((s) => (
++          <div key={s.status} style={{ display: 'flex', alignItems: 'center', gap: spacing[2] }}>
++            <div style={{
++              width: 10, height: 10, borderRadius: '50%',
++              backgroundColor: shades[s.status] || colours.neutral[400],
++            }} />
++            <span style={{ fontSize: typography.fontSize.sm, color: colours.neutral[600] }}>
++              {s.status.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}
++            </span>
++            <span style={{ fontSize: typography.fontSize.sm, fontWeight: typography.fontWeight.semibold, color: colours.neutral[800] }}>
++              {s.count}
++            </span>
++          </div>
++        ))}
++      </div>
++    </div>
++  )
++}
++
++// ── Camper row ───────────────────────────────────────────────────
++function CamperRow({ camper, rank }) {
++  const quality = camper.avg_quality != null ? Number(camper.avg_quality) : null
++  return (
++    <div style={{
++      display: 'grid',
++      gridTemplateColumns: '28px 1fr 80px 80px 80px',
++      gap: spacing[3],
++      alignItems: 'center',
++      padding: `${spacing[3]} 0`,
++      borderBottom: `1px solid ${colours.neutral[100]}`,
++    }}>
++      <span style={{
++        fontSize: typography.fontSize.sm,
+         fontWeight: typography.fontWeight.semibold,
+-        color: colours.neutral[900],
+-        margin: 0,
+-        marginBottom: spacing[4],
++        color: colours.neutral[400],
++        textAlign: 'center',
+       }}>
+-        {title}
+-      </h3>
+-      {children}
+-    </GlowCard>
++        {rank}
++      </span>
++      <div>
++        <div style={{ fontSize: typography.fontSize.sm, fontWeight: typography.fontWeight.medium, color: colours.neutral[900] }}>
++          {camper.display_name}
++        </div>
++        {camper.level != null && (
++          <div style={{ fontSize: typography.fontSize.xs, color: colours.neutral[500] }}>
++            Lv. {camper.level} / {fmtCount(camper.total_xp)} XP
++          </div>
++        )}
++      </div>
++      <div style={{ textAlign: 'right' }}>
++        <div style={{ fontSize: typography.fontSize.sm, fontWeight: typography.fontWeight.semibold, color: colours.neutral[900] }}>
++          {fmtCount(camper.tasks_completed)}
++        </div>
++        <div style={{ fontSize: typography.fontSize.xs, color: colours.neutral[500] }}>tasks</div>
++      </div>
++      <div style={{ textAlign: 'right' }}>
++        <div style={{ fontSize: typography.fontSize.sm, fontWeight: typography.fontWeight.semibold, color: colours.neutral[900] }}>
++          {fmtPct(camper.on_time_pct)}
++        </div>
++        <div style={{ fontSize: typography.fontSize.xs, color: colours.neutral[500] }}>on time</div>
++      </div>
++      <div style={{ textAlign: 'right' }}>
++        <div style={{ fontSize: typography.fontSize.sm, fontWeight: typography.fontWeight.semibold, color: colours.neutral[900] }}>
++          {quality != null ? fmtDecimal(quality) : '-'}
++        </div>
++        <div style={{ fontSize: typography.fontSize.xs, color: colours.neutral[500] }}>quality</div>
++      </div>
++    </div>
+   )
+ }
+ 
+@@ -110,95 +215,32 @@ export default function AdminAnalytics() {
+   const { user } = useAuth()
+   const { addToast } = useToast()
+ 
+-  // Filter state
+   const [dateFrom, setDateFrom] = useState('')
+   const [dateTo, setDateTo] = useState('')
+-  const [clientId, setClientId] = useState('')
+-  const [contractorId, setContractorId] = useState('')
+-  const [categoryId, setCategoryId] = useState('')
+-  const [projectId, setProjectId] = useState('')
+-
+-  // Filter options (loaded once)
+-  const [clients, setClients] = useState([])
+-  const [contractors, setContractors] = useState([])
+-  const [categories, setCategories] = useState([])
+-  const [projects, setProjects] = useState([])
+ 
+-  // Analytics data
+   const [taskData, setTaskData] = useState(null)
+   const [turnaroundData, setTurnaroundData] = useState(null)
+-  const [categoryData, setCategoryData] = useState(null)
+-  const [projectData, setProjectData] = useState(null)
+   const [contractorData, setContractorData] = useState(null)
+   const [timeData, setTimeData] = useState(null)
+   const [reviewData, setReviewData] = useState(null)
+ 
+   const [loading, setLoading] = useState(true)
+-  const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' })
+-  const [aiStats, setAiStats] = useState(null)
+ 
+-  // Build filters object from state
+   const buildFilters = useCallback(() => {
+     const filters = {}
+     if (dateFrom) filters.date_from = dateFrom
+     if (dateTo) filters.date_to = dateTo
+-    if (clientId) filters.client_id = clientId
+-    if (contractorId) filters.contractor_id = contractorId
+-    if (categoryId) filters.category_id = categoryId
+-    if (projectId) filters.project_id = projectId
+     return filters
+-  }, [dateFrom, dateTo, clientId, contractorId, categoryId, projectId])
+-
+-  // Load filter options on mount
+-  useEffect(() => {
+-    async function loadFilterOptions() {
+-      try {
+-        const [usersRes, catsRes, projRes] = await Promise.all([
+-          fetch(apiEndpoint('/users'), { headers: { ...getAuthHeaders() } }),
+-          fetch(apiEndpoint('/categories'), { headers: { ...getAuthHeaders() } }),
+-          fetch(apiEndpoint('/projects'), { headers: { ...getAuthHeaders() } }),
+-        ])
++  }, [dateFrom, dateTo])
+ 
+-        const usersJson = await usersRes.json()
+-        const catsJson = await catsRes.json()
+-        const projJson = await projRes.json()
+-
+-        if (usersJson.success) {
+-          setClients(usersJson.data.filter(u => u.role === 'client'))
+-          setContractors(usersJson.data.filter(u => u.role === 'contractor'))
+-        }
+-        if (catsJson.success) setCategories(catsJson.data || [])
+-        if (projJson.success) setProjects(projJson.data || [])
+-      } catch (err) {
+-        addToast('Failed to load filter options', 'error')
+-      }
+-    }
+-    loadFilterOptions()
+-  }, [addToast])
+-
+-  // Fetch AI stats on mount
+-  useEffect(() => {
+-    async function loadAiStats() {
+-      try {
+-        const res = await fetch(apiEndpoint('/generate/stats'), { headers: { ...getAuthHeaders() } })
+-        const json = await res.json()
+-        if (json.success) setAiStats(json.data)
+-      } catch {}
+-    }
+-    loadAiStats()
+-  }, [])
+-
+-  // Fetch all analytics data
+   const fetchAnalytics = useCallback(async () => {
+     setLoading(true)
+     const filters = buildFilters()
+ 
+     try {
+-      const [tasks, turnaround, cats, projs, contrs, time, reviews] = await Promise.all([
++      const [tasks, turnaround, contrs, time, reviews] = await Promise.all([
+         getTaskOverview(filters),
+         getTurnaround(filters),
+-        getCategoryBreakdown(filters),
+-        getProjectProgress(filters),
+         getContractorPerformance(filters),
+         getTimeTracking(filters),
+         getReviewInsights(filters),
+@@ -206,8 +248,6 @@ export default function AdminAnalytics() {
+ 
+       setTaskData(tasks)
+       setTurnaroundData(turnaround)
+-      setCategoryData(cats)
+-      setProjectData(projs)
+       setContractorData(contrs)
+       setTimeData(time)
+       setReviewData(reviews)
+@@ -218,114 +258,14 @@ export default function AdminAnalytics() {
+     }
+   }, [buildFilters, addToast])
+ 
+-  // Load on mount
+   useEffect(() => {
+     fetchAnalytics()
+   }, []) // eslint-disable-line react-hooks/exhaustive-deps
+ 
+-  const handleApplyFilters = () => {
+-    fetchAnalytics()
+-  }
+-
+-  // ── Sorting helper for tables ─────────────────────────────────
+-  function sortData(data, config) {
+-    if (!config.key || !data) return data
+-    return [...data].sort((a, b) => {
+-      const aVal = a[config.key]
+-      const bVal = b[config.key]
+-      if (aVal == null) return 1
+-      if (bVal == null) return -1
+-      if (typeof aVal === 'number' && typeof bVal === 'number') {
+-        return config.direction === 'asc' ? aVal - bVal : bVal - aVal
+-      }
+-      const aStr = String(aVal).toLowerCase()
+-      const bStr = String(bVal).toLowerCase()
+-      if (aStr < bStr) return config.direction === 'asc' ? -1 : 1
+-      if (aStr > bStr) return config.direction === 'asc' ? 1 : -1
+-      return 0
+-    })
+-  }
+-
+-  function handleSort(key) {
+-    setSortConfig(prev => ({
+-      key,
+-      direction: prev.key === key && prev.direction === 'asc' ? 'desc' : 'asc',
+-    }))
+-  }
+-
+-  function sortableHeader(label, key) {
+-    const isActive = sortConfig.key === key
+-    const arrow = isActive ? (sortConfig.direction === 'asc' ? ' \u2191' : ' \u2193') : ''
+-    return (
+-      <span
+-        style={{ cursor: 'pointer', userSelect: 'none' }}
+-        onClick={() => handleSort(key)}
+-      >
+-        {label}{arrow}
+-      </span>
+-    )
+-  }
+-
+-  // ── Styles ────────────────────────────────────────────────────
+-  const pageStyles = {
+-    fontFamily: typography.fontFamily.sans,
+-  }
+-
+-  const filtersBarStyles = {
+-    display: 'grid',
+-    gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+-    gap: spacing[4],
+-    marginBottom: spacing[6],
+-    alignItems: 'end',
+-  }
+-
+-  const summaryRowStyles = {
+-    display: 'grid',
+-    gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+-    gap: spacing[4],
+-    marginBottom: spacing[8],
+-  }
+-
+-  const chartGridStyles = {
+-    display: 'grid',
+-    gridTemplateColumns: 'repeat(1, 1fr)',
+-    gap: spacing[6],
+-  }
+-
+-  const chartContainerStyles = {
+-    minHeight: '300px',
+-    width: '100%',
+-  }
+-
+-  const statsRowStyles = {
+-    display: 'grid',
+-    gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))',
+-    gap: spacing[3],
+-    marginBottom: spacing[4],
+-  }
+-
+-  const twoColStyles = {
+-    display: 'grid',
+-    gridTemplateColumns: '1fr',
+-    gap: spacing[4],
+-  }
+-
+-  // ── Responsive media query injection via style tag ─────────
+-  const responsiveStyles = `
+-    @media (min-width: ${breakpoints.lg}) {
+-      .analytics-chart-grid { grid-template-columns: repeat(2, 1fr) !important; }
+-      .analytics-two-col { grid-template-columns: 1fr 1fr !important; }
+-    }
+-  `
+-
+-  // ── Loading state ─────────────────────────────────────────────
+   if (loading) {
+     return (
+-      <div style={pageStyles}>
+-        <PageHeader
+-          title="Analytics Dashboard"
+-          subtitle="Comprehensive overview of task, project, and camper performance"
+-        />
++      <div style={{ fontFamily: typography.fontFamily.sans }}>
++        <PageHeader title="Analytics" subtitle="Platform performance at a glance" />
+         <div style={{ display: 'flex', justifyContent: 'center', padding: spacing[16] }}>
+           <EmberLoader size="lg" />
+         </div>
+@@ -333,564 +273,146 @@ export default function AdminAnalytics() {
+     )
+   }
+ 
+-  // ── Build chart data ──────────────────────────────────────────
+-  const byMonthData = taskData?.by_month || []
+   const byStatusData = taskData?.by_status || []
+-  const turnaroundByPriority = turnaroundData?.by_priority || []
+-  const categoryTableData = categoryData?.data || []
+-  const projectTableData = projectData?.data || []
+-  const contractorTableData = contractorData?.data || []
+-  const timeByContractor = (timeData?.by_contractor || []).slice(0, 10)
+-
+-  // ── Category table columns ────────────────────────────────────
+-  const categoryColumns = [
+-    { key: 'category_name', label: 'Category' },
+-    {
+-      key: 'task_count',
+-      label: 'Tasks',
+-      render: (val) => fmtCount(val),
+-    },
+-    {
+-      key: 'avg_hours',
+-      label: 'Avg Hours',
+-      render: (val) => fmtDecimal(val),
+-    },
+-    {
+-      key: 'avg_quality',
+-      label: 'Avg Quality',
+-      render: (val) => val != null ? `${fmtDecimal(val)} / 5` : '-',
+-    },
+-  ]
+-
+-  // ── Project table columns ─────────────────────────────────────
+-  const projectColumns = [
+-    {
+-      key: 'project_name',
+-      label: sortableHeader('Project', 'project_name'),
+-    },
+-    {
+-      key: 'total_tasks',
+-      label: sortableHeader('Total Tasks', 'total_tasks'),
+-      render: (val) => fmtCount(val),
+-    },
+-    {
+-      key: 'completed_tasks',
+-      label: sortableHeader('Completed', 'completed_tasks'),
+-      render: (val) => fmtCount(val),
+-    },
+-    {
+-      key: 'completion_pct',
+-      label: sortableHeader('Completion %', 'completion_pct'),
+-      render: (val) => fmtPct(val),
+-    },
+-    {
+-      key: 'total_hours',
+-      label: sortableHeader('Total Hours', 'total_hours'),
+-      render: (val) => fmtDecimal(val),
+-    },
+-  ]
+-
+-  // ── Contractor table columns ──────────────────────────────────
+-  const contractorColumns = [
+-    { key: 'display_name', label: 'Camper' },
+-    {
+-      key: 'tasks_completed',
+-      label: sortableHeader('Tasks', 'tasks_completed'),
+-      render: (val) => fmtCount(val),
+-    },
+-    {
+-      key: 'on_time_pct',
+-      label: sortableHeader('On-Time %', 'on_time_pct'),
+-      render: (val) => fmtPct(val),
+-    },
+-    {
+-      key: 'avg_quality',
+-      label: sortableHeader('Avg Quality', 'avg_quality'),
+-      render: (val) => {
+-        if (val == null) return '-'
+-        const stars = Math.round(val)
+-        const filled = '\u2605'
+-        const empty = '\u2606'
+-        return (
+-          <span style={{ color: colours.neutral[600], letterSpacing: '1px' }}>
+-            {filled.repeat(stars)}{empty.repeat(5 - stars)}
+-            <span style={{ color: colours.neutral[600], marginLeft: spacing[1], letterSpacing: 'normal' }}>
+-              {fmtDecimal(val)}
+-            </span>
+-          </span>
+-        )
+-      },
+-    },
+-    {
+-      key: 'total_hours',
+-      label: sortableHeader('Hours', 'total_hours'),
+-      render: (val) => fmtDecimal(val),
+-    },
+-    {
+-      key: 'level',
+-      label: sortableHeader('Level', 'level'),
+-      render: (val) => fmtCount(val),
+-    },
+-    {
+-      key: 'total_xp',
+-      label: sortableHeader('XP', 'total_xp'),
+-      render: (val) => fmtCount(val),
+-    },
+-  ]
++  const byMonthData = taskData?.by_month || []
++  const campers = (contractorData?.data || [])
++    .sort((a, b) => (b.tasks_completed || 0) - (a.tasks_completed || 0))
++    .slice(0, 8)
+ 
+-  const sortedProjectData = sortData(projectTableData, sortConfig)
+-  const sortedContractorData = sortData(contractorTableData, sortConfig)
++  const completedCount = byStatusData.find(s => s.status === 'completed')?.count || 0
++  const totalTasks = taskData?.total || 0
++  const completionRate = totalTasks > 0 ? ((completedCount / totalTasks) * 100) : 0
+ 
+   return (
+-    <div style={pageStyles}>
+-      <style>{responsiveStyles}</style>
+-
+-      <PageHeader
+-        title="Analytics Dashboard"
+-        subtitle="Comprehensive overview of task, project, and camper performance"
+-      />
+-
+-      {/* ── Filters Bar ──────────────────────────────────────── */}
+-      <GlowCard padding="24px">
+-        <div style={filtersBarStyles}>
+-          <DatePicker
+-            label="Date From"
+-            value={dateFrom}
+-            onChange={(e) => setDateFrom(e.target.value)}
+-          />
+-          <DatePicker
+-            label="Date To"
+-            value={dateTo}
+-            onChange={(e) => setDateTo(e.target.value)}
+-          />
+-          <Select
+-            label="Client"
+-            value={clientId}
+-            onChange={(e) => setClientId(e.target.value)}
+-            placeholder="All Clients"
+-            options={[
+-              { value: '', label: 'All Clients' },
+-              ...clients.map(c => ({
+-                value: c.id,
+-                label: c.display_name || c.name,
+-              })),
+-            ]}
+-          />
+-          <Select
+-            label="Camper"
+-            value={contractorId}
+-            onChange={(e) => setContractorId(e.target.value)}
+-            placeholder="All Campers"
+-            options={[
+-              { value: '', label: 'All Campers' },
+-              ...contractors.map(c => ({
+-                value: c.id,
+-                label: c.display_name || c.name,
+-              })),
+-            ]}
+-          />
+-          <Select
+-            label="Category"
+-            value={categoryId}
+-            onChange={(e) => setCategoryId(e.target.value)}
+-            placeholder="All Categories"
+-            options={[
+-              { value: '', label: 'All Categories' },
+-              ...categories.map(c => ({
+-                value: c.id,
+-                label: c.name,
+-              })),
+-            ]}
+-          />
+-          <Select
+-            label="Project"
+-            value={projectId}
+-            onChange={(e) => setProjectId(e.target.value)}
+-            placeholder="All Projects"
+-            options={[
+-              { value: '', label: 'All Projects' },
+-              ...projects.map(p => ({
+-                value: p.id,
+-                label: p.name,
+-              })),
+-            ]}
+-          />
+-          <Button variant="primary" onClick={handleApplyFilters}>
+-            Apply Filters
+-          </Button>
+-        </div>
+-      </GlowCard>
++    <div style={{ fontFamily: typography.fontFamily.sans }}>
++      <PageHeader title="Analytics" subtitle="Platform performance at a glance" />
+ 
+-      <div style={{ height: spacing[6] }} />
+-
+-      {/* ── AI Stats Row ───────────────────────────────────────── */}
+-      {aiStats && (
+-        <>
+-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: spacing[4] }}>
+-            <StatCard
+-              label="AI-Assisted Tasks"
+-              value={fmtCount(aiStats.ai_assisted_tasks)}
+-              colour={colours.neutral[900]}
+-              icon={<Cpu size={20} />}
+-            />
+-            <StatCard
+-              label="Total Generations"
+-              value={fmtCount(aiStats.total_generations)}
+-              colour={colours.neutral[700]}
+-              icon={<Sparkles size={20} />}
+-            />
+-          </div>
+-          <div style={{ height: spacing[4] }} />
+-        </>
+-      )}
+-
+-      {/* ── Summary Stats Row ────────────────────────────────── */}
+-      <div style={summaryRowStyles}>
+-        <StatCard
+-          label="Total Tasks"
+-          value={fmtCount(taskData?.total)}
+-          colour={colours.neutral[900]}
+-          icon={
+-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+-              <path d="M9 11l3 3L22 4" />
+-              <path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11" />
+-            </svg>
+-          }
+-        />
+-        <StatCard
+-          label="Avg Turnaround"
+-          value={`${fmtDecimal(turnaroundData?.avg_days_overall)} days`}
+-          colour={colours.neutral[700]}
+-          icon={
+-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+-              <circle cx="12" cy="12" r="10" />
+-              <polyline points="12 6 12 12 16 14" />
+-            </svg>
+-          }
+-        />
+-        <StatCard
+-          label="Total Hours Logged"
+-          value={fmtDecimal(timeData?.total_hours)}
+-          colour={colours.neutral[700]}
+-          icon={
+-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+-              <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+-              <line x1="16" y1="2" x2="16" y2="6" />
+-              <line x1="8" y1="2" x2="8" y2="6" />
+-              <line x1="3" y1="10" x2="21" y2="10" />
+-            </svg>
+-          }
+-        />
+-        <StatCard
+-          label="Avg Quality Rating"
+-          value={`${fmtDecimal(reviewData?.avg_quality)} / 5`}
+-          colour={colours.neutral[700]}
+-          icon={
+-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+-              <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+-            </svg>
+-          }
+-        />
++      {/* Date filter */}
++      <div style={{
++        display: 'flex', alignItems: 'flex-end', gap: spacing[3],
++        marginBottom: spacing[6],
++      }}>
++        <DatePicker label="From" value={dateFrom} onChange={e => setDateFrom(e.target.value)} />
++        <DatePicker label="To" value={dateTo} onChange={e => setDateTo(e.target.value)} />
++        <Button variant="primary" onClick={() => fetchAnalytics()}>Apply</Button>
++        {(dateFrom || dateTo) && (
++          <Button variant="ghost" onClick={() => { setDateFrom(''); setDateTo(''); setTimeout(fetchAnalytics, 0) }}>Clear</Button>
++        )}
+       </div>
+ 
+-      {/* ── Charts Grid ──────────────────────────────────────── */}
+-      <div style={chartGridStyles} className="analytics-chart-grid">
+-
+-        {/* Section 1: Task Overview */}
+-        <Section title="Task Overview">
+-          <div style={statsRowStyles}>
+-            <StatCard
+-              label="Total Tasks"
+-              value={fmtCount(taskData?.total)}
+-              colour={colours.neutral[900]}
+-            />
+-            {byStatusData.map((s, i) => (
+-              <StatCard
+-                key={s.status}
+-                label={s.status.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}
+-                value={fmtCount(s.count)}
+-                colour={STATUS_COLOURS[i % STATUS_COLOURS.length]}
+-              />
+-            ))}
+-          </div>
+-
+-          <div style={twoColStyles} className="analytics-two-col">
+-            {/* Line chart: volume over time */}
+-            <div style={chartContainerStyles}>
+-              <h4 style={{
+-                fontFamily: typography.fontFamily.sans,
+-                fontSize: typography.fontSize.sm,
+-                fontWeight: typography.fontWeight.semibold,
+-                color: colours.neutral[700],
+-                marginBottom: spacing[2],
+-              }}>
+-                Task Volume Over Time
+-              </h4>
+-              <ResponsiveContainer width="100%" height={300}>
+-                <LineChart data={byMonthData}>
+-                  <CartesianGrid strokeDasharray="3 3" stroke={colours.neutral[200]} />
+-                  <XAxis
+-                    dataKey="month"
+-                    tick={{ fontSize: 12, fill: colours.neutral[600] }}
+-                    stroke={colours.neutral[300]}
+-                  />
+-                  <YAxis
+-                    tick={{ fontSize: 12, fill: colours.neutral[600] }}
+-                    stroke={colours.neutral[300]}
+-                    allowDecimals={false}
+-                  />
+-                  <Tooltip content={<ChartTooltip />} />
+-                  <Legend />
+-                  <Line
+-                    type="monotone"
+-                    dataKey="count"
+-                    name="Tasks"
+-                    stroke={colours.neutral[900]}
+-                    strokeWidth={2}
+-                    dot={{ r: 4, fill: colours.neutral[900] }}
+-                    activeDot={{ r: 6 }}
+-                  />
+-                </LineChart>
+-              </ResponsiveContainer>
+-            </div>
+-
+-            {/* Donut chart: status distribution */}
+-            <div style={chartContainerStyles}>
+-              <h4 style={{
+-                fontFamily: typography.fontFamily.sans,
+-                fontSize: typography.fontSize.sm,
+-                fontWeight: typography.fontWeight.semibold,
+-                color: colours.neutral[700],
+-                marginBottom: spacing[2],
+-              }}>
+-                Status Distribution
+-              </h4>
+-              <ResponsiveContainer width="100%" height={300}>
+-                <PieChart>
+-                  <Pie
+-                    data={byStatusData}
+-                    dataKey="count"
+-                    nameKey="status"
+-                    cx="50%"
+-                    cy="50%"
+-                    innerRadius={60}
+-                    outerRadius={100}
+-                    paddingAngle={2}
+-                    label={({ status, count }) => `${status} (${count})`}
+-                  >
+-                    {byStatusData.map((_, i) => (
+-                      <Cell key={i} fill={STATUS_COLOURS[i % STATUS_COLOURS.length]} />
+-                    ))}
+-                  </Pie>
+-                  <Tooltip content={<ChartTooltip />} />
+-                  <Legend />
+-                </PieChart>
+-              </ResponsiveContainer>
+-            </div>
+-          </div>
+-        </Section>
+-
+-        {/* Section 2: Turnaround */}
+-        <Section title="Turnaround">
+-          <div style={statsRowStyles}>
+-            <StatCard
+-              label="Average Turnaround"
+-              value={`${fmtDecimal(turnaroundData?.avg_days_overall)} days`}
+-              colour={colours.neutral[700]}
+-            />
+-          </div>
++      {/* Top stats row */}
++      <div style={{
++        display: 'grid',
++        gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
++        gap: spacing[4],
++        marginBottom: spacing[6],
++      }}>
++        <StatTile icon={CheckCircle} label="Total Tasks" value={fmtCount(totalTasks)} />
++        <StatTile icon={TrendingUp} label="Completion Rate" value={fmtPct(completionRate)} sublabel={`${fmtCount(completedCount)} completed`} />
++        <StatTile icon={Clock} label="Avg Turnaround" value={`${fmtDecimal(turnaroundData?.avg_days_overall)} days`} />
++        <StatTile icon={Star} label="Avg Quality" value={reviewData?.avg_quality != null ? `${fmtDecimal(reviewData.avg_quality)} / 5` : '-'} />
++        <StatTile icon={Calendar} label="Hours Logged" value={fmtDecimal(timeData?.total_hours)} sublabel={`${fmtDecimal(timeData?.avg_per_task)} avg per task`} />
++      </div>
+ 
+-          <div style={chartContainerStyles}>
+-            <h4 style={{
+-              fontFamily: typography.fontFamily.sans,
+-              fontSize: typography.fontSize.sm,
+-              fontWeight: typography.fontWeight.semibold,
+-              color: colours.neutral[700],
+-              marginBottom: spacing[2],
+-            }}>
+-              Average Turnaround by Priority
+-            </h4>
+-            <ResponsiveContainer width="100%" height={300}>
+-              <BarChart data={turnaroundByPriority}>
+-                <CartesianGrid strokeDasharray="3 3" stroke={colours.neutral[200]} />
++      {/* Two-column: Status breakdown + Task volume */}
++      <div style={{
++        display: 'grid',
++        gridTemplateColumns: '1fr 1fr',
++        gap: spacing[4],
++        marginBottom: spacing[6],
++      }}>
++        <GlowCard padding="24px">
++          <h3 style={{
++            fontSize: typography.fontSize.base,
++            fontWeight: typography.fontWeight.semibold,
++            color: colours.neutral[900],
++            margin: 0, marginBottom: spacing[5],
++          }}>
++            Task Status
++          </h3>
++          <StatusBar data={byStatusData} />
++        </GlowCard>
++
++        <GlowCard padding="24px">
++          <h3 style={{
++            fontSize: typography.fontSize.base,
++            fontWeight: typography.fontWeight.semibold,
++            color: colours.neutral[900],
++            margin: 0, marginBottom: spacing[5],
++          }}>
++            Task Volume
++          </h3>
++          {byMonthData.length > 0 ? (
++            <ResponsiveContainer width="100%" height={160}>
++              <BarChart data={byMonthData} barCategoryGap="20%">
+                 <XAxis
+-                  dataKey="priority"
+-                  tick={{ fontSize: 12, fill: colours.neutral[600] }}
+-                  stroke={colours.neutral[300]}
+-                />
+-                <YAxis
+-                  tick={{ fontSize: 12, fill: colours.neutral[600] }}
+-                  stroke={colours.neutral[300]}
+-                  label={{
+-                    value: 'Days',
+-                    angle: -90,
+-                    position: 'insideLeft',
+-                    style: { fontSize: 12, fill: colours.neutral[500] },
+-                  }}
++                  dataKey="month"
++                  tick={{ fontSize: 11, fill: colours.neutral[500] }}
++                  axisLine={false}
++                  tickLine={false}
+                 />
++                <YAxis hide allowDecimals={false} />
+                 <Tooltip content={<ChartTooltip />} />
+-                <Bar dataKey="avg_days" name="Avg Days" radius={[4, 4, 0, 0]}>
+-                  {turnaroundByPriority.map((entry) => (
+-                    <Cell
+-                      key={entry.priority}
+-                      fill={PRIORITY_COLOUR_MAP[entry.priority] || colours.neutral[400]}
+-                    />
+-                  ))}
+-                </Bar>
++                <Bar dataKey="count" name="Tasks" fill={colours.neutral[800]} radius={[4, 4, 0, 0]} />
+               </BarChart>
+             </ResponsiveContainer>
+-          </div>
+-        </Section>
+-
+-        {/* Section 3: Category Breakdown */}
+-        <Section title="Category Breakdown">
+-          <div style={twoColStyles} className="analytics-two-col">
+-            <div style={chartContainerStyles}>
+-              <h4 style={{
+-                fontFamily: typography.fontFamily.sans,
+-                fontSize: typography.fontSize.sm,
+-                fontWeight: typography.fontWeight.semibold,
+-                color: colours.neutral[700],
+-                marginBottom: spacing[2],
+-              }}>
+-                Tasks per Category
+-              </h4>
+-              <ResponsiveContainer width="100%" height={300}>
+-                <BarChart
+-                  data={categoryTableData}
+-                  layout="vertical"
+-                  margin={{ left: 80 }}
+-                >
+-                  <CartesianGrid strokeDasharray="3 3" stroke={colours.neutral[200]} />
+-                  <XAxis
+-                    type="number"
+-                    tick={{ fontSize: 12, fill: colours.neutral[600] }}
+-                    stroke={colours.neutral[300]}
+-                    allowDecimals={false}
+-                  />
+-                  <YAxis
+-                    type="category"
+-                    dataKey="category_name"
+-                    tick={{ fontSize: 12, fill: colours.neutral[600] }}
+-                    stroke={colours.neutral[300]}
+-                    width={75}
+-                  />
+-                  <Tooltip content={<ChartTooltip />} />
+-                  <Legend />
+-                  <Bar dataKey="task_count" name="Tasks" fill={colours.neutral[900]} radius={[0, 4, 4, 0]} />
+-                  <Bar dataKey="avg_hours" name="Avg Hours" fill={colours.neutral[700]} radius={[0, 4, 4, 0]} />
+-                </BarChart>
+-              </ResponsiveContainer>
++          ) : (
++            <div style={{ fontSize: typography.fontSize.sm, color: colours.neutral[500], padding: spacing[6], textAlign: 'center' }}>
++              No task data for this period
+             </div>
++          )}
++        </GlowCard>
++      </div>
+ 
+-            <div>
+-              <DataTable
+-                columns={categoryColumns}
+-                data={categoryTableData}
+-                emptyMessage="No category data available"
+-              />
+-            </div>
+-          </div>
+-        </Section>
+-
+-        {/* Section 4: Project Progress */}
+-        <Section title="Project Progress">
+-          <DataTable
+-            columns={projectColumns}
+-            data={sortedProjectData}
+-            emptyMessage="No project data available"
+-          />
+-        </Section>
+-
+-        {/* Section 5: Contractor Performance */}
+-        <Section title="Camper Performance">
+-          <DataTable
+-            columns={contractorColumns}
+-            data={sortedContractorData}
+-            emptyMessage="No camper data available"
+-          />
+-        </Section>
++      {/* Camper leaderboard */}
++      <GlowCard padding="24px">
++        <div style={{
++          display: 'flex', justifyContent: 'space-between', alignItems: 'center',
++          marginBottom: spacing[4],
++        }}>
++          <h3 style={{
++            fontSize: typography.fontSize.base,
++            fontWeight: typography.fontWeight.semibold,
++            color: colours.neutral[900],
++            margin: 0, display: 'flex', alignItems: 'center', gap: spacing[2],
++          }}>
++            <Users size={18} />
++            Camper Performance
++          </h3>
++        </div>
+ 
+-        {/* Section 6: Time Tracking */}
+-        <Section title="Time Tracking">
+-          <div style={statsRowStyles}>
+-            <StatCard
+-              label="Total Hours"
+-              value={fmtDecimal(timeData?.total_hours)}
+-              colour={colours.neutral[700]}
+-            />
+-            <StatCard
+-              label="Avg Hours per Task"
+-              value={fmtDecimal(timeData?.avg_per_task)}
+-              colour={colours.neutral[700]}
+-            />
+-          </div>
++        <div style={{
++          display: 'grid',
++          gridTemplateColumns: '28px 1fr 80px 80px 80px',
++          gap: spacing[3],
++          padding: `0 0 ${spacing[2]} 0`,
++          borderBottom: `1px solid ${colours.neutral[200]}`,
++        }}>
++          <span />
++          <span style={{ fontSize: typography.fontSize.xs, color: colours.neutral[500], textTransform: 'uppercase', letterSpacing: '0.05em' }}>Camper</span>
++          <span style={{ fontSize: typography.fontSize.xs, color: colours.neutral[500], textTransform: 'uppercase', letterSpacing: '0.05em', textAlign: 'right' }}>Tasks</span>
++          <span style={{ fontSize: typography.fontSize.xs, color: colours.neutral[500], textTransform: 'uppercase', letterSpacing: '0.05em', textAlign: 'right' }}>On Time</span>
++          <span style={{ fontSize: typography.fontSize.xs, color: colours.neutral[500], textTransform: 'uppercase', letterSpacing: '0.05em', textAlign: 'right' }}>Quality</span>
++        </div>
+ 
+-          <div style={chartContainerStyles}>
+-            <h4 style={{
+-              fontFamily: typography.fontFamily.sans,
+-              fontSize: typography.fontSize.sm,
+-              fontWeight: typography.fontWeight.semibold,
+-              color: colours.neutral[700],
+-              marginBottom: spacing[2],
+-            }}>
+-              Hours by Camper (Top 10)
+-            </h4>
+-            <ResponsiveContainer width="100%" height={300}>
+-              <BarChart data={timeByContractor}>
+-                <CartesianGrid strokeDasharray="3 3" stroke={colours.neutral[200]} />
+-                <XAxis
+-                  dataKey="name"
+-                  tick={{ fontSize: 12, fill: colours.neutral[600] }}
+-                  stroke={colours.neutral[300]}
+-                  interval={0}
+-                  angle={-30}
+-                  textAnchor="end"
+-                  height={60}
+-                />
+-                <YAxis
+-                  tick={{ fontSize: 12, fill: colours.neutral[600] }}
+-                  stroke={colours.neutral[300]}
+-                  label={{
+-                    value: 'Hours',
+-                    angle: -90,
+-                    position: 'insideLeft',
+-                    style: { fontSize: 12, fill: colours.neutral[500] },
+-                  }}
+-                />
+-                <Tooltip content={<ChartTooltip />} />
+-                <Bar dataKey="hours" name="Hours" fill={colours.neutral[900]} radius={[4, 4, 0, 0]} />
+-              </BarChart>
+-            </ResponsiveContainer>
++        {campers.length > 0 ? (
++          campers.map((camper, i) => (
++            <CamperRow key={camper.contractor_id || i} camper={camper} rank={i + 1} />
++          ))
++        ) : (
++          <div style={{ fontSize: typography.fontSize.sm, color: colours.neutral[500], padding: spacing[6], textAlign: 'center' }}>
++            No camper data available
+           </div>
+-        </Section>
++        )}
++      </GlowCard>
+ 
+-        {/* Section 7: Review Insights */}
+-        <Section title="Review Insights">
+-          <div style={statsRowStyles}>
+-            <StatCard
+-              label="Total Reviews"
+-              value={fmtCount(reviewData?.total_reviews)}
+-              colour={colours.neutral[900]}
+-            />
+-            <StatCard
+-              label="Completion Rate"
+-              value={fmtPct(reviewData?.completion_rate)}
+-              colour={colours.neutral[700]}
+-            />
+-            <StatCard
+-              label="Avg Difficulty"
+-              value={`${fmtDecimal(reviewData?.avg_difficulty)} / 5`}
+-              colour={colours.neutral[700]}
+-            />
+-            <StatCard
+-              label="Avg Quality"
+-              value={`${fmtDecimal(reviewData?.avg_quality)} / 5`}
+-              colour={colours.neutral[700]}
+-            />
+-          </div>
+-        </Section>
+-      </div>
++      <style>{`
++        @media (max-width: 768px) {
++          div[style*="grid-template-columns: 1fr 1fr"] {
++            grid-template-columns: 1fr !important;
++          }
++        }
++      `}</style>
+     </div>
+   )
+ }
+diff --git a/frontend/src/pages/admin/AdminGuidance.jsx b/frontend/src/pages/admin/AdminGuidance.jsx
+index ceb9324..7876fab 100644
+--- a/frontend/src/pages/admin/AdminGuidance.jsx
++++ b/frontend/src/pages/admin/AdminGuidance.jsx
+@@ -1,117 +1,220 @@
+-import { useState } from 'react'
+-import { ChevronDown, ChevronUp, BookOpen, Palette, CheckCircle } from 'lucide-react'
+-import GlowCard from '@/components/ui/GlowCard'
+-import Button from '@/components/ui/Button'
+-import { colours, spacing, typography } from '@/config/tokens'
+-
+-const PROMPT_SECTIONS = [
+-  {
+-    title: 'Social Media',
+-    tips: [
+-      { tip: 'Specify the platform', example: '"Create an Instagram carousel post" is better than "Create a social media post"' },
+-      { tip: 'Include the goal', example: '"Drive traffic to our new product launch page" gives the AI clear intent' },
+-      { tip: 'Reference the brand voice', example: '"Use a playful, conversational tone consistent with the brand profile" keeps output on-brand' },
+-      { tip: 'Mention format constraints', example: '"Keep caption under 150 characters with 3-5 relevant hashtags"' },
+-      { tip: 'Provide context on the audience', example: '"Target: small business owners aged 25-40 who value sustainability"' },
+-    ],
+-  },
+-  {
+-    title: 'Documents',
+-    tips: [
+-      { tip: 'Define the document type clearly', example: '"Write a one-page executive summary" vs "Write a document"' },
+-      { tip: 'Specify the reading level', example: '"Write for a general audience with no technical jargon"' },
+-      { tip: 'Include structural requirements', example: '"Use headers, bullet points, and a call-to-action at the end"' },
+-      { tip: 'State the key message upfront', example: '"The main takeaway should be that our Q3 results exceeded projections by 15%"' },
+-    ],
+-  },
+-  {
+-    title: 'Presentations',
+-    tips: [
+-      { tip: 'Define the slide count and flow', example: '"Create a 10-slide pitch deck: problem, solution, market, traction, team, ask"' },
+-      { tip: 'Specify text density', example: '"Keep each slide to 3-4 bullet points maximum, 6-8 words each"' },
+-      { tip: 'Include speaker notes guidance', example: '"Add speaker notes with talking points for each slide"' },
+-      { tip: 'Reference visual style', example: '"Minimalist design, use brand colours, one image per slide maximum"' },
+-    ],
+-  },
+-  {
+-    title: 'Ad Creatives',
+-    tips: [
+-      { tip: 'State the ad placement', example: '"Facebook feed ad, 1080x1080" is more useful than "Create an ad"' },
+-      { tip: 'Include the value proposition', example: '"Highlight our 30-day free trial and no credit card required"' },
+-      { tip: 'Define the CTA', example: '"CTA button: Start Free Trial" removes ambiguity' },
+-      { tip: 'Mention compliance needs', example: '"Must include disclaimer text and comply with financial advertising rules"' },
+-      { tip: 'A/B testing variations', example: '"Create two headline variations: one benefit-focused, one urgency-focused"' },
+-    ],
+-  },
+-]
++import { useState, useEffect } from 'react'
++import { ChevronDown, ChevronUp, BookOpen, Palette, CheckCircle, Pencil, Save, Plus, X } from 'lucide-react'
++import useAuth from '@/hooks/useAuth'
++import useToast from '@/hooks/useToast'
++import { GlowCard, Button, Input, Textarea, EmberLoader, PageHeader } from '@/components/ui'
++import { apiEndpoint } from '@/config/env'
++import { getAuthHeaders } from '@/services/auth'
++import { getContractorXP } from '@/services/gamification'
++import { colours, spacing, typography, radii } from '@/config/tokens'
+ 
+-const BRAND_CHECKLIST = [
+-  'Brand story and origin narrative',
+-  'Brand archetypes (personality framework)',
+-  'Core messaging pillars',
+-  'Tone of voice guidelines',
+-  'Visual identity guidelines',
+-  'Target audience profiles',
+-  'Competitor differentiation points',
++// ── Fallback data if API has no rows yet ─────────────────────────
++const FALLBACK_PROMPT_SECTIONS = [
++  { section_key: 'prompt_social', title: 'Social Media', content: [
++    { tip: 'Specify the platform', example: '"Create an Instagram carousel post" is better than "Create a social media post"' },
++    { tip: 'Include the goal', example: '"Drive traffic to our new product launch page" gives the AI clear intent' },
++  ]},
++  { section_key: 'prompt_documents', title: 'Documents', content: [
++    { tip: 'Define the document type clearly', example: '"Write a one-page executive summary" vs "Write a document"' },
++    { tip: 'Specify the reading level', example: '"Write for a general audience with no technical jargon"' },
++  ]},
++  { section_key: 'prompt_presentations', title: 'Presentations', content: [
++    { tip: 'Define the slide count and flow', example: '"Create a 10-slide pitch deck: problem, solution, market, traction, team, ask"' },
++  ]},
++  { section_key: 'prompt_ads', title: 'Ad Creatives', content: [
++    { tip: 'State the ad placement', example: '"Facebook feed ad, 1080x1080" is more useful than "Create an ad"' },
++  ]},
+ ]
+ 
+-const QUALITY_CHECKLIST = [
+-  'Content aligns with the brand voice and tone',
+-  'Key messaging pillars are represented',
+-  'No factual errors or hallucinated claims',
+-  'Appropriate length and format for the platform',
+-  'Call-to-action is clear and compelling',
+-  'Grammar and spelling are correct',
+-  'Visual elements match brand guidelines',
+-  'Content is original and not generic filler',
+-]
++const FALLBACK_CHECKLISTS = {
++  brand_checklist: ['Brand story and origin narrative', 'Core messaging pillars', 'Tone of voice guidelines', 'Visual identity guidelines', 'Target audience profiles'],
++  quality_checklist: ['Content aligns with brand voice', 'No factual errors', 'Appropriate length for platform', 'Grammar and spelling are correct'],
++}
+ 
++const SECTION_ICONS = {
++  prompt_social: BookOpen,
++  prompt_documents: BookOpen,
++  prompt_presentations: BookOpen,
++  prompt_ads: BookOpen,
++  brand_checklist: Palette,
++  quality_checklist: CheckCircle,
++}
++
++// ── Main Component ───────────────────────────────────────────────
+ export default function AdminGuidance() {
++  const { user } = useAuth()
++  const { addToast } = useToast()
++
++  const [sections, setSections] = useState([])
++  const [loading, setLoading] = useState(true)
++  const [canEdit, setCanEdit] = useState(false)
++  const [editingKey, setEditingKey] = useState(null)
++  const [editDraft, setEditDraft] = useState(null)
++  const [saving, setSaving] = useState(false)
+   const [expandedSections, setExpandedSections] = useState({})
+ 
+-  const toggleSection = (key) => {
+-    setExpandedSections(prev => ({ ...prev, [key]: !prev[key] }))
++  // Check edit permissions
++  useEffect(() => {
++    async function checkPermissions() {
++      if (user?.role === 'admin') {
++        setCanEdit(true)
++        return
++      }
++      if (user?.role === 'contractor') {
++        try {
++          const xpData = await getContractorXP(user.id)
++          if (xpData?.current_level >= 7) setCanEdit(true)
++        } catch {}
++      }
++    }
++    checkPermissions()
++  }, [user])
++
++  // Load guidance sections
++  useEffect(() => {
++    async function loadSections() {
++      try {
++        const res = await fetch(apiEndpoint('/guidance'), { headers: { ...getAuthHeaders() } })
++        const json = await res.json()
++        if (json.success && json.data?.length > 0) {
++          setSections(json.data)
++        } else {
++          // Use fallback data if table doesn't exist yet
++          setSections([
++            ...FALLBACK_PROMPT_SECTIONS,
++            { section_key: 'brand_checklist', title: 'Brand Voice Guidelines', content: FALLBACK_CHECKLISTS.brand_checklist },
++            { section_key: 'quality_checklist', title: 'Quality Standards', content: FALLBACK_CHECKLISTS.quality_checklist },
++          ])
++        }
++      } catch {
++        // Fallback to hardcoded content
++        setSections([
++          ...FALLBACK_PROMPT_SECTIONS,
++          { section_key: 'brand_checklist', title: 'Brand Voice Guidelines', content: FALLBACK_CHECKLISTS.brand_checklist },
++          { section_key: 'quality_checklist', title: 'Quality Standards', content: FALLBACK_CHECKLISTS.quality_checklist },
++        ])
++      } finally {
++        setLoading(false)
++      }
++    }
++    loadSections()
++  }, [])
++
++  const toggleSection = (key) => setExpandedSections(prev => ({ ...prev, [key]: !prev[key] }))
++
++  const startEditing = (section) => {
++    setEditingKey(section.section_key)
++    setEditDraft(JSON.parse(JSON.stringify(section.content)))
++  }
++
++  const cancelEditing = () => { setEditingKey(null); setEditDraft(null) }
++
++  const saveSection = async (sectionKey) => {
++    setSaving(true)
++    try {
++      const res = await fetch(apiEndpoint(`/guidance/${encodeURIComponent(sectionKey)}`), {
++        method: 'PUT',
++        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
++        body: JSON.stringify({ content: editDraft }),
++      })
++      const json = await res.json()
++      if (json.success) {
++        setSections(prev => prev.map(s => s.section_key === sectionKey ? { ...s, content: json.data.content } : s))
++        setEditingKey(null)
++        setEditDraft(null)
++        addToast('Section saved', 'success')
++      } else {
++        addToast(json.error || 'Failed to save', 'error')
++      }
++    } catch {
++      addToast('Failed to save section', 'error')
++    } finally {
++      setSaving(false)
++    }
++  }
++
++  // Split sections into prompt tips and checklists
++  const promptSections = sections.filter(s => s.section_key.startsWith('prompt_'))
++  const brandChecklist = sections.find(s => s.section_key === 'brand_checklist')
++  const qualityChecklist = sections.find(s => s.section_key === 'quality_checklist')
++
++  if (loading) {
++    return (
++      <div style={{ fontFamily: typography.fontFamily.sans }}>
++        <PageHeader title="AI & Content Guidance" subtitle="Best practices for AI-generated content" />
++        <div style={{ display: 'flex', justifyContent: 'center', padding: spacing[16] }}>
++          <EmberLoader size="lg" />
++        </div>
++      </div>
++    )
+   }
+ 
+   return (
+-    <div style={{ padding: `${spacing[6]} 0` }}>
+-      <h1 style={pageTitleStyle}>AI & Content Guidance</h1>
++    <div style={{ fontFamily: typography.fontFamily.sans }}>
++      <PageHeader title="AI & Content Guidance" subtitle="Best practices for AI-generated content" />
+ 
+-      {/* Section 1: Prompt Best Practices */}
+-      <div style={sectionStyle}>
+-        <h2 style={sectionTitleStyle}>
++      {/* Prompt Best Practices */}
++      <div style={{ marginBottom: spacing[8] }}>
++        <h2 style={sectionHeadingStyle}>
+           <BookOpen size={18} />
+           Prompt Best Practices
+         </h2>
+-        <GlowCard style={{ padding: spacing[5] }}>
+-          <p style={introTextStyle}>
+-            Well-crafted prompts produce better AI output. Expand each content type below for specific tips and examples.
++        <GlowCard padding="24px">
++          <p style={introStyle}>
++            Well-crafted prompts produce better AI output. Expand each content type for specific tips.
+           </p>
+ 
+-          <div style={{ display: 'flex', flexDirection: 'column', gap: spacing[2] }}>
+-            {PROMPT_SECTIONS.map((section) => {
+-              const isOpen = expandedSections[section.title]
++          <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
++            {promptSections.map(section => {
++              const isOpen = expandedSections[section.section_key]
++              const isEditing = editingKey === section.section_key
++              const tips = isEditing ? editDraft : (section.content || [])
++
+               return (
+-                <div key={section.title} style={accordionItemStyle}>
+-                  <Button
+-                    variant="ghost"
+-                    onClick={() => toggleSection(section.title)}
+-                    style={accordionButtonStyle}
+-                  >
+-                    <span style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+-                      <span style={{ fontWeight: 600 }}>{section.title}</span>
+-                      {isOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
++                <div key={section.section_key} style={{ borderBottom: `1px solid ${colours.neutral[200]}` }}>
++                  {/* Accordion header */}
++                  <div style={{
++                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
++                    padding: `${spacing[3]} 0`, cursor: 'pointer',
++                  }} onClick={() => toggleSection(section.section_key)}>
++                    <span style={{ fontWeight: typography.fontWeight.semibold, color: colours.neutral[900], fontSize: typography.fontSize.sm }}>
++                      {section.title}
+                     </span>
+-                  </Button>
++                    <div style={{ display: 'flex', alignItems: 'center', gap: spacing[2] }}>
++                      {canEdit && isOpen && !isEditing && (
++                        <Button variant="ghost" size="sm" onClick={e => { e.stopPropagation(); startEditing(section) }}>
++                          <Pencil size={14} />
++                        </Button>
++                      )}
++                      {isOpen ? <ChevronUp size={16} color={colours.neutral[500]} /> : <ChevronDown size={16} color={colours.neutral[500]} />}
++                    </div>
++                  </div>
+ 
++                  {/* Accordion content */}
+                   {isOpen && (
+-                    <div style={accordionContentStyle}>
+-                      {section.tips.map((item, i) => (
+-                        <div key={i} style={tipStyle}>
+-                          <div style={tipTitleStyle}>{item.tip}</div>
+-                          <div style={tipExampleStyle}>{item.example}</div>
++                    <div style={{ paddingBottom: spacing[4] }}>
++                      {isEditing ? (
++                        <TipEditor
++                          tips={editDraft}
++                          onChange={setEditDraft}
++                          onSave={() => saveSection(section.section_key)}
++                          onCancel={cancelEditing}
++                          saving={saving}
++                        />
++                      ) : (
++                        <div style={{ display: 'flex', flexDirection: 'column', gap: spacing[3] }}>
++                          {Array.isArray(tips) && tips.map((item, i) => (
++                            <div key={i} style={{ paddingLeft: spacing[3], borderLeft: `2px solid ${colours.neutral[200]}` }}>
++                              <div style={{ fontSize: typography.fontSize.sm, fontWeight: typography.fontWeight.medium, color: colours.neutral[900], marginBottom: '4px' }}>
++                                {item.tip}
++                              </div>
++                              <div style={{ fontSize: typography.fontSize.xs, color: colours.neutral[500], fontStyle: 'italic', lineHeight: 1.5 }}>
++                                {item.example}
++                              </div>
++                            </div>
++                          ))}
+                         </div>
+-                      ))}
++                      )}
+                     </div>
+                   )}
+                 </div>
+@@ -121,196 +224,198 @@ export default function AdminGuidance() {
+         </GlowCard>
+       </div>
+ 
+-      {/* Section 2: Brand Voice Guidelines */}
+-      <div style={sectionStyle}>
+-        <h2 style={sectionTitleStyle}>
+-          <Palette size={18} />
+-          Brand Voice Guidelines
++      {/* Brand Checklist */}
++      {brandChecklist && (
++        <ChecklistSection
++          icon={Palette}
++          title="Brand Voice Guidelines"
++          intro="The AI uses brand profiles to tailor generated content. The more detail in the brand profile, the better the output."
++          subheading="Brand Profile Checklist"
++          items={brandChecklist.content}
++          sectionKey={brandChecklist.section_key}
++          canEdit={canEdit}
++          isEditing={editingKey === brandChecklist.section_key}
++          editDraft={editDraft}
++          onStartEdit={() => startEditing(brandChecklist)}
++          onChangeDraft={setEditDraft}
++          onSave={() => saveSection(brandChecklist.section_key)}
++          onCancel={cancelEditing}
++          saving={saving}
++        />
++      )}
++
++      {/* Quality Checklist */}
++      {qualityChecklist && (
++        <ChecklistSection
++          icon={CheckCircle}
++          title="Quality Standards"
++          intro="Use this checklist before approving any AI-generated content."
++          subheading="Review Checklist"
++          items={qualityChecklist.content}
++          sectionKey={qualityChecklist.section_key}
++          canEdit={canEdit}
++          isEditing={editingKey === qualityChecklist.section_key}
++          editDraft={editDraft}
++          onStartEdit={() => startEditing(qualityChecklist)}
++          onChangeDraft={setEditDraft}
++          onSave={() => saveSection(qualityChecklist.section_key)}
++          onCancel={cancelEditing}
++          saving={saving}
++        />
++      )}
++    </div>
++  )
++}
++
++// ── Tip Editor (for prompt sections) ─────────────────────────────
++function TipEditor({ tips, onChange, onSave, onCancel, saving }) {
++  const updateTip = (index, field, value) => {
++    const updated = [...tips]
++    updated[index] = { ...updated[index], [field]: value }
++    onChange(updated)
++  }
++
++  const addTip = () => onChange([...tips, { tip: '', example: '' }])
++
++  const removeTip = (index) => onChange(tips.filter((_, i) => i !== index))
++
++  return (
++    <div style={{ display: 'flex', flexDirection: 'column', gap: spacing[3] }}>
++      {tips.map((item, i) => (
++        <div key={i} style={{
++          padding: spacing[3], backgroundColor: colours.neutral[100],
++          borderRadius: radii.md, position: 'relative',
++        }}>
++          <Input
++            value={item.tip}
++            onChange={e => updateTip(i, 'tip', e.target.value)}
++            placeholder="Tip title"
++            disabled={saving}
++          />
++          <div style={{ height: spacing[2] }} />
++          <Textarea
++            value={item.example}
++            onChange={e => updateTip(i, 'example', e.target.value)}
++            placeholder="Example text..."
++            rows={2}
++            autoGrow
++            disabled={saving}
++          />
++          {tips.length > 1 && (
++            <Button
++              variant="ghost" size="sm"
++              onClick={() => removeTip(i)}
++              disabled={saving}
++              style={{ position: 'absolute', top: spacing[2], right: spacing[2] }}
++            >
++              <X size={14} />
++            </Button>
++          )}
++        </div>
++      ))}
++
++      <div style={{ display: 'flex', gap: spacing[2] }}>
++        <Button variant="ghost" size="sm" onClick={addTip} disabled={saving}>
++          <Plus size={14} style={{ marginRight: '4px' }} /> Add Tip
++        </Button>
++        <div style={{ flex: 1 }} />
++        <Button variant="ghost" size="sm" onClick={onCancel} disabled={saving}>Cancel</Button>
++        <Button variant="primary" size="sm" onClick={onSave} disabled={saving}>
++          <Save size={14} style={{ marginRight: '4px' }} /> {saving ? 'Saving...' : 'Save'}
++        </Button>
++      </div>
++    </div>
++  )
++}
++
++// ── Checklist Section ────────────────────────────────────────────
++function ChecklistSection({ icon: Icon, title, intro, subheading, items, sectionKey, canEdit, isEditing, editDraft, onStartEdit, onChangeDraft, onSave, onCancel, saving }) {
++  const displayItems = isEditing ? editDraft : (Array.isArray(items) ? items : [])
++
++  const updateItem = (index, value) => {
++    const updated = [...editDraft]
++    updated[index] = value
++    onChangeDraft(updated)
++  }
++
++  const addItem = () => onChangeDraft([...editDraft, ''])
++  const removeItem = (index) => onChangeDraft(editDraft.filter((_, i) => i !== index))
++
++  return (
++    <div style={{ marginBottom: spacing[8] }}>
++      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: spacing[4] }}>
++        <h2 style={sectionHeadingStyle}>
++          <Icon size={18} />
++          {title}
+         </h2>
+-        <GlowCard style={{ padding: spacing[5] }}>
+-          <p style={introTextStyle}>
+-            The AI uses brand profiles to tailor generated content. The more detail in the brand profile, the better the AI output.
+-          </p>
++        {canEdit && !isEditing && (
++          <Button variant="ghost" size="sm" onClick={onStartEdit}>
++            <Pencil size={14} style={{ marginRight: '4px' }} /> Edit
++          </Button>
++        )}
++      </div>
+ 
+-          <p style={bodyTextStyle}>
+-            When generating content, the AI references the client's brand profile to match their voice, values, and visual identity.
+-            A comprehensive brand profile leads to content that feels authentic and on-brand from the first draft.
+-          </p>
++      <GlowCard padding="24px">
++        <p style={introStyle}>{intro}</p>
+ 
+-          <div style={subHeadingStyle}>Brand Profile Checklist</div>
+-          <p style={bodyTextStyle}>
+-            Ensure each brand profile includes these elements for optimal AI output:
+-          </p>
++        <div style={{ fontSize: typography.fontSize.base, fontWeight: typography.fontWeight.semibold, color: colours.neutral[900], marginBottom: spacing[3] }}>
++          {subheading}
++        </div>
+ 
++        {isEditing ? (
+           <div style={{ display: 'flex', flexDirection: 'column', gap: spacing[2] }}>
+-            {BRAND_CHECKLIST.map((item, i) => (
+-              <div key={i} style={checklistItemStyle}>
+-                <CheckCircle size={14} color={colours.neutral[500]} style={{ flexShrink: 0, marginTop: '2px' }} />
+-                <span>{item}</span>
++            {displayItems.map((item, i) => (
++              <div key={i} style={{ display: 'flex', gap: spacing[2], alignItems: 'center' }}>
++                <Input value={item} onChange={e => updateItem(i, e.target.value)} placeholder="Checklist item..." disabled={saving} />
++                {displayItems.length > 1 && (
++                  <Button variant="ghost" size="sm" onClick={() => removeItem(i)} disabled={saving}>
++                    <X size={14} />
++                  </Button>
++                )}
+               </div>
+             ))}
++            <div style={{ display: 'flex', gap: spacing[2], marginTop: spacing[2] }}>
++              <Button variant="ghost" size="sm" onClick={addItem} disabled={saving}>
++                <Plus size={14} style={{ marginRight: '4px' }} /> Add Item
++              </Button>
++              <div style={{ flex: 1 }} />
++              <Button variant="ghost" size="sm" onClick={onCancel} disabled={saving}>Cancel</Button>
++              <Button variant="primary" size="sm" onClick={onSave} disabled={saving}>
++                <Save size={14} style={{ marginRight: '4px' }} /> {saving ? 'Saving...' : 'Save'}
++              </Button>
++            </div>
+           </div>
+-        </GlowCard>
+-      </div>
+-
+-      {/* Section 3: Quality Standards */}
+-      <div style={sectionStyle}>
+-        <h2 style={sectionTitleStyle}>
+-          <CheckCircle size={18} />
+-          Quality Standards
+-        </h2>
+-        <GlowCard style={{ padding: spacing[5] }}>
+-          <p style={introTextStyle}>
+-            Use this checklist before approving any AI-generated content. Quality control ensures the final output meets professional standards.
+-          </p>
+-
+-          <div style={subHeadingStyle}>Review Checklist</div>
+-          <div style={{ display: 'flex', flexDirection: 'column', gap: spacing[2], marginBottom: spacing[5] }}>
+-            {QUALITY_CHECKLIST.map((item, i) => (
+-              <div key={i} style={checklistItemStyle}>
+-                <CheckCircle size={14} color={colours.neutral[500]} style={{ flexShrink: 0, marginTop: '2px' }} />
++        ) : (
++          <div style={{ display: 'flex', flexDirection: 'column', gap: spacing[2] }}>
++            {displayItems.map((item, i) => (
++              <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: spacing[2], fontSize: typography.fontSize.sm, color: colours.neutral[500], lineHeight: 1.5 }}>
++                <CheckCircle size={14} color={colours.neutral[400]} style={{ flexShrink: 0, marginTop: '3px' }} />
+                 <span>{item}</span>
+               </div>
+             ))}
+           </div>
+-
+-          <div style={subHeadingStyle}>When to Regenerate vs Edit</div>
+-          <div style={{ display: 'flex', gap: spacing[4] }}>
+-            <div style={{ flex: 1 }}>
+-              <div style={miniHeadingStyle}>Regenerate when:</div>
+-              <ul style={listStyle}>
+-                <li>The tone is completely off-brand</li>
+-                <li>The structure doesn't match the format</li>
+-                <li>The content misses the core message</li>
+-                <li>Multiple factual errors are present</li>
+-              </ul>
+-            </div>
+-            <div style={{ flex: 1 }}>
+-              <div style={miniHeadingStyle}>Edit manually when:</div>
+-              <ul style={listStyle}>
+-                <li>Minor wording adjustments needed</li>
+-                <li>Small factual corrections required</li>
+-                <li>A specific phrase needs brand language</li>
+-                <li>Length needs slight trimming</li>
+-              </ul>
+-            </div>
+-          </div>
+-        </GlowCard>
+-      </div>
++        )}
++      </GlowCard>
+     </div>
+   )
+ }
+ 
+-const pageTitleStyle = {
+-  fontSize: typography.fontSize['2xl'],
+-  fontWeight: typography.fontWeight.bold,
+-  color: '#ffffff',
+-  marginBottom: spacing[6],
+-  marginTop: 0,
+-}
+-
+-const sectionStyle = {
+-  marginBottom: spacing[8],
+-}
+-
+-const sectionTitleStyle = {
++// ── Shared styles ────────────────────────────────────────────────
++const sectionHeadingStyle = {
+   display: 'flex',
+   alignItems: 'center',
+-  gap: '8px',
++  gap: spacing[2],
+   fontSize: typography.fontSize.lg,
+   fontWeight: typography.fontWeight.semibold,
+-  color: '#ffffff',
++  color: colours.neutral[900],
+   marginBottom: spacing[4],
+   marginTop: 0,
+ }
+ 
+-const introTextStyle = {
+-  fontSize: typography.fontSize.sm,
+-  color: colours.neutral[400],
+-  lineHeight: 1.6,
+-  marginTop: 0,
+-  marginBottom: spacing[4],
+-}
+-
+-const bodyTextStyle = {
++const introStyle = {
+   fontSize: typography.fontSize.sm,
+   color: colours.neutral[500],
+   lineHeight: 1.6,
+   marginTop: 0,
+   marginBottom: spacing[4],
+ }
+-
+-const subHeadingStyle = {
+-  fontSize: typography.fontSize.base,
+-  fontWeight: typography.fontWeight.semibold,
+-  color: '#ffffff',
+-  marginBottom: spacing[3],
+-}
+-
+-const miniHeadingStyle = {
+-  fontSize: typography.fontSize.sm,
+-  fontWeight: typography.fontWeight.semibold,
+-  color: colours.neutral[300],
+-  marginBottom: spacing[2],
+-}
+-
+-const accordionItemStyle = {
+-  borderBottom: '1px solid #1a1a1a',
+-}
+-
+-const accordionButtonStyle = {
+-  display: 'flex',
+-  justifyContent: 'space-between',
+-  alignItems: 'center',
+-  width: '100%',
+-  padding: `${spacing[3]} 0`,
+-  background: 'none',
+-  border: 'none',
+-  cursor: 'pointer',
+-  color: '#ffffff',
+-  fontSize: typography.fontSize.sm,
+-  fontFamily: typography.fontFamily.sans,
+-}
+-
+-const accordionContentStyle = {
+-  paddingBottom: spacing[4],
+-  display: 'flex',
+-  flexDirection: 'column',
+-  gap: spacing[3],
+-}
+-
+-const tipStyle = {
+-  paddingLeft: spacing[3],
+-  borderLeft: '2px solid #333',
+-}
+-
+-const tipTitleStyle = {
+-  fontSize: typography.fontSize.sm,
+-  fontWeight: typography.fontWeight.medium,
+-  color: '#ffffff',
+-  marginBottom: '4px',
+-}
+-
+-const tipExampleStyle = {
+-  fontSize: '12px',
+-  color: colours.neutral[500],
+-  fontStyle: 'italic',
+-  lineHeight: 1.5,
+-}
+-
+-const checklistItemStyle = {
+-  display: 'flex',
+-  alignItems: 'flex-start',
+-  gap: spacing[2],
+-  fontSize: typography.fontSize.sm,
+-  color: colours.neutral[400],
+-  lineHeight: 1.5,
+-}
+-
+-const listStyle = {
+-  margin: 0,
+-  paddingLeft: spacing[4],
+-  fontSize: typography.fontSize.sm,
+-  color: colours.neutral[500],
+-  lineHeight: 1.8,
+-}
+diff --git a/frontend/src/pages/admin/AdminUsers.jsx b/frontend/src/pages/admin/AdminUsers.jsx
+index 8b85e36..489aae4 100644
+--- a/frontend/src/pages/admin/AdminUsers.jsx
++++ b/frontend/src/pages/admin/AdminUsers.jsx
+@@ -1,5 +1,5 @@
+ import { useState, useEffect } from 'react'
+-import { useNavigate } from 'react-router-dom'
++
+ import useToast from '@/hooks/useToast'
+ import PageHeader from '@/components/ui/PageHeader'
+ import Button from '@/components/ui/Button'
+@@ -23,7 +23,6 @@ const TABS = [
+ 
+ export default function AdminUsers() {
+   const { addToast } = useToast()
+-  const navigate = useNavigate()
+   const [users, setUsers] = useState([])
+   const [loading, setLoading] = useState(true)
+   const [showModal, setShowModal] = useState(false)
+diff --git a/frontend/src/pages/client/ClientBrandHub.jsx b/frontend/src/pages/client/ClientBrandHub.jsx
+index 5b169b3..20bc577 100644
+--- a/frontend/src/pages/client/ClientBrandHub.jsx
++++ b/frontend/src/pages/client/ClientBrandHub.jsx
+@@ -6,6 +6,7 @@ import EmberLoader from '@/components/ui/EmberLoader'
+ import EmptyState from '@/components/ui/EmptyState'
+ import BrandBooklet from '@/components/features/brand/BrandBooklet'
+ import BrandGuideCard from '@/components/features/brand/BrandGuideCard'
++import BrandGuidePDFViewer from '@/components/features/brand/BrandGuidePDFViewer'
+ import { apiEndpoint } from '@/config/env'
+ import { getAuthHeaders } from '@/services/auth'
+ import { spacing, colours, typography } from '@/config/tokens'
+@@ -17,6 +18,7 @@ export default function ClientBrandHub() {
+   const [brandGuides, setBrandGuides] = useState([])
+   const [logos, setLogos] = useState([])
+   const [loading, setLoading] = useState(true)
++  const [pdfViewerClientId, setPdfViewerClientId] = useState(null)
+ 
+   useEffect(() => {
+     async function load() {
+@@ -93,7 +95,7 @@ export default function ClientBrandHub() {
+         {brandGuides.length > 0 ? (
+           <div style={guidesGridStyle}>
+             {brandGuides.map(guide => (
+-              <BrandGuideCard key={guide.id} guide={guide} />
++              <BrandGuideCard key={guide.id} guide={guide} onView={() => setPdfViewerClientId(user.id)} />
+             ))}
+           </div>
+         ) : (
+@@ -103,6 +105,11 @@ export default function ClientBrandHub() {
+           />
+         )}
+       </div>
++
++      {/* PDF Viewer overlay */}
++      {pdfViewerClientId && (
++        <BrandGuidePDFViewer clientId={pdfViewerClientId} onClose={() => setPdfViewerClientId(null)} />
++      )}
+     </div>
+   )
+ }
+diff --git a/frontend/src/pages/contractor/ContractorBrandGuides.jsx b/frontend/src/pages/contractor/ContractorBrandGuides.jsx
+index d12bf6c..20bc18d 100644
+--- a/frontend/src/pages/contractor/ContractorBrandGuides.jsx
++++ b/frontend/src/pages/contractor/ContractorBrandGuides.jsx
+@@ -1,12 +1,14 @@
+ import { useState, useEffect } from 'react'
+-import { Building2, ChevronRight } from 'lucide-react'
++import { Building2, ChevronRight, FileText } from 'lucide-react'
+ import useAuth from '@/hooks/useAuth'
+ import useToast from '@/hooks/useToast'
+ import PageHeader from '@/components/ui/PageHeader'
+ import GlowCard from '@/components/ui/GlowCard'
+ import EmberLoader from '@/components/ui/EmberLoader'
+ import EmptyState from '@/components/ui/EmptyState'
++import Button from '@/components/ui/Button'
+ import BrandBooklet from '@/components/features/brand/BrandBooklet'
++import BrandGuidePDFViewer from '@/components/features/brand/BrandGuidePDFViewer'
+ import { apiEndpoint } from '@/config/env'
+ import { getAuthHeaders } from '@/services/auth'
+ import { spacing, colours, typography } from '@/config/tokens'
+@@ -18,7 +20,7 @@ export default function ContractorBrandGuides() {
+   const [loading, setLoading] = useState(true)
+   const [selectedProfile, setSelectedProfile] = useState(null)
+   const [logos, setLogos] = useState([])
+-
++  const [pdfViewerClientId, setPdfViewerClientId] = useState(null)
+   useEffect(() => {
+     async function load() {
+       try {
+@@ -67,6 +69,9 @@ export default function ContractorBrandGuides() {
+   return (
+     <div>
+       {bookletOverlay}
++      {pdfViewerClientId && (
++        <BrandGuidePDFViewer clientId={pdfViewerClientId} onClose={() => setPdfViewerClientId(null)} />
++      )}
+       <PageHeader title="Brands" />
+ 
+       {brandProfiles.length > 0 ? (
+@@ -80,10 +85,8 @@ export default function ContractorBrandGuides() {
+               key={profile.id}
+               glowOnHover
+               padding="0"
+-              onClick={() => handleViewProfile(profile)}
+-              style={{ cursor: 'pointer' }}
+             >
+-              <div style={{ padding: spacing[5] }}>
++              <div style={{ padding: spacing[5], cursor: 'pointer' }} onClick={() => handleViewProfile(profile)}>
+                 <div style={{ display: 'flex', alignItems: 'center', gap: spacing[3], marginBottom: spacing[3] }}>
+                   <div style={{
+                     width: '40px',
+@@ -141,6 +144,25 @@ export default function ContractorBrandGuides() {
+                   </div>
+                 )}
+               </div>
++
++              {/* View Brand Guide PDF button */}
++              {profile.brand_guide_path && (
++                <div style={{
++                  padding: `0 ${spacing[5]} ${spacing[4]}`,
++                  borderTop: `1px solid ${colours.neutral[100]}`,
++                  paddingTop: spacing[3],
++                }}>
++                  <Button
++                    variant="secondary"
++                    size="sm"
++                    onClick={(e) => { e.stopPropagation(); setPdfViewerClientId(profile.client_id) }}
++                    style={{ width: '100%' }}
++                  >
++                    <FileText size={14} style={{ marginRight: '6px' }} />
++                    View Brand Guide
++                  </Button>
++                </div>
++              )}
+             </GlowCard>
+           ))}
+         </div>
+diff --git a/frontend/src/pages/contractor/ContractorDashboard.jsx b/frontend/src/pages/contractor/ContractorDashboard.jsx
+index 1376940..6643645 100644
+--- a/frontend/src/pages/contractor/ContractorDashboard.jsx
++++ b/frontend/src/pages/contractor/ContractorDashboard.jsx
+@@ -1,4 +1,4 @@
+-import { useState, useEffect, useRef, useCallback } from 'react'
++import { useState, useEffect, useCallback } from 'react'
+ import { useNavigate, Link } from 'react-router-dom'
+ import { Flame, Wrench, ChevronDown } from 'lucide-react'
+ import useAuth from '@/hooks/useAuth'
+diff --git a/frontend/src/pages/contractor/ContractorStats.jsx b/frontend/src/pages/contractor/ContractorStats.jsx
+index 4cd0405..6d5a461 100644
+--- a/frontend/src/pages/contractor/ContractorStats.jsx
++++ b/frontend/src/pages/contractor/ContractorStats.jsx
+@@ -1,4 +1,5 @@
+ import { useState, useEffect } from 'react'
++import { Star } from 'lucide-react'
+ import useAuth from '@/hooks/useAuth'
+ import useToast from '@/hooks/useToast'
+ import PageHeader from '@/components/ui/PageHeader'
+@@ -104,7 +105,7 @@ export default function ContractorStats() {
+           <div style={statLabelStyle}>Avg Quality Rating</div>
+           <div style={statValueStyle}>
+             {avgQuality > 0 ? avgQuality.toFixed(1) : '-'}
+-            {avgQuality > 0 && <span style={starStyle}> {'\u2B50'}</span>}
++            {avgQuality > 0 && <Star size={16} style={{ marginLeft: '4px', display: 'inline', verticalAlign: 'middle' }} />}
+           </div>
+         </GlowCard>
+ 
+@@ -194,10 +195,6 @@ const statUnitStyle = {
+   fontWeight: typography.fontWeight.semibold,
+ }
+ 
+-const starStyle = {
+-  fontSize: typography.fontSize.xl,
+-}
+-
+ const emptyTextStyle = {
+   fontFamily: typography.fontFamily.sans,
+   fontSize: typography.fontSize.base,

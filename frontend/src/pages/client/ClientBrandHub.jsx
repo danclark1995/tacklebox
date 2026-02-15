@@ -6,6 +6,7 @@ import EmberLoader from '@/components/ui/EmberLoader'
 import EmptyState from '@/components/ui/EmptyState'
 import BrandBooklet from '@/components/features/brand/BrandBooklet'
 import BrandGuideCard from '@/components/features/brand/BrandGuideCard'
+import BrandGuidePDFViewer from '@/components/features/brand/BrandGuidePDFViewer'
 import { apiEndpoint } from '@/config/env'
 import { getAuthHeaders } from '@/services/auth'
 import { spacing, colours, typography } from '@/config/tokens'
@@ -17,6 +18,7 @@ export default function ClientBrandHub() {
   const [brandGuides, setBrandGuides] = useState([])
   const [logos, setLogos] = useState([])
   const [loading, setLoading] = useState(true)
+  const [pdfViewerClientId, setPdfViewerClientId] = useState(null)
 
   useEffect(() => {
     async function load() {
@@ -93,7 +95,7 @@ export default function ClientBrandHub() {
         {brandGuides.length > 0 ? (
           <div style={guidesGridStyle}>
             {brandGuides.map(guide => (
-              <BrandGuideCard key={guide.id} guide={guide} />
+              <BrandGuideCard key={guide.id} guide={guide} onView={() => setPdfViewerClientId(user.id)} />
             ))}
           </div>
         ) : (
@@ -103,6 +105,11 @@ export default function ClientBrandHub() {
           />
         )}
       </div>
+
+      {/* PDF Viewer overlay */}
+      {pdfViewerClientId && (
+        <BrandGuidePDFViewer clientId={pdfViewerClientId} onClose={() => setPdfViewerClientId(null)} />
+      )}
     </div>
   )
 }

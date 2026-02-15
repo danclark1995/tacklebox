@@ -177,7 +177,7 @@ export default function SearchResults() {
       <div style={resultTitleStyle}>{user.display_name || user.name}</div>
       {user.role && (
         <Badge variant={ROLE_VARIANTS[user.role] || 'neutral'} size="sm">
-          {user.role}
+          {user.role === 'contractor' ? 'Camper' : user.role}
         </Badge>
       )}
       {user.email && <span style={resultMetaStyle}>{user.email}</span>}

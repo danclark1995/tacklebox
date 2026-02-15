@@ -1,12 +1,14 @@
 import { useState, useEffect } from 'react'
-import { Building2, ChevronRight } from 'lucide-react'
+import { Building2, ChevronRight, FileText } from 'lucide-react'
 import useAuth from '@/hooks/useAuth'
 import useToast from '@/hooks/useToast'
 import PageHeader from '@/components/ui/PageHeader'
 import GlowCard from '@/components/ui/GlowCard'
 import EmberLoader from '@/components/ui/EmberLoader'
 import EmptyState from '@/components/ui/EmptyState'
+import Button from '@/components/ui/Button'
 import BrandBooklet from '@/components/features/brand/BrandBooklet'
+import BrandGuidePDFViewer from '@/components/features/brand/BrandGuidePDFViewer'
 import { apiEndpoint } from '@/config/env'
 import { getAuthHeaders } from '@/services/auth'
 import { spacing, colours, typography } from '@/config/tokens'
@@ -18,7 +20,7 @@ export default function ContractorBrandGuides() {
   const [loading, setLoading] = useState(true)
   const [selectedProfile, setSelectedProfile] = useState(null)
   const [logos, setLogos] = useState([])
-
+  const [pdfViewerClientId, setPdfViewerClientId] = useState(null)
   useEffect(() => {
     async function load() {
       try {
@@ -67,6 +69,9 @@ export default function ContractorBrandGuides() {
   return (
     <div>
       {bookletOverlay}
+      {pdfViewerClientId && (
+        <BrandGuidePDFViewer clientId={pdfViewerClientId} onClose={() => setPdfViewerClientId(null)} />
+      )}
       <PageHeader title="Brands" />
 
       {brandProfiles.length > 0 ? (
@@ -80,10 +85,8 @@ export default function ContractorBrandGuides() {
               key={profile.id}
               glowOnHover
               padding="0"
-              onClick={() => handleViewProfile(profile)}
-              style={{ cursor: 'pointer' }}
             >
-              <div style={{ padding: spacing[5] }}>
+              <div style={{ padding: spacing[5], cursor: 'pointer' }} onClick={() => handleViewProfile(profile)}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: spacing[3], marginBottom: spacing[3] }}>
                   <div style={{
                     width: '40px',
@@ -141,6 +144,25 @@ export default function ContractorBrandGuides() {
                   </div>
                 )}
               </div>
+
+              {/* View Brand Guide PDF button */}
+              {profile.brand_guide_path && (
+                <div style={{
+                  padding: `0 ${spacing[5]} ${spacing[4]}`,
+                  borderTop: `1px solid ${colours.neutral[100]}`,
+                  paddingTop: spacing[3],
+                }}>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={(e) => { e.stopPropagation(); setPdfViewerClientId(profile.client_id) }}
+                    style={{ width: '100%' }}
+                  >
+                    <FileText size={14} style={{ marginRight: '6px' }} />
+                    View Brand Guide
+                  </Button>
+                </div>
+              )}
             </GlowCard>
           ))}
         </div>

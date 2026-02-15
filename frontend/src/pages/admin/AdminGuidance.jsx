@@ -1,117 +1,220 @@
-import { useState } from 'react'
-import { ChevronDown, ChevronUp, BookOpen, Palette, CheckCircle } from 'lucide-react'
-import GlowCard from '@/components/ui/GlowCard'
-import Button from '@/components/ui/Button'
-import { colours, spacing, typography } from '@/config/tokens'
+import { useState, useEffect } from 'react'
+import { ChevronDown, ChevronUp, BookOpen, Palette, CheckCircle, Pencil, Save, Plus, X } from 'lucide-react'
+import useAuth from '@/hooks/useAuth'
+import useToast from '@/hooks/useToast'
+import { GlowCard, Button, Input, Textarea, EmberLoader, PageHeader } from '@/components/ui'
+import { apiEndpoint } from '@/config/env'
+import { getAuthHeaders } from '@/services/auth'
+import { getContractorXP } from '@/services/gamification'
+import { colours, spacing, typography, radii } from '@/config/tokens'
 
-const PROMPT_SECTIONS = [
-  {
-    title: 'Social Media',
-    tips: [
-      { tip: 'Specify the platform', example: '"Create an Instagram carousel post" is better than "Create a social media post"' },
-      { tip: 'Include the goal', example: '"Drive traffic to our new product launch page" gives the AI clear intent' },
-      { tip: 'Reference the brand voice', example: '"Use a playful, conversational tone consistent with the brand profile" keeps output on-brand' },
-      { tip: 'Mention format constraints', example: '"Keep caption under 150 characters with 3-5 relevant hashtags"' },
-      { tip: 'Provide context on the audience', example: '"Target: small business owners aged 25-40 who value sustainability"' },
-    ],
-  },
-  {
-    title: 'Documents',
-    tips: [
-      { tip: 'Define the document type clearly', example: '"Write a one-page executive summary" vs "Write a document"' },
-      { tip: 'Specify the reading level', example: '"Write for a general audience with no technical jargon"' },
-      { tip: 'Include structural requirements', example: '"Use headers, bullet points, and a call-to-action at the end"' },
-      { tip: 'State the key message upfront', example: '"The main takeaway should be that our Q3 results exceeded projections by 15%"' },
-    ],
-  },
-  {
-    title: 'Presentations',
-    tips: [
-      { tip: 'Define the slide count and flow', example: '"Create a 10-slide pitch deck: problem, solution, market, traction, team, ask"' },
-      { tip: 'Specify text density', example: '"Keep each slide to 3-4 bullet points maximum, 6-8 words each"' },
-      { tip: 'Include speaker notes guidance', example: '"Add speaker notes with talking points for each slide"' },
-      { tip: 'Reference visual style', example: '"Minimalist design, use brand colours, one image per slide maximum"' },
-    ],
-  },
-  {
-    title: 'Ad Creatives',
-    tips: [
-      { tip: 'State the ad placement', example: '"Facebook feed ad, 1080x1080" is more useful than "Create an ad"' },
-      { tip: 'Include the value proposition', example: '"Highlight our 30-day free trial and no credit card required"' },
-      { tip: 'Define the CTA', example: '"CTA button: Start Free Trial" removes ambiguity' },
-      { tip: 'Mention compliance needs', example: '"Must include disclaimer text and comply with financial advertising rules"' },
-      { tip: 'A/B testing variations', example: '"Create two headline variations: one benefit-focused, one urgency-focused"' },
-    ],
-  },
+// ── Fallback data if API has no rows yet ─────────────────────────
+const FALLBACK_PROMPT_SECTIONS = [
+  { section_key: 'prompt_social', title: 'Social Media', content: [
+    { tip: 'Specify the platform', example: '"Create an Instagram carousel post" is better than "Create a social media post"' },
+    { tip: 'Include the goal', example: '"Drive traffic to our new product launch page" gives the AI clear intent' },
+  ]},
+  { section_key: 'prompt_documents', title: 'Documents', content: [
+    { tip: 'Define the document type clearly', example: '"Write a one-page executive summary" vs "Write a document"' },
+    { tip: 'Specify the reading level', example: '"Write for a general audience with no technical jargon"' },
+  ]},
+  { section_key: 'prompt_presentations', title: 'Presentations', content: [
+    { tip: 'Define the slide count and flow', example: '"Create a 10-slide pitch deck: problem, solution, market, traction, team, ask"' },
+  ]},
+  { section_key: 'prompt_ads', title: 'Ad Creatives', content: [
+    { tip: 'State the ad placement', example: '"Facebook feed ad, 1080x1080" is more useful than "Create an ad"' },
+  ]},
 ]
 
-const BRAND_CHECKLIST = [
-  'Brand story and origin narrative',
-  'Brand archetypes (personality framework)',
-  'Core messaging pillars',
-  'Tone of voice guidelines',
-  'Visual identity guidelines',
-  'Target audience profiles',
-  'Competitor differentiation points',
-]
+const FALLBACK_CHECKLISTS = {
+  brand_checklist: ['Brand story and origin narrative', 'Core messaging pillars', 'Tone of voice guidelines', 'Visual identity guidelines', 'Target audience profiles'],
+  quality_checklist: ['Content aligns with brand voice', 'No factual errors', 'Appropriate length for platform', 'Grammar and spelling are correct'],
+}
 
-const QUALITY_CHECKLIST = [
-  'Content aligns with the brand voice and tone',
-  'Key messaging pillars are represented',
-  'No factual errors or hallucinated claims',
-  'Appropriate length and format for the platform',
-  'Call-to-action is clear and compelling',
-  'Grammar and spelling are correct',
-  'Visual elements match brand guidelines',
-  'Content is original and not generic filler',
-]
+const SECTION_ICONS = {
+  prompt_social: BookOpen,
+  prompt_documents: BookOpen,
+  prompt_presentations: BookOpen,
+  prompt_ads: BookOpen,
+  brand_checklist: Palette,
+  quality_checklist: CheckCircle,
+}
 
+// ── Main Component ───────────────────────────────────────────────
 export default function AdminGuidance() {
+  const { user } = useAuth()
+  const { addToast } = useToast()
+
+  const [sections, setSections] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [canEdit, setCanEdit] = useState(false)
+  const [editingKey, setEditingKey] = useState(null)
+  const [editDraft, setEditDraft] = useState(null)
+  const [saving, setSaving] = useState(false)
   const [expandedSections, setExpandedSections] = useState({})
 
-  const toggleSection = (key) => {
-    setExpandedSections(prev => ({ ...prev, [key]: !prev[key] }))
+  // Check edit permissions
+  useEffect(() => {
+    async function checkPermissions() {
+      if (user?.role === 'admin') {
+        setCanEdit(true)
+        return
+      }
+      if (user?.role === 'contractor') {
+        try {
+          const xpData = await getContractorXP(user.id)
+          if (xpData?.current_level >= 7) setCanEdit(true)
+        } catch {}
+      }
+    }
+    checkPermissions()
+  }, [user])
+
+  // Load guidance sections
+  useEffect(() => {
+    async function loadSections() {
+      try {
+        const res = await fetch(apiEndpoint('/guidance'), { headers: { ...getAuthHeaders() } })
+        const json = await res.json()
+        if (json.success && json.data?.length > 0) {
+          setSections(json.data)
+        } else {
+          // Use fallback data if table doesn't exist yet
+          setSections([
+            ...FALLBACK_PROMPT_SECTIONS,
+            { section_key: 'brand_checklist', title: 'Brand Voice Guidelines', content: FALLBACK_CHECKLISTS.brand_checklist },
+            { section_key: 'quality_checklist', title: 'Quality Standards', content: FALLBACK_CHECKLISTS.quality_checklist },
+          ])
+        }
+      } catch {
+        // Fallback to hardcoded content
+        setSections([
+          ...FALLBACK_PROMPT_SECTIONS,
+          { section_key: 'brand_checklist', title: 'Brand Voice Guidelines', content: FALLBACK_CHECKLISTS.brand_checklist },
+          { section_key: 'quality_checklist', title: 'Quality Standards', content: FALLBACK_CHECKLISTS.quality_checklist },
+        ])
+      } finally {
+        setLoading(false)
+      }
+    }
+    loadSections()
+  }, [])
+
+  const toggleSection = (key) => setExpandedSections(prev => ({ ...prev, [key]: !prev[key] }))
+
+  const startEditing = (section) => {
+    setEditingKey(section.section_key)
+    setEditDraft(JSON.parse(JSON.stringify(section.content)))
+  }
+
+  const cancelEditing = () => { setEditingKey(null); setEditDraft(null) }
+
+  const saveSection = async (sectionKey) => {
+    setSaving(true)
+    try {
+      const res = await fetch(apiEndpoint(`/guidance/${encodeURIComponent(sectionKey)}`), {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+        body: JSON.stringify({ content: editDraft }),
+      })
+      const json = await res.json()
+      if (json.success) {
+        setSections(prev => prev.map(s => s.section_key === sectionKey ? { ...s, content: json.data.content } : s))
+        setEditingKey(null)
+        setEditDraft(null)
+        addToast('Section saved', 'success')
+      } else {
+        addToast(json.error || 'Failed to save', 'error')
+      }
+    } catch {
+      addToast('Failed to save section', 'error')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  // Split sections into prompt tips and checklists
+  const promptSections = sections.filter(s => s.section_key.startsWith('prompt_'))
+  const brandChecklist = sections.find(s => s.section_key === 'brand_checklist')
+  const qualityChecklist = sections.find(s => s.section_key === 'quality_checklist')
+
+  if (loading) {
+    return (
+      <div style={{ fontFamily: typography.fontFamily.sans }}>
+        <PageHeader title="AI & Content Guidance" subtitle="Best practices for AI-generated content" />
+        <div style={{ display: 'flex', justifyContent: 'center', padding: spacing[16] }}>
+          <EmberLoader size="lg" />
+        </div>
+      </div>
+    )
   }
 
   return (
-    <div style={{ padding: `${spacing[6]} 0` }}>
-      <h1 style={pageTitleStyle}>AI & Content Guidance</h1>
+    <div style={{ fontFamily: typography.fontFamily.sans }}>
+      <PageHeader title="AI & Content Guidance" subtitle="Best practices for AI-generated content" />
 
-      {/* Section 1: Prompt Best Practices */}
-      <div style={sectionStyle}>
-        <h2 style={sectionTitleStyle}>
+      {/* Prompt Best Practices */}
+      <div style={{ marginBottom: spacing[8] }}>
+        <h2 style={sectionHeadingStyle}>
           <BookOpen size={18} />
           Prompt Best Practices
         </h2>
-        <GlowCard style={{ padding: spacing[5] }}>
-          <p style={introTextStyle}>
-            Well-crafted prompts produce better AI output. Expand each content type below for specific tips and examples.
+        <GlowCard padding="24px">
+          <p style={introStyle}>
+            Well-crafted prompts produce better AI output. Expand each content type for specific tips.
           </p>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: spacing[2] }}>
-            {PROMPT_SECTIONS.map((section) => {
-              const isOpen = expandedSections[section.title]
-              return (
-                <div key={section.title} style={accordionItemStyle}>
-                  <Button
-                    variant="ghost"
-                    onClick={() => toggleSection(section.title)}
-                    style={accordionButtonStyle}
-                  >
-                    <span style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
-                      <span style={{ fontWeight: 600 }}>{section.title}</span>
-                      {isOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-                    </span>
-                  </Button>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+            {promptSections.map(section => {
+              const isOpen = expandedSections[section.section_key]
+              const isEditing = editingKey === section.section_key
+              const tips = isEditing ? editDraft : (section.content || [])
 
+              return (
+                <div key={section.section_key} style={{ borderBottom: `1px solid ${colours.neutral[200]}` }}>
+                  {/* Accordion header */}
+                  <div style={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                    padding: `${spacing[3]} 0`, cursor: 'pointer',
+                  }} onClick={() => toggleSection(section.section_key)}>
+                    <span style={{ fontWeight: typography.fontWeight.semibold, color: colours.neutral[900], fontSize: typography.fontSize.sm }}>
+                      {section.title}
+                    </span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: spacing[2] }}>
+                      {canEdit && isOpen && !isEditing && (
+                        <Button variant="ghost" size="sm" onClick={e => { e.stopPropagation(); startEditing(section) }}>
+                          <Pencil size={14} />
+                        </Button>
+                      )}
+                      {isOpen ? <ChevronUp size={16} color={colours.neutral[500]} /> : <ChevronDown size={16} color={colours.neutral[500]} />}
+                    </div>
+                  </div>
+
+                  {/* Accordion content */}
                   {isOpen && (
-                    <div style={accordionContentStyle}>
-                      {section.tips.map((item, i) => (
-                        <div key={i} style={tipStyle}>
-                          <div style={tipTitleStyle}>{item.tip}</div>
-                          <div style={tipExampleStyle}>{item.example}</div>
+                    <div style={{ paddingBottom: spacing[4] }}>
+                      {isEditing ? (
+                        <TipEditor
+                          tips={editDraft}
+                          onChange={setEditDraft}
+                          onSave={() => saveSection(section.section_key)}
+                          onCancel={cancelEditing}
+                          saving={saving}
+                        />
+                      ) : (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: spacing[3] }}>
+                          {Array.isArray(tips) && tips.map((item, i) => (
+                            <div key={i} style={{ paddingLeft: spacing[3], borderLeft: `2px solid ${colours.neutral[200]}` }}>
+                              <div style={{ fontSize: typography.fontSize.sm, fontWeight: typography.fontWeight.medium, color: colours.neutral[900], marginBottom: '4px' }}>
+                                {item.tip}
+                              </div>
+                              <div style={{ fontSize: typography.fontSize.xs, color: colours.neutral[500], fontStyle: 'italic', lineHeight: 1.5 }}>
+                                {item.example}
+                              </div>
+                            </div>
+                          ))}
                         </div>
-                      ))}
+                      )}
                     </div>
                   )}
                 </div>
@@ -121,196 +224,198 @@ export default function AdminGuidance() {
         </GlowCard>
       </div>
 
-      {/* Section 2: Brand Voice Guidelines */}
-      <div style={sectionStyle}>
-        <h2 style={sectionTitleStyle}>
-          <Palette size={18} />
-          Brand Voice Guidelines
-        </h2>
-        <GlowCard style={{ padding: spacing[5] }}>
-          <p style={introTextStyle}>
-            The AI uses brand profiles to tailor generated content. The more detail in the brand profile, the better the AI output.
-          </p>
+      {/* Brand Checklist */}
+      {brandChecklist && (
+        <ChecklistSection
+          icon={Palette}
+          title="Brand Voice Guidelines"
+          intro="The AI uses brand profiles to tailor generated content. The more detail in the brand profile, the better the output."
+          subheading="Brand Profile Checklist"
+          items={brandChecklist.content}
+          sectionKey={brandChecklist.section_key}
+          canEdit={canEdit}
+          isEditing={editingKey === brandChecklist.section_key}
+          editDraft={editDraft}
+          onStartEdit={() => startEditing(brandChecklist)}
+          onChangeDraft={setEditDraft}
+          onSave={() => saveSection(brandChecklist.section_key)}
+          onCancel={cancelEditing}
+          saving={saving}
+        />
+      )}
 
-          <p style={bodyTextStyle}>
-            When generating content, the AI references the client's brand profile to match their voice, values, and visual identity.
-            A comprehensive brand profile leads to content that feels authentic and on-brand from the first draft.
-          </p>
+      {/* Quality Checklist */}
+      {qualityChecklist && (
+        <ChecklistSection
+          icon={CheckCircle}
+          title="Quality Standards"
+          intro="Use this checklist before approving any AI-generated content."
+          subheading="Review Checklist"
+          items={qualityChecklist.content}
+          sectionKey={qualityChecklist.section_key}
+          canEdit={canEdit}
+          isEditing={editingKey === qualityChecklist.section_key}
+          editDraft={editDraft}
+          onStartEdit={() => startEditing(qualityChecklist)}
+          onChangeDraft={setEditDraft}
+          onSave={() => saveSection(qualityChecklist.section_key)}
+          onCancel={cancelEditing}
+          saving={saving}
+        />
+      )}
+    </div>
+  )
+}
 
-          <div style={subHeadingStyle}>Brand Profile Checklist</div>
-          <p style={bodyTextStyle}>
-            Ensure each brand profile includes these elements for optimal AI output:
-          </p>
+// ── Tip Editor (for prompt sections) ─────────────────────────────
+function TipEditor({ tips, onChange, onSave, onCancel, saving }) {
+  const updateTip = (index, field, value) => {
+    const updated = [...tips]
+    updated[index] = { ...updated[index], [field]: value }
+    onChange(updated)
+  }
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: spacing[2] }}>
-            {BRAND_CHECKLIST.map((item, i) => (
-              <div key={i} style={checklistItemStyle}>
-                <CheckCircle size={14} color={colours.neutral[500]} style={{ flexShrink: 0, marginTop: '2px' }} />
-                <span>{item}</span>
-              </div>
-            ))}
-          </div>
-        </GlowCard>
-      </div>
+  const addTip = () => onChange([...tips, { tip: '', example: '' }])
 
-      {/* Section 3: Quality Standards */}
-      <div style={sectionStyle}>
-        <h2 style={sectionTitleStyle}>
-          <CheckCircle size={18} />
-          Quality Standards
-        </h2>
-        <GlowCard style={{ padding: spacing[5] }}>
-          <p style={introTextStyle}>
-            Use this checklist before approving any AI-generated content. Quality control ensures the final output meets professional standards.
-          </p>
+  const removeTip = (index) => onChange(tips.filter((_, i) => i !== index))
 
-          <div style={subHeadingStyle}>Review Checklist</div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: spacing[2], marginBottom: spacing[5] }}>
-            {QUALITY_CHECKLIST.map((item, i) => (
-              <div key={i} style={checklistItemStyle}>
-                <CheckCircle size={14} color={colours.neutral[500]} style={{ flexShrink: 0, marginTop: '2px' }} />
-                <span>{item}</span>
-              </div>
-            ))}
-          </div>
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: spacing[3] }}>
+      {tips.map((item, i) => (
+        <div key={i} style={{
+          padding: spacing[3], backgroundColor: colours.neutral[100],
+          borderRadius: radii.md, position: 'relative',
+        }}>
+          <Input
+            value={item.tip}
+            onChange={e => updateTip(i, 'tip', e.target.value)}
+            placeholder="Tip title"
+            disabled={saving}
+          />
+          <div style={{ height: spacing[2] }} />
+          <Textarea
+            value={item.example}
+            onChange={e => updateTip(i, 'example', e.target.value)}
+            placeholder="Example text..."
+            rows={2}
+            autoGrow
+            disabled={saving}
+          />
+          {tips.length > 1 && (
+            <Button
+              variant="ghost" size="sm"
+              onClick={() => removeTip(i)}
+              disabled={saving}
+              style={{ position: 'absolute', top: spacing[2], right: spacing[2] }}
+            >
+              <X size={14} />
+            </Button>
+          )}
+        </div>
+      ))}
 
-          <div style={subHeadingStyle}>When to Regenerate vs Edit</div>
-          <div style={{ display: 'flex', gap: spacing[4] }}>
-            <div style={{ flex: 1 }}>
-              <div style={miniHeadingStyle}>Regenerate when:</div>
-              <ul style={listStyle}>
-                <li>The tone is completely off-brand</li>
-                <li>The structure doesn't match the format</li>
-                <li>The content misses the core message</li>
-                <li>Multiple factual errors are present</li>
-              </ul>
-            </div>
-            <div style={{ flex: 1 }}>
-              <div style={miniHeadingStyle}>Edit manually when:</div>
-              <ul style={listStyle}>
-                <li>Minor wording adjustments needed</li>
-                <li>Small factual corrections required</li>
-                <li>A specific phrase needs brand language</li>
-                <li>Length needs slight trimming</li>
-              </ul>
-            </div>
-          </div>
-        </GlowCard>
+      <div style={{ display: 'flex', gap: spacing[2] }}>
+        <Button variant="ghost" size="sm" onClick={addTip} disabled={saving}>
+          <Plus size={14} style={{ marginRight: '4px' }} /> Add Tip
+        </Button>
+        <div style={{ flex: 1 }} />
+        <Button variant="ghost" size="sm" onClick={onCancel} disabled={saving}>Cancel</Button>
+        <Button variant="primary" size="sm" onClick={onSave} disabled={saving}>
+          <Save size={14} style={{ marginRight: '4px' }} /> {saving ? 'Saving...' : 'Save'}
+        </Button>
       </div>
     </div>
   )
 }
 
-const pageTitleStyle = {
-  fontSize: typography.fontSize['2xl'],
-  fontWeight: typography.fontWeight.bold,
-  color: '#ffffff',
-  marginBottom: spacing[6],
-  marginTop: 0,
+// ── Checklist Section ────────────────────────────────────────────
+function ChecklistSection({ icon: Icon, title, intro, subheading, items, sectionKey, canEdit, isEditing, editDraft, onStartEdit, onChangeDraft, onSave, onCancel, saving }) {
+  const displayItems = isEditing ? editDraft : (Array.isArray(items) ? items : [])
+
+  const updateItem = (index, value) => {
+    const updated = [...editDraft]
+    updated[index] = value
+    onChangeDraft(updated)
+  }
+
+  const addItem = () => onChangeDraft([...editDraft, ''])
+  const removeItem = (index) => onChangeDraft(editDraft.filter((_, i) => i !== index))
+
+  return (
+    <div style={{ marginBottom: spacing[8] }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: spacing[4] }}>
+        <h2 style={sectionHeadingStyle}>
+          <Icon size={18} />
+          {title}
+        </h2>
+        {canEdit && !isEditing && (
+          <Button variant="ghost" size="sm" onClick={onStartEdit}>
+            <Pencil size={14} style={{ marginRight: '4px' }} /> Edit
+          </Button>
+        )}
+      </div>
+
+      <GlowCard padding="24px">
+        <p style={introStyle}>{intro}</p>
+
+        <div style={{ fontSize: typography.fontSize.base, fontWeight: typography.fontWeight.semibold, color: colours.neutral[900], marginBottom: spacing[3] }}>
+          {subheading}
+        </div>
+
+        {isEditing ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: spacing[2] }}>
+            {displayItems.map((item, i) => (
+              <div key={i} style={{ display: 'flex', gap: spacing[2], alignItems: 'center' }}>
+                <Input value={item} onChange={e => updateItem(i, e.target.value)} placeholder="Checklist item..." disabled={saving} />
+                {displayItems.length > 1 && (
+                  <Button variant="ghost" size="sm" onClick={() => removeItem(i)} disabled={saving}>
+                    <X size={14} />
+                  </Button>
+                )}
+              </div>
+            ))}
+            <div style={{ display: 'flex', gap: spacing[2], marginTop: spacing[2] }}>
+              <Button variant="ghost" size="sm" onClick={addItem} disabled={saving}>
+                <Plus size={14} style={{ marginRight: '4px' }} /> Add Item
+              </Button>
+              <div style={{ flex: 1 }} />
+              <Button variant="ghost" size="sm" onClick={onCancel} disabled={saving}>Cancel</Button>
+              <Button variant="primary" size="sm" onClick={onSave} disabled={saving}>
+                <Save size={14} style={{ marginRight: '4px' }} /> {saving ? 'Saving...' : 'Save'}
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: spacing[2] }}>
+            {displayItems.map((item, i) => (
+              <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: spacing[2], fontSize: typography.fontSize.sm, color: colours.neutral[500], lineHeight: 1.5 }}>
+                <CheckCircle size={14} color={colours.neutral[400]} style={{ flexShrink: 0, marginTop: '3px' }} />
+                <span>{item}</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </GlowCard>
+    </div>
+  )
 }
 
-const sectionStyle = {
-  marginBottom: spacing[8],
-}
-
-const sectionTitleStyle = {
+// ── Shared styles ────────────────────────────────────────────────
+const sectionHeadingStyle = {
   display: 'flex',
   alignItems: 'center',
-  gap: '8px',
+  gap: spacing[2],
   fontSize: typography.fontSize.lg,
   fontWeight: typography.fontWeight.semibold,
-  color: '#ffffff',
+  color: colours.neutral[900],
   marginBottom: spacing[4],
   marginTop: 0,
 }
 
-const introTextStyle = {
-  fontSize: typography.fontSize.sm,
-  color: colours.neutral[400],
-  lineHeight: 1.6,
-  marginTop: 0,
-  marginBottom: spacing[4],
-}
-
-const bodyTextStyle = {
+const introStyle = {
   fontSize: typography.fontSize.sm,
   color: colours.neutral[500],
   lineHeight: 1.6,
   marginTop: 0,
   marginBottom: spacing[4],
-}
-
-const subHeadingStyle = {
-  fontSize: typography.fontSize.base,
-  fontWeight: typography.fontWeight.semibold,
-  color: '#ffffff',
-  marginBottom: spacing[3],
-}
-
-const miniHeadingStyle = {
-  fontSize: typography.fontSize.sm,
-  fontWeight: typography.fontWeight.semibold,
-  color: colours.neutral[300],
-  marginBottom: spacing[2],
-}
-
-const accordionItemStyle = {
-  borderBottom: '1px solid #1a1a1a',
-}
-
-const accordionButtonStyle = {
-  display: 'flex',
-  justifyContent: 'space-between',
-  alignItems: 'center',
-  width: '100%',
-  padding: `${spacing[3]} 0`,
-  background: 'none',
-  border: 'none',
-  cursor: 'pointer',
-  color: '#ffffff',
-  fontSize: typography.fontSize.sm,
-  fontFamily: typography.fontFamily.sans,
-}
-
-const accordionContentStyle = {
-  paddingBottom: spacing[4],
-  display: 'flex',
-  flexDirection: 'column',
-  gap: spacing[3],
-}
-
-const tipStyle = {
-  paddingLeft: spacing[3],
-  borderLeft: '2px solid #333',
-}
-
-const tipTitleStyle = {
-  fontSize: typography.fontSize.sm,
-  fontWeight: typography.fontWeight.medium,
-  color: '#ffffff',
-  marginBottom: '4px',
-}
-
-const tipExampleStyle = {
-  fontSize: '12px',
-  color: colours.neutral[500],
-  fontStyle: 'italic',
-  lineHeight: 1.5,
-}
-
-const checklistItemStyle = {
-  display: 'flex',
-  alignItems: 'flex-start',
-  gap: spacing[2],
-  fontSize: typography.fontSize.sm,
-  color: colours.neutral[400],
-  lineHeight: 1.5,
-}
-
-const listStyle = {
-  margin: 0,
-  paddingLeft: spacing[4],
-  fontSize: typography.fontSize.sm,
-  color: colours.neutral[500],
-  lineHeight: 1.8,
 }

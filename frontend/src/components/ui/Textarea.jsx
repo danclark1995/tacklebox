@@ -13,8 +13,19 @@ const Textarea = ({
   maxLength = null,
   className = '',
   placeholder = '',
+  autoGrow = false,
+  style: styleProp = {},
 }) => {
   const [isFocused, setIsFocused] = React.useState(false)
+  const textareaRef = React.useRef(null)
+
+  React.useEffect(() => {
+    if (autoGrow && textareaRef.current) {
+      const el = textareaRef.current
+      el.style.height = 'auto'
+      el.style.height = el.scrollHeight + 'px'
+    }
+  }, [value, autoGrow])
 
   const wrapperStyles = {
     display: 'flex',
@@ -73,6 +84,7 @@ const Textarea = ({
         </label>
       )}
       <textarea
+        ref={textareaRef}
         value={value}
         onChange={onChange}
         rows={rows}
@@ -82,7 +94,11 @@ const Textarea = ({
         placeholder={placeholder}
         onFocus={() => setIsFocused(true)}
         onBlur={() => setIsFocused(false)}
-        style={textareaStyles}
+        style={{
+          ...textareaStyles,
+          ...(autoGrow ? { resize: 'none', overflow: 'hidden' } : {}),
+          ...styleProp,
+        }}
       />
       <div style={footerStyles}>
         <div>{error && <span style={errorStyles}>{error}</span>}</div>
@@ -109,6 +125,8 @@ Textarea.propTypes = {
   maxLength: PropTypes.number,
   className: PropTypes.string,
   placeholder: PropTypes.string,
+  autoGrow: PropTypes.bool,
+  style: PropTypes.object,
 }
 
 export default Textarea

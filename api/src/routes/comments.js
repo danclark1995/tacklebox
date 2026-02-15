@@ -180,8 +180,8 @@ export async function handleComments(request, env, auth, path, method) {
         const participants = await env.DB.prepare(`
           SELECT DISTINCT u.id, u.email, u.display_name
           FROM users u
-          WHERE u.id IN (?, ?, ?) AND u.id != ?
-        `).bind(task.client_id, task.contractor_id || '', 'admin', auth.user.id).all()
+          WHERE (u.id IN (?, ?) OR u.role = 'admin') AND u.id != ? AND u.is_active = 1
+        `).bind(task.client_id, task.contractor_id || '', auth.user.id).all()
         const recipients = (participants.results || []).filter(p => p.email)
         if (recipients.length > 0) {
           notifyNewComment(task, newComment, recipients)

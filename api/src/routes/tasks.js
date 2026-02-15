@@ -875,9 +875,19 @@ export async function handleTasks(request, env, auth, path, method) {
       await env.DB.prepare('DELETE FROM task_comments WHERE task_id = ?').bind(taskId).run()
       await env.DB.prepare('DELETE FROM task_history WHERE task_id = ?').bind(taskId).run()
       await env.DB.prepare('DELETE FROM time_entries WHERE task_id = ?').bind(taskId).run()
-      await env.DB.prepare('DELETE FROM reviews WHERE task_id = ?').bind(taskId).run()
+      await env.DB.prepare('DELETE FROM task_reviews WHERE task_id = ?').bind(taskId).run()
+
+      // Clean up attachments from R2 and DB
+      const attachments = await env.DB.prepare('SELECT storage_key FROM task_attachments WHERE task_id = ?').bind(taskId).all()
+      for (const att of (attachments.results || [])) {
+        if (att.storage_key) {
+          try { await env.STORAGE.delete(att.storage_key) } catch {}
+        }
+      }
+      await env.DB.prepare('DELETE FROM task_attachments WHERE task_id = ?').bind(taskId).run()
+
       await env.DB.prepare('DELETE FROM tasks WHERE id = ?').bind(taskId).run()
-      return jsonResponse({ success: true })
+      return jsonResponse({ success: true, data: { deleted: true } })
     } catch (err) {
       console.error('Delete task error:', err)
       return jsonResponse({ success: false, error: 'Failed to delete task' }, 500)

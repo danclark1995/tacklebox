@@ -160,7 +160,7 @@ export default function BrandProfileEditor({ profile, clientId, onSaveSection, o
   const renderField = (label, field, placeholder, rows = 3) => (
     <div style={{ marginBottom: spacing[4] }}>
       <Label>{label}</Label>
-      <Textarea value={form[field]} onChange={e => set(field, e.target.value)} placeholder={placeholder} rows={rows} disabled={saving} />
+      <Textarea value={form[field]} onChange={e => set(field, e.target.value)} placeholder={placeholder} rows={rows} disabled={saving} autoGrow />
     </div>
   )
 
@@ -213,7 +213,7 @@ export default function BrandProfileEditor({ profile, clientId, onSaveSection, o
         renderItem={(item, i) => (
           <div style={dynamicRowStyle}>
             <Input value={item.name} onChange={e => updateItem('metaphors', i, 'name', e.target.value)} placeholder="Metaphor name" disabled={saving} />
-            <Textarea value={item.description} onChange={e => updateItem('metaphors', i, 'description', e.target.value)} placeholder="Description..." rows={2} disabled={saving} />
+            <Textarea value={item.description} onChange={e => updateItem('metaphors', i, 'description', e.target.value)} placeholder="Description..." rows={2} disabled={saving} autoGrow />
           </div>
         )}
       />
@@ -232,7 +232,7 @@ export default function BrandProfileEditor({ profile, clientId, onSaveSection, o
           <div style={dynamicRowStyle}>
             <Input value={item.name} onChange={e => updateItem('brand_values', i, 'name', e.target.value)} placeholder="Value name" disabled={saving} />
             <Input value={item.tagline} onChange={e => updateItem('brand_values', i, 'tagline', e.target.value)} placeholder="Value tagline" disabled={saving} />
-            <Textarea value={item.narrative} onChange={e => updateItem('brand_values', i, 'narrative', e.target.value)} placeholder="Value narrative..." rows={2} disabled={saving} />
+            <Textarea value={item.narrative} onChange={e => updateItem('brand_values', i, 'narrative', e.target.value)} placeholder="Value narrative..." rows={2} disabled={saving} autoGrow />
           </div>
         )}
       />
@@ -250,7 +250,7 @@ export default function BrandProfileEditor({ profile, clientId, onSaveSection, o
         renderItem={(item, i) => (
           <div style={dynamicRowStyle}>
             <Input value={item.name} onChange={e => updateItem('archetypes', i, 'name', e.target.value)} placeholder="Archetype name" disabled={saving} />
-            <Textarea value={item.description} onChange={e => updateItem('archetypes', i, 'description', e.target.value)} placeholder="Description..." rows={2} disabled={saving} />
+            <Textarea value={item.description} onChange={e => updateItem('archetypes', i, 'description', e.target.value)} placeholder="Description..." rows={2} disabled={saving} autoGrow />
           </div>
         )}
       />
@@ -373,7 +373,7 @@ export default function BrandProfileEditor({ profile, clientId, onSaveSection, o
         </div>
         <div>
           <Label>Notes</Label>
-          <Textarea value={img.notes || ''} onChange={e => setImg({ ...img, notes: e.target.value })} placeholder="General imagery notes..." rows={4} disabled={saving} />
+          <Textarea value={img.notes || ''} onChange={e => setImg({ ...img, notes: e.target.value })} placeholder="General imagery notes..." rows={4} disabled={saving} autoGrow />
         </div>
         <div>
           <Label>Template Descriptions</Label>
@@ -390,6 +390,7 @@ export default function BrandProfileEditor({ profile, clientId, onSaveSection, o
                 placeholder="Describe a visual template..."
                 rows={2}
                 disabled={saving}
+                autoGrow
               />
             )}
           />

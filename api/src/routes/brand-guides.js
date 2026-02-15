@@ -17,40 +17,45 @@ export async function handleBrandGuides(request, env, auth, path, method) {
     const clientId = url.searchParams.get('client_id')
     const user = auth.user
 
-    // Role-based filtering
-    if (user.role === 'client') {
-      const guides = await env.DB.prepare(
-        'SELECT * FROM brand_guides WHERE client_id = ? ORDER BY created_at DESC'
-      ).bind(user.id).all()
-      return jsonResponse({ success: true, data: guides.results })
-    }
+    try {
+      // Role-based filtering
+      if (user.role === 'client') {
+        const guides = await env.DB.prepare(
+          'SELECT * FROM brand_guides WHERE client_id = ? ORDER BY created_at DESC'
+        ).bind(user.id).all()
+        return jsonResponse({ success: true, data: guides.results })
+      }
 
-    if (user.role === 'contractor') {
-      // Contractor can see guides for clients whose tasks they're assigned to
-      let query = `SELECT bg.* FROM brand_guides bg
-        WHERE bg.client_id IN (SELECT DISTINCT client_id FROM tasks WHERE contractor_id = ?)`
-      const params = [user.id]
+      if (user.role === 'contractor') {
+        // Contractor can see guides for clients whose tasks they're assigned to
+        let query = `SELECT bg.* FROM brand_guides bg
+          WHERE bg.client_id IN (SELECT DISTINCT client_id FROM tasks WHERE contractor_id = ?)`
+        const params = [user.id]
+        if (clientId) {
+          query += ' AND bg.client_id = ?'
+          params.push(clientId)
+        }
+        query += ' ORDER BY bg.created_at DESC'
+        const guides = await env.DB.prepare(query).bind(...params).all()
+        return jsonResponse({ success: true, data: guides.results })
+      }
+
+      // Admin sees all or filtered by client
+      let query = 'SELECT * FROM brand_guides'
+      const params = []
       if (clientId) {
-        query += ' AND bg.client_id = ?'
+        query += ' WHERE client_id = ?'
         params.push(clientId)
       }
-      query += ' ORDER BY bg.created_at DESC'
-      const guides = await env.DB.prepare(query).bind(...params).all()
+      query += ' ORDER BY created_at DESC'
+      const guides = params.length
+        ? await env.DB.prepare(query).bind(...params).all()
+        : await env.DB.prepare(query).all()
       return jsonResponse({ success: true, data: guides.results })
+    } catch (err) {
+      console.error('List brand guides error:', err)
+      return jsonResponse({ success: false, error: 'Failed to fetch brand guides' }, 500)
     }
-
-    // Admin sees all or filtered by client
-    let query = 'SELECT * FROM brand_guides'
-    const params = []
-    if (clientId) {
-      query += ' WHERE client_id = ?'
-      params.push(clientId)
-    }
-    query += ' ORDER BY created_at DESC'
-    const guides = params.length
-      ? await env.DB.prepare(query).bind(...params).all()
-      : await env.DB.prepare(query).all()
-    return jsonResponse({ success: true, data: guides.results })
   }
 
   // POST /brand-guides — admin only, upload guide
@@ -111,18 +116,24 @@ export async function handleBrandGuides(request, env, auth, path, method) {
     if (!check.authorized) return jsonResponse({ success: false, error: check.error }, check.status)
 
     const guideId = deleteMatch[1]
-    const guide = await env.DB.prepare('SELECT * FROM brand_guides WHERE id = ?').bind(guideId).first()
-    if (!guide) {
-      return jsonResponse({ success: false, error: 'Brand guide not found' }, 404)
+
+    try {
+      const guide = await env.DB.prepare('SELECT * FROM brand_guides WHERE id = ?').bind(guideId).first()
+      if (!guide) {
+        return jsonResponse({ success: false, error: 'Brand guide not found' }, 404)
+      }
+
+      // Delete from R2
+      await env.tacklebox_storage.delete(guide.file_path)
+
+      // Delete DB record
+      await env.DB.prepare('DELETE FROM brand_guides WHERE id = ?').bind(guideId).run()
+
+      return jsonResponse({ success: true, data: { deleted: true } })
+    } catch (err) {
+      console.error('Delete brand guide error:', err)
+      return jsonResponse({ success: false, error: 'Failed to delete brand guide' }, 500)
     }
-
-    // Delete from R2
-    await env.tacklebox_storage.delete(guide.file_path)
-
-    // Delete DB record
-    await env.DB.prepare('DELETE FROM brand_guides WHERE id = ?').bind(guideId).run()
-
-    return jsonResponse({ success: true, data: { deleted: true } })
   }
 
   return jsonResponse({ success: false, error: 'Route not found' }, 404)
