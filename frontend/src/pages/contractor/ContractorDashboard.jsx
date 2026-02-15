@@ -12,6 +12,7 @@ import TaskList from '@/components/features/tasks/TaskList'
 import XPBar from '@/components/features/gamification/XPBar'
 import BadgeGrid from '@/components/features/gamification/BadgeGrid'
 import ToolboxGrid from '@/components/features/ToolboxGrid'
+import RecentNotifications from '@/components/features/notifications/RecentNotifications'
 import { apiFetch } from '@/services/apiFetch'
 import { colours, spacing, typography, radii, shadows } from '@/config/tokens'
 
@@ -376,6 +377,9 @@ export default function ContractorDashboard() {
           />
         )}
       </div>
+
+      {/* Recent Notifications */}
+      <RecentNotifications limit={5} />
 
       {/* Toolbox Section */}
       {toolboxTools.length > 0 && (

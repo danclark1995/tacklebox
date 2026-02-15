@@ -46,7 +46,7 @@ const Textarea = ({
     width: '100%',
     padding: spacing[3],
     borderRadius: radii.md,
-    border: `1px solid ${error ? '#ff4444' : isFocused ? '#444' : colours.neutral[300]}`,
+    border: `1px solid ${error ? colours.status.danger : isFocused ? colours.neutral[400] : colours.neutral[300]}`,
     backgroundColor: disabled ? colours.neutral[50] : colours.white,
     color: colours.neutral[900],
     transition: `all ${transitions.normal}`,
@@ -59,7 +59,7 @@ const Textarea = ({
   const errorStyles = {
     fontFamily: typography.fontFamily.sans,
     fontSize: typography.fontSize.xs,
-    color: '#ff4444',
+    color: colours.status.danger,
   }
 
   const charCountStyles = {

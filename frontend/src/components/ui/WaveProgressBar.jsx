@@ -1,5 +1,6 @@
 import React from 'react'
 import PropTypes from 'prop-types'
+import { colours } from '@/config/tokens'
 
 const SIZES = {
   sm: 4,
@@ -34,19 +35,19 @@ const WaveProgressBar = ({
   const labelStyle = {
     fontSize: '13px',
     fontWeight: 500,
-    color: '#ffffff',
+    color: colours.neutral[900],
   }
 
   const percentStyle = {
     fontSize: '12px',
-    color: '#a3a3a3',
+    color: colours.neutral[600],
     fontWeight: 500,
   }
 
   const trackStyle = {
     width: '100%',
     height: `${height}px`,
-    background: '#1a1a1a',
+    background: colours.surfaceRaised,
     borderRadius: '999px',
     overflow: 'hidden',
     position: 'relative',
@@ -55,7 +56,7 @@ const WaveProgressBar = ({
   const fillStyle = {
     height: '100%',
     width: `${clamped}%`,
-    background: 'linear-gradient(90deg, #333333, #ffffff)',
+    background: `linear-gradient(90deg, ${colours.neutral[300]}, ${colours.neutral[900]})`,
     borderRadius: '999px',
     transition: 'width 500ms ease',
     position: 'relative',
@@ -76,7 +77,7 @@ const WaveProgressBar = ({
 
   const sublabelStyle = {
     fontSize: '12px',
-    color: '#737373',
+    color: colours.neutral[500],
   }
 
   return (

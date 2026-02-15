@@ -7,6 +7,7 @@ import Button from '@/components/ui/Button'
 import StatusBadge from '@/components/ui/StatusBadge'
 import EmberLoader from '@/components/ui/EmberLoader'
 import Leaderboard from '@/components/features/gamification/Leaderboard'
+import RecentNotifications from '@/components/features/notifications/RecentNotifications'
 import { apiFetch } from '@/services/apiFetch'
 import { colours, spacing, typography } from '@/config/tokens'
 
@@ -25,6 +26,7 @@ export default function AdminDashboard() {
   const [tasks, setTasks] = useState([])
   const [users, setUsers] = useState([])
   const [leaderboard, setLeaderboard] = useState([])
+  const [earningsSummary, setEarningsSummary] = useState(null)
   const [loading, setLoading] = useState(true)
   const [statusFilter, setStatusFilter] = useState('')
 
@@ -38,12 +40,14 @@ export default function AdminDashboard() {
         if (tasksJson.success) setTasks(tasksJson.data)
         if (usersJson.success) setUsers(usersJson.data)
 
-        // Fetch leaderboard (non-critical)
+        // Fetch leaderboard + earnings (non-critical)
         try {
-          const lbJson = await apiFetch('/gamification/leaderboard')
-          if (lbJson.success !== false) {
-            setLeaderboard(lbJson.data || lbJson || [])
-          }
+          const [lbJson, earningsJson] = await Promise.all([
+            apiFetch('/gamification/leaderboard').catch(() => null),
+            apiFetch('/earnings/analytics').catch(() => null),
+          ])
+          if (lbJson?.success !== false) setLeaderboard(lbJson?.data || lbJson || [])
+          if (earningsJson?.success) setEarningsSummary(earningsJson.data?.earnings_summary || null)
         } catch { /* silently ignore */ }
       } catch (err) {
         addToast(err.message, 'error')
@@ -65,6 +69,7 @@ export default function AdminDashboard() {
   const submittedTasks = tasks.filter(t => t.status === 'submitted')
   const inProgressTasks = tasks.filter(t => t.status === 'in_progress')
   const reviewTasks = tasks.filter(t => t.status === 'review')
+  const overdueTasks = tasks.filter(t => t.deadline && new Date(t.deadline) < new Date() && !['closed', 'approved', 'cancelled'].includes(t.status))
   const activeClients = users.filter(u => u.role === 'client' && u.active)
   const activeContractors = users.filter(u => u.role === 'contractor' && u.active)
 
@@ -148,6 +153,13 @@ export default function AdminDashboard() {
           <div style={summaryLabelStyle}>Active Campers</div>
           <div style={summaryValueStyle}>{activeContractors.length}</div>
         </GlowCard>
+
+        {overdueTasks.length > 0 && (
+          <GlowCard style={{ ...summaryCardStyle, cursor: 'pointer' }} onClick={() => setStatusFilter('')}>
+            <div style={{ ...summaryLabelStyle, color: colours.status.danger }}>Overdue</div>
+            <div style={{ ...summaryValueStyle, color: colours.status.danger }}>{overdueTasks.length}</div>
+          </GlowCard>
+        )}
       </div>
 
       {/* Leaderboard Widget */}
@@ -159,6 +171,43 @@ export default function AdminDashboard() {
           </GlowCard>
         </div>
       )}
+
+      {/* Revenue Summary */}
+      {earningsSummary && (earningsSummary.task_earnings > 0 || earningsSummary.total_campsite_share > 0) && (
+        <div style={sectionStyle}>
+          <h2 style={sectionTitleStyle}>Revenue</h2>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: spacing[3] }}>
+            <GlowCard style={{ padding: spacing[4] }}>
+              <div style={summaryLabelStyle}>Task Payouts</div>
+              <div style={{ ...summaryValueStyle, fontSize: typography.fontSize['2xl'] }}>
+                ${Math.round(earningsSummary.task_earnings || 0).toLocaleString()}
+              </div>
+            </GlowCard>
+            {earningsSummary.total_campsite_share > 0 && (
+              <GlowCard style={{ padding: spacing[4] }}>
+                <div style={summaryLabelStyle}>Campsite Share</div>
+                <div style={{ ...summaryValueStyle, fontSize: typography.fontSize['2xl'] }}>
+                  ${Math.round(earningsSummary.total_campsite_share || 0).toLocaleString()}
+                </div>
+              </GlowCard>
+            )}
+            <GlowCard style={{ padding: spacing[4] }}>
+              <div style={summaryLabelStyle}>Bonuses Paid</div>
+              <div style={{ ...summaryValueStyle, fontSize: typography.fontSize['2xl'] }}>
+                ${Math.round(earningsSummary.bonus_earnings || 0).toLocaleString()}
+              </div>
+            </GlowCard>
+          </div>
+        </div>
+      )}
+
+      {/* Recent Activity */}
+      <div style={sectionStyle}>
+        <RecentNotifications limit={5} />
+      </div>
+
+      {/* Recent Notifications */}
+      <RecentNotifications limit={5} />
 
       <div style={sectionStyle}>
         <h2 style={sectionTitleStyle}>Recent Tasks</h2>
@@ -200,7 +249,7 @@ export default function AdminDashboard() {
                     {task.deadline && (
                       <span style={{
                         fontSize: '12px',
-                        color: isOverdue ? '#ff4444' : colours.neutral[600],
+                        color: isOverdue ? colours.status.danger : colours.neutral[600],
                         fontWeight: isOverdue ? 600 : 400,
                         flexShrink: 0,
                         whiteSpace: 'nowrap',

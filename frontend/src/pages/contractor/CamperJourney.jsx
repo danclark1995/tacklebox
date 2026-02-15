@@ -178,7 +178,7 @@ export default function CamperJourney() {
                     }}>
                       <IconComponent
                         size={24}
-                        color="#ffffff"
+                        color={colours.neutral[900]}
                         style={{ opacity: earned ? 1 : 0.4 }}
                       />
                       {!earned && (
@@ -259,7 +259,7 @@ function renderStars(rating) {
       <Star
         key={i}
         size={13}
-        color="#ffffff"
+        color={colours.neutral[900]}
         fill={i <= filled ? colours.neutral[900] : 'transparent'}
         style={{ opacity: i <= filled ? 1 : 0.25 }}
       />
@@ -395,7 +395,7 @@ const statRowStyle = {
   justifyContent: 'space-between',
   alignItems: 'center',
   padding: `${spacing[3]} ${spacing[4]}`,
-  borderBottom: '1px solid #1a1a1a',
+  borderBottom: `1px solid ${colours.surfaceRaised}`,
 }
 
 const statLabelStyle = {

@@ -52,7 +52,7 @@ export default function TaskCard({ task, onClick }) {
               fontSize: '11px',
               padding: '2px 6px',
               borderRadius: '4px',
-              border: '1px solid #333',
+              border: `1px solid ${colours.neutral[300]}`,
               backgroundColor: colours.neutral[100],
               color: task.complexity_level === 0 ? colours.neutral[900] : colours.neutral[500],
               boxShadow: task.complexity_level === 0 ? '0 0 6px rgba(255,255,255,0.3)' : 'none',
@@ -114,9 +114,9 @@ export default function TaskCard({ task, onClick }) {
                   width: '4px',
                   height: '4px',
                   borderRadius: '50%',
-                  backgroundColor: isOverdue ? '#ff4444' : colours.neutral[700]
+                  backgroundColor: isOverdue ? colours.status.danger : colours.neutral[700]
                 }} />
-                <span style={{ color: isOverdue ? '#ff4444' : undefined, fontWeight: isOverdue ? 600 : undefined }}>
+                <span style={{ color: isOverdue ? colours.status.danger : undefined, fontWeight: isOverdue ? 600 : undefined }}>
                   {isOverdue
                     ? `Overdue: ${new Date(task.deadline).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}`
                     : `Due: ${formatDate(task.deadline)}`}

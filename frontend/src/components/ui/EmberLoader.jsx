@@ -1,5 +1,6 @@
 import React from 'react'
 import PropTypes from 'prop-types'
+import { colours } from '@/config/tokens'
 
 const DOT_SIZES = {
   sm: 4,
@@ -30,13 +31,13 @@ const EmberLoader = ({
     width: `${dotSize}px`,
     height: `${dotSize}px`,
     borderRadius: '50%',
-    backgroundColor: '#ffffff',
+    backgroundColor: colours.neutral[900],
     animation: `emberPulse 1.2s ease-in-out ${delay}s infinite`,
   })
 
   const textStyle = {
     fontSize: '12px',
-    color: '#737373',
+    color: colours.neutral[500],
   }
 
   return (

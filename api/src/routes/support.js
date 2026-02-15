@@ -7,7 +7,7 @@
 
 import { jsonResponse } from '../index.js'
 import { requireAuth, requireRole } from '../middleware/auth.js'
-import { notifySupportMessage } from '../services/notifications.js'
+import { createNotification } from './notifications.js'
 
 export async function handleSupport(request, env, auth, path, method) {
   // POST /support - create support message
@@ -39,11 +39,13 @@ export async function handleSupport(request, env, auth, path, method) {
       // Notify admins (non-blocking)
       try {
         const admins = await env.DB.prepare(
-          'SELECT email FROM users WHERE role = "admin"'
+          'SELECT id FROM users WHERE role = "admin" AND is_active = 1'
         ).all()
-        const adminEmails = (admins.results || []).map(a => a.email).filter(Boolean)
-        if (adminEmails.length > 0) {
-          notifySupportMessage(created, adminEmails)
+        for (const admin of (admins.results || [])) {
+          await createNotification(env.DB, admin.id, 'system',
+            'New Support Message',
+            `"${subject}" from ${auth.user.display_name || 'a user'}.`,
+            '/admin/support')
         }
       } catch (e) { /* notification errors are non-critical */ }
 

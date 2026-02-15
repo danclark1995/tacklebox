@@ -81,7 +81,7 @@ export default function BrandBooklet({ brandProfile, clientName, companyName, lo
         height: inline ? 'auto' : '80vh',
         minHeight: inline ? '500px' : undefined,
         backgroundColor: colours.neutral[100],
-        border: '1px solid #1a1a1a',
+        border: `1px solid ${colours.neutral[200]}`,
         borderRadius: '4px',
         boxShadow: inline ? 'none' : '0 20px 80px rgba(0,0,0,0.8), 0 0 40px rgba(255,255,255,0.02)',
         display: 'flex',
@@ -126,7 +126,7 @@ export default function BrandBooklet({ brandProfile, clientName, companyName, lo
           alignItems: 'center',
           justifyContent: 'space-between',
           padding: '12px 24px',
-          borderTop: '1px solid #1a1a1a',
+          borderTop: `1px solid ${colours.neutral[200]}`,
           flexShrink: 0,
         }}>
           <button
@@ -473,7 +473,7 @@ function CoverPage({ clientName, companyName, tagline, industry }) {
         <span style={{
           display: 'inline-block',
           padding: '4px 16px',
-          border: '1px solid #333',
+          border: `1px solid ${colours.neutral[300]}`,
           borderRadius: '20px',
           fontSize: '14px',
           color: colours.neutral[500],
@@ -577,7 +577,7 @@ function IdentityPage({ archetypes, brandValues }) {
                 <div style={{
                   padding: '16px',
                   backgroundColor: colours.neutral[50],
-                  border: '1px solid #1a1a1a',
+                  border: `1px solid ${colours.neutral[200]}`,
                   borderRadius: '4px',
                 }}>
                   <div style={{ fontSize: '14px', fontWeight: 600, color: colours.neutral[900], marginBottom: '6px' }}>{a.name}</div>
@@ -597,7 +597,7 @@ function IdentityPage({ archetypes, brandValues }) {
               <CopyableText key={i} text={typeof val === 'string' ? val : `${val.name}${val.narrative ? ': ' + val.narrative : ''}`}>
                 <div style={{
                   padding: '8px 16px',
-                  border: '1px solid #222',
+                  border: `1px solid ${colours.neutral[200]}`,
                   borderRadius: '20px',
                   fontSize: '14px',
                   color: colours.neutral[600],
@@ -635,7 +635,7 @@ function MessagingPage({ pillars }) {
                       <span key={j} style={{
                         padding: '4px 12px',
                         backgroundColor: colours.neutral[50],
-                        border: '1px solid #222',
+                        border: `1px solid ${colours.neutral[200]}`,
                         borderRadius: '20px',
                         fontSize: '13px',
                         color: colours.neutral[500],

@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react'
 import PropTypes from 'prop-types'
 import { ChevronDown, Check } from 'lucide-react'
+import { colours, spacing, radii, typography, transitions, zIndex } from '@/config/tokens'
 
 const Dropdown = ({
   options = [],
@@ -103,8 +104,8 @@ const Dropdown = ({
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          background: '#111111',
-          border: `1px solid ${isOpen || hovered ? '#333' : '#2a2a2a'}`,
+          background: colours.surface,
+          border: `1px solid ${isOpen || hovered ? colours.neutral[300] : colours.neutral[200]}`,
           borderRadius: '8px',
           padding: '10px 14px',
           cursor: disabled ? 'not-allowed' : 'pointer',
@@ -119,7 +120,7 @@ const Dropdown = ({
         onMouseLeave={() => setHovered(false)}
       >
         <span style={{
-          color: selectedOption ? '#ffffff' : '#999',
+          color: selectedOption ? colours.neutral[900] : colours.neutral[500],
           overflow: 'hidden',
           textOverflow: 'ellipsis',
           whiteSpace: 'nowrap',
@@ -128,7 +129,7 @@ const Dropdown = ({
         </span>
         <ChevronDown
           size={16}
-          color="#ffffff"
+          color={colours.neutral[900]}
           style={{
             flexShrink: 0,
             marginLeft: '8px',
@@ -147,8 +148,8 @@ const Dropdown = ({
             left: 0,
             right: 0,
             marginTop: '4px',
-            background: 'linear-gradient(180deg, #1a1a1a 0%, #111111 100%)',
-            border: '1px solid #2a2a2a',
+            background: `linear-gradient(180deg, ${colours.surfaceRaised} 0%, ${colours.surface} 100%)`,
+            border: `1px solid ${colours.neutral[200]}`,
             borderRadius: '8px',
             boxShadow: '0 8px 32px rgba(0,0,0,0.5), 0 0 12px rgba(255,255,255,0.04)',
             zIndex: 50,
@@ -196,14 +197,14 @@ const Dropdown = ({
                       : isSelected
                         ? 'rgba(255,255,255,0.08)'
                         : 'transparent',
-                    color: isSelected || isHighlighted ? '#ffffff' : '#999',
+                    color: isSelected || isHighlighted ? colours.neutral[900] : colours.neutral[500],
                     fontSize: '14px',
                   }}
                   onClick={() => handleSelect(option.value)}
                   onMouseEnter={() => setHighlightedIndex(index)}
                 >
                   <span style={{ width: '20px', flexShrink: 0, display: 'flex', alignItems: 'center' }}>
-                    {isSelected && <Check size={12} color="#ffffff" />}
+                    {isSelected && <Check size={12} color={colours.neutral[900]} />}
                   </span>
                   <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     {option.label}

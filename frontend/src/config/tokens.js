@@ -28,6 +28,24 @@ export const colours = {
   surface: '#111111',
   surfaceRaised: '#1a1a1a',
   overlay: 'rgba(0, 0, 0, 0.7)',
+
+  // Brand
+  brand: {
+    primary: '#e5a44d',
+    primaryMuted: 'rgba(229, 164, 77, 0.15)',
+  },
+
+  // Status
+  status: {
+    success: '#4ade80',
+    successMuted: 'rgba(74, 222, 128, 0.12)',
+    danger: '#f87171',
+    dangerMuted: 'rgba(248, 113, 113, 0.12)',
+    warning: '#fbbf24',
+    warningMuted: 'rgba(251, 191, 36, 0.12)',
+    info: '#60a5fa',
+    infoMuted: 'rgba(96, 165, 250, 0.12)',
+  },
 }
 
 export const glow = {

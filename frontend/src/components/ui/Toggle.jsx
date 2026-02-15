@@ -1,5 +1,6 @@
 import React from 'react'
 import PropTypes from 'prop-types'
+import { colours, spacing, transitions } from '@/config/tokens'
 
 const Toggle = ({
   checked = false,
@@ -28,8 +29,8 @@ const Toggle = ({
           width: '40px',
           height: '22px',
           borderRadius: '11px',
-          backgroundColor: checked ? '#ffffff' : '#222',
-          border: `1px solid ${checked ? '#ffffff' : '#333'}`,
+          backgroundColor: checked ? colours.neutral[900] : colours.neutral[200],
+          border: `1px solid ${checked ? colours.neutral[900] : colours.neutral[300]}`,
           boxShadow: checked ? '0 0 8px rgba(255,255,255,0.15)' : 'none',
           transition: 'all 150ms ease',
           flexShrink: 0,
@@ -41,7 +42,7 @@ const Toggle = ({
             width: '16px',
             height: '16px',
             borderRadius: '50%',
-            backgroundColor: checked ? '#111' : '#666',
+            backgroundColor: checked ? colours.neutral[100] : colours.neutral[400],
             boxShadow: checked ? '0 0 4px rgba(255,255,255,0.2)' : 'none',
             transition: 'all 150ms ease',
           }} />
@@ -49,7 +50,7 @@ const Toggle = ({
         {label && (
           <span style={{
             fontSize: '14px',
-            color: '#ffffff',
+            color: colours.neutral[900],
             userSelect: 'none',
           }}>
             {label}
@@ -59,7 +60,7 @@ const Toggle = ({
       {helperText && (
         <div style={{
           fontSize: '12px',
-          color: '#666',
+          color: colours.neutral[400],
           marginTop: '6px',
           marginLeft: '52px',
         }}>

@@ -1,6 +1,6 @@
 import React from 'react'
 import PropTypes from 'prop-types'
-import { colours, spacing, radii, typography, transitions } from '@/config/tokens'
+import { colours, glow, spacing, radii, typography, transitions } from '@/config/tokens'
 import EmberLoader from './EmberLoader'
 
 const Button = ({
@@ -51,38 +51,38 @@ const Button = ({
 
   const variantStyles = {
     primary: {
-      backgroundColor: '#ffffff',
-      color: '#0a0a0a',
+      backgroundColor: colours.neutral[900],
+      color: colours.neutral[50],
       border: '1px solid transparent',
     },
     secondary: {
       backgroundColor: 'transparent',
-      color: '#ffffff',
-      border: '1px solid #333',
+      color: colours.neutral[900],
+      border: `1px solid ${colours.neutral[300]}`,
     },
     outline: {
       backgroundColor: 'transparent',
-      color: '#ffffff',
-      border: '1px solid #333',
+      color: colours.neutral[900],
+      border: `1px solid ${colours.neutral[300]}`,
     },
     ghost: {
       backgroundColor: 'transparent',
-      color: '#999',
+      color: colours.neutral[500],
       border: '1px solid transparent',
     },
     danger: {
       backgroundColor: 'transparent',
-      color: '#ff4444',
-      border: '1px solid rgba(255, 68, 68, 0.3)',
+      color: colours.status.danger,
+      border: `1px solid ${colours.status.dangerMuted}`,
     },
   }
 
   const hoverStyles = {
-    primary: { boxShadow: '0 0 12px rgba(255, 255, 255, 0.15)', filter: 'brightness(0.95)' },
-    secondary: { border: '1px solid #555', boxShadow: '0 0 8px rgba(255, 255, 255, 0.06)' },
-    outline: { border: '1px solid #555', boxShadow: '0 0 8px rgba(255, 255, 255, 0.06)' },
-    ghost: { color: '#fff', backgroundColor: 'rgba(255,255,255,0.05)' },
-    danger: { backgroundColor: 'rgba(255, 68, 68, 0.1)', border: '1px solid rgba(255, 68, 68, 0.5)' },
+    primary: { boxShadow: glow.soft, filter: 'brightness(0.95)' },
+    secondary: { border: `1px solid ${colours.neutral[400]}`, boxShadow: glow.soft },
+    outline: { border: `1px solid ${colours.neutral[400]}`, boxShadow: glow.soft },
+    ghost: { color: colours.neutral[900], backgroundColor: 'rgba(255,255,255,0.05)' },
+    danger: { backgroundColor: colours.status.dangerMuted, border: `1px solid ${colours.status.danger}` },
   }
 
   const [isHovered, setIsHovered] = React.useState(false)

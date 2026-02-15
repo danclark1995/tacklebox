@@ -169,7 +169,7 @@ export default function AdminJourney() {
                     }}>
                       <IconComponent
                         size={24}
-                        color="#ffffff"
+                        color={colours.neutral[900]}
                         style={{ opacity: earned ? 1 : 0.4 }}
                       />
                       {!earned && (
@@ -356,7 +356,7 @@ const statRowStyle = {
   justifyContent: 'space-between',
   alignItems: 'center',
   padding: `${spacing[3]} ${spacing[4]}`,
-  borderBottom: '1px solid #1a1a1a',
+  borderBottom: `1px solid ${colours.surfaceRaised}`,
 }
 
 const statLabelStyle = {

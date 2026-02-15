@@ -225,14 +225,14 @@ export default function BrandOnboarding() {
             width: '64px',
             height: '64px',
             borderRadius: '50%',
-            border: '2px solid #ffffff',
+            border: `2px solid ${colours.neutral[900]}`,
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             margin: '0 auto',
             marginBottom: spacing[5],
           }}>
-            <Check size={32} color="#ffffff" />
+            <Check size={32} color={colours.neutral[900]} />
           </div>
 
           <h1 style={{ fontSize: typography.fontSize['2xl'], fontWeight: typography.fontWeight.bold, color: colours.neutral[900], marginBottom: spacing[3] }}>
@@ -290,7 +290,7 @@ export default function BrandOnboarding() {
                     justifyContent: 'center',
                     cursor: i <= step ? 'pointer' : 'default',
                     backgroundColor: isCompleted ? colours.neutral[900] : 'transparent',
-                    border: isFuture ? '2px dashed #333' : isCurrent ? '2px solid #ffffff' : '2px solid #ffffff',
+                    border: isFuture ? `2px dashed ${colours.neutral[300]}` : isCurrent ? `2px solid ${colours.neutral[900]}` : `2px solid ${colours.neutral[900]}`,
                     boxShadow: isCurrent ? '0 0 12px rgba(255,255,255,0.3)' : 'none',
                     transition: 'all 0.3s ease',
                     fontSize: '11px',
@@ -298,7 +298,7 @@ export default function BrandOnboarding() {
                     color: isCompleted ? colours.neutral[50] : isCurrent ? colours.neutral[900] : colours.neutral[400],
                   }}
                 >
-                  {isCompleted ? <Check size={12} color="#000000" /> : i + 1}
+                  {isCompleted ? <Check size={12} color={colours.neutral[50]} /> : i + 1}
                 </div>
                 <span style={{
                   fontSize: '10px',
@@ -485,7 +485,7 @@ function StepMessaging({ data, update, updatePillar, addPillar, removePillar }) 
           )}
         </div>
         {data.pillars.map((pillar, i) => (
-          <div key={i} style={{ marginBottom: spacing[4], padding: spacing[4], border: '1px solid #1a1a1a', borderRadius: radii.md }}>
+          <div key={i} style={{ marginBottom: spacing[4], padding: spacing[4], border: `1px solid ${colours.neutral[200]}`, borderRadius: radii.md }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing[2] }}>
               <span style={{ fontSize: typography.fontSize.xs, color: colours.neutral[500] }}>Pillar {i + 1}</span>
               {data.pillars.length > 1 && (
@@ -588,9 +588,9 @@ function StepReview({ data, goToStep, expanded, setExpanded }) {
             </Button>
 
             {expanded[i] && (
-              <div style={{ padding: `0 ${spacing[4]} ${spacing[4]}`, borderTop: '1px solid #1a1a1a' }}>
+              <div style={{ padding: `0 ${spacing[4]} ${spacing[4]}`, borderTop: `1px solid ${colours.neutral[200]}` }}>
                 {section.items.map((item, j) => (
-                  <div key={j} style={{ padding: `${spacing[2]} 0`, borderBottom: j < section.items.length - 1 ? '1px solid #111' : 'none' }}>
+                  <div key={j} style={{ padding: `${spacing[2]} 0`, borderBottom: j < section.items.length - 1 ? `1px solid ${colours.neutral[100]}` : 'none' }}>
                     <div style={{ fontSize: '11px', color: colours.neutral[500], marginBottom: '2px' }}>{item.label}</div>
                     <div style={{
                       fontSize: typography.fontSize.sm,
@@ -645,7 +645,7 @@ const navBarStyle = {
   justifyContent: 'space-between',
   alignItems: 'center',
   paddingTop: spacing[4],
-  borderTop: '1px solid #1a1a1a',
+  borderTop: `1px solid ${colours.neutral[200]}`,
 }
 
 const stepTitleStyle = {
@@ -673,7 +673,7 @@ const addPillarButtonStyle = {
   alignItems: 'center',
   gap: '4px',
   background: 'none',
-  border: '1px solid #333',
+  border: `1px solid ${colours.neutral[300]}`,
   borderRadius: radii.md,
   padding: `${spacing[1]} ${spacing[2]}`,
   cursor: 'pointer',

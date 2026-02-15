@@ -45,7 +45,7 @@ const CircleProgress = ({
         <defs>
           <filter id="glow-soft" x="-50%" y="-50%" width="200%" height="200%">
             <feGaussianBlur stdDeviation="3" result="blur" />
-            <feFlood floodColor="#ffffff" floodOpacity="0.3" />
+            <feFlood floodColor={colours.neutral[900]} floodOpacity="0.3" />
             <feComposite in2="blur" operator="in" />
             <feMerge>
               <feMergeNode />
@@ -54,7 +54,7 @@ const CircleProgress = ({
           </filter>
           <filter id="glow-bright" x="-50%" y="-50%" width="200%" height="200%">
             <feGaussianBlur stdDeviation="6" result="blur" />
-            <feFlood floodColor="#ffffff" floodOpacity="0.5" />
+            <feFlood floodColor={colours.neutral[900]} floodOpacity="0.5" />
             <feComposite in2="blur" operator="in" />
             <feMerge>
               <feMergeNode />
@@ -84,7 +84,7 @@ const CircleProgress = ({
               key={`line-${lvl.level}`}
               x1={p1.x} y1={p1.y}
               x2={p2.x} y2={p2.y}
-              stroke="#ffffff"
+              stroke={colours.neutral[900]}
               strokeOpacity={opacity}
               strokeWidth={1}
               strokeDasharray={dashArray}
@@ -105,7 +105,7 @@ const CircleProgress = ({
                 key={`point-${lvl.level}`}
                 cx={point.x} cy={point.y}
                 r={12}
-                fill="#ffffff"
+                fill={colours.neutral[900]}
                 filter="url(#glow-bright)"
                 style={{ animation: 'glowPulse 2s ease-in-out infinite' }}
               />
@@ -117,7 +117,7 @@ const CircleProgress = ({
                 key={`point-${lvl.level}`}
                 cx={point.x} cy={point.y}
                 r={8}
-                fill="#ffffff"
+                fill={colours.neutral[900]}
                 filter="url(#glow-soft)"
               />
             )
@@ -128,7 +128,7 @@ const CircleProgress = ({
               cx={point.x} cy={point.y}
               r={6}
               fill="transparent"
-              stroke="#ffffff"
+              stroke={colours.neutral[900]}
               strokeWidth={1}
               opacity={0.3}
             />
@@ -154,7 +154,7 @@ const CircleProgress = ({
               y={pos.y}
               textAnchor={anchor}
               dominantBaseline="middle"
-              fill="#ffffff"
+              fill={colours.neutral[900]}
               fontSize={isCurrent ? 11 : 10}
               fontWeight={isCurrent ? 700 : 400}
               opacity={isFuture ? 0.4 : 1}

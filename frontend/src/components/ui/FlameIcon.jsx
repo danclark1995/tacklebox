@@ -1,7 +1,7 @@
 import React from 'react'
 import PropTypes from 'prop-types'
 import { Flame } from 'lucide-react'
-import { glow } from '@/config/tokens'
+import { colours, glow } from '@/config/tokens'
 
 const SIZES = {
   sm: 16,
@@ -52,7 +52,7 @@ const FlameIcon = ({
   return (
     <span style={wrapperStyle}>
       <span style={iconStyle}>
-        <Flame size={px} color="#ffffff" />
+        <Flame size={px} color={colours.neutral[900]} />
       </span>
     </span>
   )

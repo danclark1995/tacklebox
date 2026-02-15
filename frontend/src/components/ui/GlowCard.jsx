@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import PropTypes from 'prop-types'
-import { glow } from '@/config/tokens'
+import { colours, glow } from '@/config/tokens'
 
 const GLOW_MAP = {
   none: glow.none,
@@ -32,8 +32,8 @@ const GlowCard = ({
       : 'none'
 
   const cardStyle = {
-    background: '#111111',
-    border: `1px solid ${hovered && glowOnHover ? '#2a2a2a' : '#1a1a1a'}`,
+    background: colours.surface,
+    border: `1px solid ${hovered && glowOnHover ? colours.neutral[300] : colours.surfaceRaised}`,
     borderRadius: '8px',
     padding,
     transition: 'all 150ms ease',

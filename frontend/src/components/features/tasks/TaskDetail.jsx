@@ -359,7 +359,7 @@ export default function TaskDetail({
 
       {/* ── Discussion Section (always visible) ──────────────── */}
       <div style={{
-        borderTop: '1px solid #222',
+        borderTop: `1px solid ${colours.neutral[200]}`,
         padding: spacing[6],
       }}>
         <h2 style={{
@@ -377,7 +377,7 @@ export default function TaskDetail({
 
         {/* Comment Thread */}
         <div style={{
-          border: '1px solid #222',
+          border: `1px solid ${colours.neutral[200]}`,
           borderRadius: '8px',
           overflow: 'hidden',
           marginBottom: spacing[4],
@@ -399,7 +399,7 @@ export default function TaskDetail({
 
           {/* Comment Input */}
           <div style={{
-            borderTop: '1px solid #222',
+            borderTop: `1px solid ${colours.neutral[200]}`,
             padding: '12px 16px',
             backgroundColor: colours.neutral[50],
             position: 'relative',

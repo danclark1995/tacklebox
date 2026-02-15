@@ -75,7 +75,7 @@ export default function PromptTips({ contentType }) {
       <span ref={iconRef}>
         <Info
           size={14}
-          color="#666"
+          color={colours.neutral[400]}
           style={{ cursor: 'pointer' }}
           onClick={() => setOpen(v => !v)}
         />
@@ -85,7 +85,7 @@ export default function PromptTips({ contentType }) {
           <div style={{ fontSize: '13px', fontWeight: 600, color: colours.neutral[900], marginBottom: '10px' }}>Tips</div>
           {data.tips.map((tip, i) => (
             <div key={i} style={{ display: 'flex', gap: '8px', marginBottom: '8px', fontSize: '12px', color: colours.neutral[600] }}>
-              <Lightbulb size={13} color="#666" style={{ flexShrink: 0, marginTop: '1px' }} />
+              <Lightbulb size={13} color={colours.neutral[400]} style={{ flexShrink: 0, marginTop: '1px' }} />
               <span>{tip}</span>
             </div>
           ))}
@@ -106,7 +106,7 @@ const popoverStyle = {
   transform: 'translateY(-100%)',
   zIndex: 100,
   backgroundColor: colours.neutral[200],
-  border: '1px solid #2a2a2a',
+  border: `1px solid ${colours.neutral[200]}`,
   borderRadius: '8px',
   padding: '16px',
   maxWidth: '360px',
@@ -124,7 +124,7 @@ const arrowStyle = {
   height: 0,
   borderLeft: '6px solid transparent',
   borderRight: '6px solid transparent',
-  borderTop: '6px solid #1a1a1a',
+  borderTop: `6px solid ${colours.surfaceRaised}`,
 }
 
 const exampleBlockStyle = {
@@ -132,5 +132,5 @@ const exampleBlockStyle = {
   padding: '10px',
   backgroundColor: colours.neutral[100],
   borderRadius: '6px',
-  border: '1px solid #222',
+  border: `1px solid ${colours.neutral[200]}`,
 }

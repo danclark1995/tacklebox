@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { CreditCard } from 'lucide-react'
 import useAuth from '@/hooks/useAuth'
 import useToast from '@/hooks/useToast'
 import GlowCard from '@/components/ui/GlowCard'
@@ -8,6 +9,7 @@ import Spinner from '@/components/ui/Spinner'
 import EmptyState from '@/components/ui/EmptyState'
 import TaskProgressTracker from '@/components/ui/TaskProgressTracker'
 import TaskList from '@/components/features/tasks/TaskList'
+import RecentNotifications from '@/components/features/notifications/RecentNotifications'
 import { apiFetch } from '@/services/apiFetch'
 import { colours, spacing, typography } from '@/config/tokens'
 
@@ -16,14 +18,19 @@ export default function ClientDashboard() {
   const { addToast } = useToast()
   const navigate = useNavigate()
   const [tasks, setTasks] = useState([])
+  const [credits, setCredits] = useState(null)
   const [loading, setLoading] = useState(true)
   const [taskFilter, setTaskFilter] = useState(null)
 
   useEffect(() => {
     async function load() {
       try {
-        const json = await apiFetch('/tasks')
-        if (json.success) setTasks(json.data)
+        const [tasksJson, creditsJson] = await Promise.all([
+          apiFetch('/tasks'),
+          apiFetch('/credits/me').catch(() => null),
+        ])
+        if (tasksJson.success) setTasks(tasksJson.data)
+        if (creditsJson?.success) setCredits(creditsJson.data)
       } catch (err) {
         addToast(err.message, 'error')
       } finally {
@@ -44,6 +51,10 @@ export default function ClientDashboard() {
   const activeTasks = tasks.filter(t => ['submitted', 'assigned', 'in_progress'].includes(t.status))
   const pendingReview = tasks.filter(t => t.status === 'review')
   const completedTasks = tasks.filter(t => ['approved', 'closed'].includes(t.status))
+  const upcomingDeadlines = tasks
+    .filter(t => t.deadline && !['closed', 'approved', 'cancelled'].includes(t.status))
+    .sort((a, b) => new Date(a.deadline) - new Date(b.deadline))
+    .slice(0, 4)
 
   const filteredTasks = taskFilter === 'active' ? activeTasks :
                         taskFilter === 'review' ? pendingReview :
@@ -116,7 +127,7 @@ export default function ClientDashboard() {
         {user?.company && <p style={subtitleStyle}>{user.company}</p>}
       </div>
 
-      <div style={summaryGridStyle}>
+      <div style={{ ...summaryGridStyle, gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))' }}>
         <GlowCard
           style={summaryCardStyle(taskFilter === 'active')}
           onClick={() => setTaskFilter(taskFilter === 'active' ? null : 'active')}
@@ -140,7 +151,65 @@ export default function ClientDashboard() {
           <div style={summaryLabelStyle}>Completed Tasks</div>
           <div style={summaryValueStyle}>{completedTasks.length}</div>
         </GlowCard>
+
+        {credits && (
+          <GlowCard
+            style={{ ...summaryCardStyle(false), cursor: 'pointer' }}
+            onClick={() => navigate('/client/credits')}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: spacing[2], marginBottom: spacing[2] }}>
+              <CreditCard size={14} color={colours.neutral[600]} />
+              <span style={summaryLabelStyle}>Available Credits</span>
+            </div>
+            <div style={summaryValueStyle}>{Math.round(credits.available_credits || 0).toLocaleString()}</div>
+            {credits.held_credits > 0 && (
+              <div style={{ fontSize: typography.fontSize.xs, color: colours.neutral[500], marginTop: spacing[1] }}>
+                {Math.round(credits.held_credits).toLocaleString()} held on active tasks
+              </div>
+            )}
+          </GlowCard>
+        )}
       </div>
+
+      {/* Upcoming Deadlines */}
+      {upcomingDeadlines.length > 0 && (
+        <div style={sectionStyle}>
+          <h2 style={sectionTitleStyle}>Upcoming Deadlines</h2>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: spacing[2] }}>
+            {upcomingDeadlines.map(task => {
+              const daysLeft = Math.ceil((new Date(task.deadline) - Date.now()) / 86400000)
+              const isUrgent = daysLeft <= 2
+              return (
+                <GlowCard key={task.id} padding="12px" onClick={() => navigate(`/client/tasks/${task.id}`)} style={{ cursor: 'pointer' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div>
+                      <div style={{ fontSize: typography.fontSize.sm, fontWeight: typography.fontWeight.medium, color: colours.neutral[900] }}>
+                        {task.title}
+                      </div>
+                      <div style={{ fontSize: typography.fontSize.xs, color: colours.neutral[500], marginTop: '2px' }}>
+                        {task.status.replace('_', ' ')}
+                      </div>
+                    </div>
+                    <div style={{
+                      fontSize: typography.fontSize.xs,
+                      fontWeight: typography.fontWeight.semibold,
+                      color: isUrgent ? colours.status.danger : colours.neutral[600],
+                      padding: `${spacing[1]} ${spacing[2]}`,
+                      backgroundColor: isUrgent ? colours.status.dangerMuted : colours.neutral[200],
+                      borderRadius: '4px',
+                    }}>
+                      {daysLeft <= 0 ? 'Overdue' : daysLeft === 1 ? 'Tomorrow' : `${daysLeft} days`}
+                    </div>
+                  </div>
+                </GlowCard>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Recent Notifications */}
+      <RecentNotifications limit={5} />
 
       {/* Task Progress Trackers */}
       {activeTasks.length > 0 && (
