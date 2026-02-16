@@ -39,6 +39,17 @@ export function AuthProvider({ children }) {
     return roles.includes(user.role)
   }, [user])
 
+  // Update level data when gamification data is loaded
+  const updateLevel = useCallback((level, levelName) => {
+    setUser(prev => {
+      if (!prev) return prev
+      const effectiveLevel = prev.role === 'admin' ? Math.max(level, 7) : level
+      const updated = { ...prev, level: effectiveLevel, level_name: levelName }
+      authService.updateStoredUser(updated)
+      return updated
+    })
+  }, [])
+
   const isAuthenticated = !!user
 
   const value = {
@@ -48,6 +59,7 @@ export function AuthProvider({ children }) {
     login,
     logout,
     hasRole,
+    updateLevel,
   }
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

@@ -1,55 +1,38 @@
 import { useState, useEffect } from 'react'
 import { NavLink, useNavigate } from 'react-router-dom'
-import { Home, CheckSquare, Users, Palette, Wrench, Settings, BookOpen, User, Compass, Menu, Flame, DollarSign, Calendar, CreditCard, FolderOpen } from 'lucide-react'
+import { Home, CheckSquare, Users, Palette, Wrench, Settings, BookOpen, User, Compass, Menu, Flame, DollarSign, Calendar, CreditCard, FolderOpen, ClipboardList } from 'lucide-react'
 import useAuth from '@/hooks/useAuth'
+import usePermissions from '@/hooks/usePermissions'
 import Avatar from '@/components/ui/Avatar'
 import Button from '@/components/ui/Button'
 import WaveProgressBar from '@/components/ui/WaveProgressBar'
 import { getMyGamification } from '@/services/gamification'
 import { listMessages } from '@/services/support'
 import { colours, spacing, typography, radii, transitions } from '@/config/tokens'
-import { ROLES } from '@/config/constants'
 
 const ICON_SIZE = 18
 
-const navItemsByRole = {
-  [ROLES.CLIENT]: [
-    { path: '/client', label: 'Home', icon: <Home size={ICON_SIZE} /> },
-    { path: '/client/tasks', label: 'Tasks', icon: <CheckSquare size={ICON_SIZE} /> },
-    { path: '/client/projects', label: 'Projects', icon: <FolderOpen size={ICON_SIZE} /> },
-    { path: '/client/credits', label: 'Credits', icon: <CreditCard size={ICON_SIZE} /> },
-    { path: '/client/brand-hub', label: 'Brand Hub', icon: <BookOpen size={ICON_SIZE} /> },
-    { path: '/client/profile', label: 'Profile', icon: <User size={ICON_SIZE} /> },
-  ],
-  [ROLES.CONTRACTOR]: [
-    { path: '/camper', label: 'Home', icon: <Flame size={ICON_SIZE} /> },
-    { path: '/camper/tasks', label: 'Tasks', icon: <CheckSquare size={ICON_SIZE} /> },
-    { path: '/camper/projects', label: 'Projects', icon: <FolderOpen size={ICON_SIZE} /> },
-    { path: '/camper/calendar', label: 'Calendar', icon: <Calendar size={ICON_SIZE} /> },
-    { path: '/camper/brands', label: 'Brands', icon: <Palette size={ICON_SIZE} /> },
-    { path: '/camper/journey', label: 'Journey', icon: <Compass size={ICON_SIZE} /> },
-    { path: '/camper/profile', label: 'Profile', icon: <User size={ICON_SIZE} /> },
-  ],
-  [ROLES.ADMIN]: [
-    { path: '/admin', label: 'Home', icon: <Home size={ICON_SIZE} /> },
-    { path: '/admin/tasks', label: 'Tasks', icon: <CheckSquare size={ICON_SIZE} /> },
-    { path: '/admin/projects', label: 'Projects', icon: <FolderOpen size={ICON_SIZE} /> },
-    { path: '/admin/calendar', label: 'Calendar', icon: <Calendar size={ICON_SIZE} /> },
-    { path: '/admin/campers', label: 'Campers', icon: <Users size={ICON_SIZE} /> },
-    { path: '/admin/brands', label: 'Brands', icon: <Palette size={ICON_SIZE} /> },
-    { path: '/admin/journey', label: 'Journey', icon: <Compass size={ICON_SIZE} /> },
-    { path: '/admin/tools', label: 'Tools', icon: <Wrench size={ICON_SIZE} /> },
-  ],
-}
-
-const ROLE_DISPLAY = {
-  client: 'Client',
-  contractor: 'Camper',
-  admin: 'Admin',
+// Icon lookup for permission-based nav items
+const ICON_MAP = {
+  Flame: <Flame size={ICON_SIZE} />,
+  Home: <Home size={ICON_SIZE} />,
+  CheckSquare: <CheckSquare size={ICON_SIZE} />,
+  FolderOpen: <FolderOpen size={ICON_SIZE} />,
+  Calendar: <Calendar size={ICON_SIZE} />,
+  Palette: <Palette size={ICON_SIZE} />,
+  Compass: <Compass size={ICON_SIZE} />,
+  Wrench: <Wrench size={ICON_SIZE} />,
+  Users: <Users size={ICON_SIZE} />,
+  User: <User size={ICON_SIZE} />,
+  Settings: <Settings size={ICON_SIZE} />,
+  BookOpen: <BookOpen size={ICON_SIZE} />,
+  CreditCard: <CreditCard size={ICON_SIZE} />,
+  ClipboardList: <ClipboardList size={ICON_SIZE} />,
 }
 
 export default function Sidebar() {
-  const { user, logout } = useAuth()
+  const { user, logout, updateLevel } = useAuth()
+  const { level, levelName, isClient, isAdmin, navItems } = usePermissions()
   const navigate = useNavigate()
   const [isOpen, setIsOpen] = useState(false)
 
@@ -62,13 +45,17 @@ export default function Sidebar() {
       try {
         const data = await getMyGamification()
         setXpData(data)
+        // Sync level to auth context
+        if (data?.current_level) {
+          updateLevel(data.current_level, data.current_level_details?.name || 'Volunteer')
+        }
       } catch {}
     }
     loadXP()
-  }, [user?.id, user?.role])
+  }, [user?.id, user?.role, updateLevel])
 
   useEffect(() => {
-    if (user?.role !== 'admin') return
+    if (!isAdmin) return
     async function loadSupportCount() {
       try {
         const messages = await listMessages()
@@ -76,11 +63,52 @@ export default function Sidebar() {
       } catch {}
     }
     loadSupportCount()
-  }, [user?.role])
+  }, [isAdmin])
 
   if (!user) return null
 
-  const navItems = navItemsByRole[user.role] || []
+  // Phase 1: Build nav items based on level, using current role paths for backward compat
+  const basePath = user.role === 'admin' ? '/admin' : user.role === 'client' ? '/client' : '/camper'
+  let resolvedNavItems = []
+
+  if (isClient) {
+    resolvedNavItems = navItems.map(item => ({
+      ...item,
+      icon: ICON_MAP[item.icon] || ICON_MAP.Home,
+    }))
+  } else {
+    // Camper nav — use admin paths for admin role users, camper paths for contractors
+    resolvedNavItems = navItems.map(item => {
+      // Remap /camper/manage/* paths to /admin/* for admin role users (Phase 1 compat)
+      let path = item.path
+      if (user.role === 'admin') {
+        const pathMap = {
+          '/camper': '/admin',
+          '/camper/tasks': '/admin/tasks',
+          '/camper/projects': '/admin/projects',
+          '/camper/calendar': '/admin/calendar',
+          '/camper/brands': '/admin/brands',
+          '/camper/journey': '/admin/journey',
+          '/camper/tools': '/admin/tools',
+          '/camper/profile': '/admin/settings',
+          '/camper/manage/tasks': '/admin/tasks',
+          '/camper/manage/campers': '/admin/campers',
+          '/camper/manage/brands': '/admin/brands',
+          '/camper/manage/settings': '/admin/settings',
+        }
+        path = pathMap[item.path] || item.path
+      }
+      return { ...item, path, icon: ICON_MAP[item.icon] || ICON_MAP.Home }
+    })
+
+    // Deduplicate paths (admin mapping can create duplicates)
+    const seen = new Set()
+    resolvedNavItems = resolvedNavItems.filter(item => {
+      if (seen.has(item.path)) return false
+      seen.add(item.path)
+      return true
+    })
+  }
 
   // XP progress for sidebar
   let xpProgress = 0
@@ -258,7 +286,7 @@ export default function Sidebar() {
         </div>
 
         <nav style={navStyle}>
-          {navItems.map(item => (
+          {resolvedNavItems.map(item => (
             <NavLink
               key={item.path}
               to={item.path}
@@ -277,9 +305,11 @@ export default function Sidebar() {
             <Avatar name={user.display_name} size="md" />
             <div style={userDetailsStyle}>
               <div style={userNameStyle}>{user.display_name}</div>
-              <div style={roleBadgeStyle}>{ROLE_DISPLAY[user.role]}</div>
+              <div style={roleBadgeStyle}>
+                {isClient ? 'Client' : `L${level} · ${levelName}`}
+              </div>
             </div>
-            {(user.role === 'admin' || user.role === 'contractor') && (
+            {!isClient && (
               <Button
                 variant="ghost"
                 size="sm"
@@ -290,36 +320,31 @@ export default function Sidebar() {
               </Button>
             )}
           </div>
-          {user.role !== 'client' && xpData && (
+          {!isClient && xpData && (
             <div style={{ marginBottom: spacing[2] }}>
-              <div style={{ fontSize: '11px', color: colours.neutral[500], marginBottom: '4px' }}>
-                Level {xpData.current_level || 1} · {xpData.current_level_details?.name || 'Volunteer'}
-              </div>
               <div style={{ fontSize: '11px', color: colours.neutral[600], marginBottom: '4px' }}>
                 {(xpData.total_xp || 0).toLocaleString()} XP
               </div>
               <WaveProgressBar progress={xpProgress} size="sm" />
-              {user.role !== 'client' && (
-                <div
-                  onClick={() => navigate(user.role === 'admin' ? '/admin' : '/camper/earnings')}
-                  style={{
-                    display: 'flex', alignItems: 'center', gap: spacing[2],
-                    marginTop: spacing[2], padding: `${spacing[2]} ${spacing[3]}`,
-                    backgroundColor: colours.neutral[100], borderRadius: radii.md,
-                    cursor: 'pointer', transition: `background-color ${transitions.fast}`,
-                  }}
-                  onMouseEnter={e => e.currentTarget.style.backgroundColor = colours.neutral[200]}
-                  onMouseLeave={e => e.currentTarget.style.backgroundColor = colours.neutral[100]}
-                >
-                  <DollarSign size={14} style={{ color: colours.neutral[600] }} />
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: '11px', color: colours.neutral[500] }}>Balance</div>
-                    <div style={{ fontSize: typography.fontSize.sm, fontWeight: typography.fontWeight.semibold, color: colours.neutral[900] }}>
-                      ${(xpData.available_balance || 0).toFixed(2)}
-                    </div>
+              <div
+                onClick={() => navigate(user.role === 'admin' ? '/admin' : '/camper/earnings')}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: spacing[2],
+                  marginTop: spacing[2], padding: `${spacing[2]} ${spacing[3]}`,
+                  backgroundColor: colours.neutral[100], borderRadius: radii.md,
+                  cursor: 'pointer', transition: `background-color ${transitions.fast}`,
+                }}
+                onMouseEnter={e => e.currentTarget.style.backgroundColor = colours.neutral[200]}
+                onMouseLeave={e => e.currentTarget.style.backgroundColor = colours.neutral[100]}
+              >
+                <DollarSign size={14} style={{ color: colours.neutral[600] }} />
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: '11px', color: colours.neutral[500] }}>Balance</div>
+                  <div style={{ fontSize: typography.fontSize.sm, fontWeight: typography.fontWeight.semibold, color: colours.neutral[900] }}>
+                    ${(xpData.available_balance || 0).toFixed(2)}
                   </div>
                 </div>
-              )}
+              </div>
             </div>
           )}
           <Button

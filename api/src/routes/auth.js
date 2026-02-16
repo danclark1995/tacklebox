@@ -55,6 +55,22 @@ export async function handleAuth(request, env, path, method) {
         )
       }
 
+      // Fetch level data for non-client users
+      let level = 1
+      let levelName = 'Volunteer'
+      if (user.role !== 'client') {
+        const xp = await env.DB.prepare(
+          'SELECT current_level FROM contractor_xp WHERE user_id = ?'
+        ).bind(user.id).first()
+        level = xp?.current_level || 1
+        // For admin role, ensure minimum level 7
+        if (user.role === 'admin' && level < 7) level = 7
+        const levelInfo = await env.DB.prepare(
+          'SELECT name FROM xp_levels WHERE level = ?'
+        ).bind(level).first()
+        levelName = levelInfo?.name || 'Volunteer'
+      }
+
       // Phase 1: Return user ID as token
       return jsonResponse({
         success: true,
@@ -67,6 +83,8 @@ export async function handleAuth(request, env, path, method) {
             display_name: user.display_name,
             company: user.company,
             avatar_url: user.avatar_url,
+            level,
+            level_name: levelName,
           },
         },
       })
