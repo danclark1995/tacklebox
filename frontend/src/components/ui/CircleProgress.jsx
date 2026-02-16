@@ -1,6 +1,7 @@
 import React from 'react'
 import PropTypes from 'prop-types'
 import FlameIcon from './FlameIcon'
+import { colours } from '@/config/tokens'
 
 const CircleProgress = ({
   currentLevel = 1,

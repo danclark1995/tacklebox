@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { Info, Lightbulb } from 'lucide-react'
+import { colours } from '@/config/tokens'
 
 const TIPS = {
   social_image: {
