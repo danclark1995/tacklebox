@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useNavigate, Link } from 'react-router-dom'
+import { useNavigate, Link, useSearchParams } from 'react-router-dom'
 import useAuth from '@/hooks/useAuth'
 import useToast from '@/hooks/useToast'
 import PageHeader from '@/components/ui/PageHeader'
@@ -15,6 +15,8 @@ export default function ClientTaskNew() {
   const { user } = useAuth()
   const { addToast } = useToast()
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+  const preselectedProject = searchParams.get('project')
   const [projects, setProjects] = useState([])
   const [categories, setCategories] = useState([])
   const [templates, setTemplates] = useState([])
@@ -90,6 +92,7 @@ export default function ClientTaskNew() {
         onSubmit={handleSubmit}
         isSubmitting={submitting}
         isAdmin={user?.role === 'admin'}
+        initialData={preselectedProject ? { project_id: preselectedProject } : null}
       />
     </div>
   )

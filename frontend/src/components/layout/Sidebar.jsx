@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { NavLink, useNavigate } from 'react-router-dom'
-import { Home, CheckSquare, Users, Palette, Wrench, Settings, BookOpen, User, Compass, Menu, Flame, DollarSign, Calendar, CreditCard } from 'lucide-react'
+import { Home, CheckSquare, Users, Palette, Wrench, Settings, BookOpen, User, Compass, Menu, Flame, DollarSign, Calendar, CreditCard, FolderOpen } from 'lucide-react'
 import useAuth from '@/hooks/useAuth'
 import Avatar from '@/components/ui/Avatar'
 import Button from '@/components/ui/Button'
@@ -16,6 +16,7 @@ const navItemsByRole = {
   [ROLES.CLIENT]: [
     { path: '/client', label: 'Home', icon: <Home size={ICON_SIZE} /> },
     { path: '/client/tasks', label: 'Tasks', icon: <CheckSquare size={ICON_SIZE} /> },
+    { path: '/client/projects', label: 'Projects', icon: <FolderOpen size={ICON_SIZE} /> },
     { path: '/client/credits', label: 'Credits', icon: <CreditCard size={ICON_SIZE} /> },
     { path: '/client/brand-hub', label: 'Brand Hub', icon: <BookOpen size={ICON_SIZE} /> },
     { path: '/client/profile', label: 'Profile', icon: <User size={ICON_SIZE} /> },
@@ -23,6 +24,7 @@ const navItemsByRole = {
   [ROLES.CONTRACTOR]: [
     { path: '/camper', label: 'Home', icon: <Flame size={ICON_SIZE} /> },
     { path: '/camper/tasks', label: 'Tasks', icon: <CheckSquare size={ICON_SIZE} /> },
+    { path: '/camper/projects', label: 'Projects', icon: <FolderOpen size={ICON_SIZE} /> },
     { path: '/camper/calendar', label: 'Calendar', icon: <Calendar size={ICON_SIZE} /> },
     { path: '/camper/brands', label: 'Brands', icon: <Palette size={ICON_SIZE} /> },
     { path: '/camper/journey', label: 'Journey', icon: <Compass size={ICON_SIZE} /> },
@@ -31,6 +33,7 @@ const navItemsByRole = {
   [ROLES.ADMIN]: [
     { path: '/admin', label: 'Home', icon: <Home size={ICON_SIZE} /> },
     { path: '/admin/tasks', label: 'Tasks', icon: <CheckSquare size={ICON_SIZE} /> },
+    { path: '/admin/projects', label: 'Projects', icon: <FolderOpen size={ICON_SIZE} /> },
     { path: '/admin/calendar', label: 'Calendar', icon: <Calendar size={ICON_SIZE} /> },
     { path: '/admin/campers', label: 'Campers', icon: <Users size={ICON_SIZE} /> },
     { path: '/admin/brands', label: 'Brands', icon: <Palette size={ICON_SIZE} /> },

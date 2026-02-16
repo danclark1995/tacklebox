@@ -48,6 +48,8 @@ import LoginPage from '@/pages/LoginPage'
 import NotFoundPage from '@/pages/NotFoundPage'
 import SearchResults from '@/pages/SearchResults'
 import ForbiddenPage from '@/pages/ForbiddenPage'
+import ProjectsPage from '@/pages/shared/ProjectsPage'
+import ProjectDetailPage from '@/pages/shared/ProjectDetailPage'
 
 function RoleRedirect() {
   const { user } = useAuth()
@@ -105,6 +107,8 @@ function App() {
               <Route path="/admin/tools/ad" element={<CreateAd />} />
               <Route path="/admin/settings" element={<AdminSettings />} />
               <Route path="/admin/calendar" element={<CalendarPage />} />
+              <Route path="/admin/projects" element={<ProjectsPage />} />
+              <Route path="/admin/projects/:id" element={<ProjectDetailPage />} />
             </Route>
 
             {/* Client routes */}
@@ -119,6 +123,8 @@ function App() {
               <Route path="/client/tasks/:id" element={<ClientTaskDetail />} />
               <Route path="/client/brand-hub" element={<ClientBrandHub />} />
               <Route path="/client/credits" element={<ClientCredits />} />
+              <Route path="/client/projects" element={<ProjectsPage />} />
+              <Route path="/client/projects/:id" element={<ProjectDetailPage />} />
               <Route path="/client/profile" element={<ClientProfile />} />
             </Route>
 
@@ -135,6 +141,8 @@ function App() {
               <Route path="/camper/journey" element={<CamperJourney />} />
               <Route path="/camper/earnings" element={<CamperEarnings />} />
               <Route path="/camper/calendar" element={<CalendarPage />} />
+              <Route path="/camper/projects" element={<ProjectsPage />} />
+              <Route path="/camper/projects/:id" element={<ProjectDetailPage />} />
               <Route path="/camper/profile" element={<ContractorProfile />} />
             </Route>
 

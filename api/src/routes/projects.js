@@ -28,7 +28,12 @@ export async function handleProjects(request, env, auth, path, method) {
       let query = `
         SELECT p.*,
           u.display_name as client_name,
-          u.email as client_email
+          u.email as client_email,
+          (SELECT COUNT(*) FROM tasks WHERE project_id = p.id) as task_count,
+          (SELECT COUNT(*) FROM tasks WHERE project_id = p.id AND status IN ('closed', 'approved')) as completed_count,
+          (SELECT COALESCE(SUM(estimated_hours), 0) FROM tasks WHERE project_id = p.id) as total_hours,
+          (SELECT COALESCE(SUM(total_payout), 0) FROM tasks WHERE project_id = p.id) as total_payout,
+          (SELECT MIN(deadline) FROM tasks WHERE project_id = p.id AND deadline IS NOT NULL AND status NOT IN ('closed', 'cancelled')) as next_deadline
         FROM projects p
         LEFT JOIN users u ON p.client_id = u.id
       `
@@ -89,7 +94,12 @@ export async function handleProjects(request, env, auth, path, method) {
       const project = await env.DB.prepare(`
         SELECT p.*,
           u.display_name as client_name,
-          u.email as client_email
+          u.email as client_email,
+          (SELECT COUNT(*) FROM tasks WHERE project_id = p.id) as task_count,
+          (SELECT COUNT(*) FROM tasks WHERE project_id = p.id AND status IN ('closed', 'approved')) as completed_count,
+          (SELECT COALESCE(SUM(estimated_hours), 0) FROM tasks WHERE project_id = p.id) as total_hours,
+          (SELECT COALESCE(SUM(total_payout), 0) FROM tasks WHERE project_id = p.id) as total_payout,
+          (SELECT MIN(deadline) FROM tasks WHERE project_id = p.id AND deadline IS NOT NULL AND status NOT IN ('closed', 'cancelled')) as next_deadline
         FROM projects p
         LEFT JOIN users u ON p.client_id = u.id
         WHERE p.id = ?
@@ -102,12 +112,17 @@ export async function handleProjects(request, env, auth, path, method) {
         )
       }
 
-      // Check permissions: admin or owning client
-      if (auth.user.role !== 'admin' && project.client_id !== auth.user.id) {
-        return jsonResponse(
-          { success: false, error: 'Insufficient permissions' },
-          403
-        )
+      // Check permissions: admin sees all, client sees own, contractor sees if they have tasks
+      if (auth.user.role === 'client' && project.client_id !== auth.user.id) {
+        return jsonResponse({ success: false, error: 'Insufficient permissions' }, 403)
+      }
+      if (auth.user.role === 'contractor') {
+        const hasTask = await env.DB.prepare(
+          'SELECT 1 FROM tasks WHERE project_id = ? AND contractor_id = ? LIMIT 1'
+        ).bind(projectId, auth.user.id).first()
+        if (!hasTask) {
+          return jsonResponse({ success: false, error: 'Insufficient permissions' }, 403)
+        }
       }
 
       return jsonResponse({
@@ -343,11 +358,16 @@ export async function handleProjects(request, env, auth, path, method) {
       }
 
       // Check permissions
-      if (auth.user.role !== 'admin' && project.client_id !== auth.user.id) {
-        return jsonResponse(
-          { success: false, error: 'Insufficient permissions' },
-          403
-        )
+      if (auth.user.role === 'client' && project.client_id !== auth.user.id) {
+        return jsonResponse({ success: false, error: 'Insufficient permissions' }, 403)
+      }
+      if (auth.user.role === 'contractor') {
+        const hasTask = await env.DB.prepare(
+          'SELECT 1 FROM tasks WHERE project_id = ? AND contractor_id = ? LIMIT 1'
+        ).bind(projectId, auth.user.id).first()
+        if (!hasTask) {
+          return jsonResponse({ success: false, error: 'Insufficient permissions' }, 403)
+        }
       }
 
       // Fetch tasks
