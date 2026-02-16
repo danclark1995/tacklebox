@@ -10,6 +10,8 @@
 import { jsonResponse } from '../index.js'
 import { requireAuth } from '../middleware/auth.js'
 
+const HOURS = Array.from({ length: 24 }, (_, i) => i)
+
 export async function handleSchedule(request, env, auth, path, method) {
 
   // ── GET /schedule — user's schedule ──────────────────────────────
@@ -175,7 +177,7 @@ export async function handleSchedule(request, env, auth, path, method) {
     }
   }
 
-  // ── GET /schedule/suggestions/:taskId — smart scheduling ─────────
+  // ── GET /schedule/suggestions/:taskId — pattern-based smart scheduling ──
   const suggestMatch = path.match(/^\/schedule\/suggestions\/([^\/]+)$/)
   if (suggestMatch && method === 'GET') {
     const check = requireAuth(auth)
@@ -186,89 +188,158 @@ export async function handleSchedule(request, env, auth, path, method) {
       const task = await env.DB.prepare('SELECT * FROM tasks WHERE id = ?').bind(taskId).first()
       if (!task) return jsonResponse({ success: false, error: 'Task not found' }, 404)
 
-      const userId = auth.user.role === 'admin' ? (task.contractor_id || auth.user.id) : auth.user.id
+      const userId = auth.user.level >= 7 ? (task.contractor_id || auth.user.id) : auth.user.id
       const hours = task.estimated_hours || 2
-
-      // Get existing schedule for the next 7 days
-      const now = new Date()
-      const weekEnd = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000)
-
-      const existing = await env.DB.prepare(`
-        SELECT start_time, end_time FROM task_schedule
-        WHERE user_id = ? AND end_time >= ? AND start_time <= ?
-        AND status IN ('scheduled', 'in_progress')
-        ORDER BY start_time ASC
-      `).bind(userId, now.toISOString(), weekEnd.toISOString()).all()
-
-      const blocks = existing.results || []
-
-      // Generate suggestion slots (9am-5pm work hours, avoiding conflicts)
-      const suggestions = []
       const blockMinutes = Math.ceil(hours * 60)
+      const now = new Date()
+      const lookAhead = new Date(now.getTime() + 14 * 86400000)
 
-      for (let dayOffset = 0; dayOffset < 7 && suggestions.length < 3; dayOffset++) {
+      // ─── 1. Analyze user's historical patterns ───
+      const thirtyDaysAgo = new Date(now.getTime() - 30 * 86400000)
+      const [historyResult, personalResult, upcomingResult] = await Promise.all([
+        env.DB.prepare(`
+          SELECT start_time, end_time FROM task_schedule
+          WHERE user_id = ? AND start_time >= ? AND status IN ('scheduled', 'in_progress', 'completed')
+          ORDER BY start_time ASC
+        `).bind(userId, thirtyDaysAgo.toISOString()).all(),
+        env.DB.prepare(`
+          SELECT start_time, end_time, recurrence FROM calendar_events
+          WHERE user_id = ? AND event_type = 'personal'
+          AND (end_time >= ? OR recurrence IS NOT NULL)
+        `).bind(userId, now.toISOString()).all(),
+        env.DB.prepare(`
+          SELECT start_time, end_time FROM task_schedule
+          WHERE user_id = ? AND end_time >= ? AND start_time <= ?
+          AND status IN ('scheduled', 'in_progress')
+        `).bind(userId, now.toISOString(), lookAhead.toISOString()).all(),
+      ])
+
+      const history = historyResult.results || []
+      const personalBlocks = personalResult.results || []
+      const upcoming = upcomingResult.results || []
+
+      // Build hour-frequency map from history
+      const hourScores = new Array(24).fill(0)
+      for (const block of history) {
+        const start = new Date(block.start_time)
+        const end = new Date(block.end_time)
+        for (let h = start.getHours(); h <= Math.min(end.getHours(), 23); h++) {
+          hourScores[h]++
+        }
+      }
+
+      // Build personal-block hour map
+      const personalHours = new Array(24).fill(0)
+      for (const block of personalBlocks) {
+        const start = new Date(block.start_time)
+        const end = new Date(block.end_time)
+        for (let h = start.getHours(); h <= Math.min(end.getHours(), 23); h++) {
+          personalHours[h]++
+        }
+      }
+
+      // Determine preferred window
+      let preferredHours
+      const totalActivity = hourScores.reduce((a, b) => a + b, 0)
+      if (totalActivity < 3) {
+        preferredHours = HOURS.filter(h => h >= 7 && h < 21)
+      } else {
+        const avgScore = totalActivity / 24
+        preferredHours = HOURS
+          .filter(h => hourScores[h] > avgScore * 0.5 && personalHours[h] === 0)
+          .sort((a, b) => hourScores[b] - hourScores[a])
+        if (preferredHours.length < 6) {
+          preferredHours = HOURS.filter(h => h >= 6 && h < 23 && personalHours[h] === 0)
+        }
+      }
+      preferredHours.sort((a, b) => a - b)
+
+      // ─── 2. Expand personal recurring blocks into 14-day window ───
+      const personalSlots = []
+      for (const block of personalBlocks) {
+        if (!block.recurrence) {
+          personalSlots.push({ start: new Date(block.start_time), end: new Date(block.end_time) })
+          continue
+        }
+        const origStart = new Date(block.start_time)
+        const origEnd = new Date(block.end_time)
+        const duration = origEnd - origStart
+        let current = new Date(origStart)
+        while (current <= lookAhead) {
+          if (current >= now) {
+            const dayOfWeek = current.getDay()
+            const isWeekday = dayOfWeek >= 1 && dayOfWeek <= 5
+            if (block.recurrence === 'daily' ||
+                (block.recurrence === 'weekdays' && isWeekday) ||
+                (block.recurrence === 'weekly' && dayOfWeek === origStart.getDay())) {
+              personalSlots.push({ start: new Date(current), end: new Date(current.getTime() + duration) })
+            }
+          }
+          current = new Date(current.getTime() + (block.recurrence === 'weekly' ? 7 * 86400000 : 86400000))
+        }
+      }
+
+      // ─── 3. Find suggestion slots ───
+      const allBusySlots = [
+        ...upcoming.map(b => ({ start: new Date(b.start_time).getTime(), end: new Date(b.end_time).getTime() })),
+        ...personalSlots.map(b => ({ start: b.start.getTime(), end: b.end.getTime() })),
+      ]
+
+      const hasConflict = (slotStart, slotEnd) => {
+        return allBusySlots.some(b => slotStart < b.end && slotEnd > b.start)
+      }
+
+      const suggestions = []
+
+      for (let dayOffset = 0; dayOffset < 14 && suggestions.length < 3; dayOffset++) {
         const day = new Date(now)
         day.setDate(day.getDate() + dayOffset)
-        
-        // Skip weekends
-        if (day.getDay() === 0 || day.getDay() === 6) continue
 
-        // Work hours: 9am to 5pm
-        const dayStart = new Date(day)
-        dayStart.setHours(9, 0, 0, 0)
-        const dayEnd = new Date(day)
-        dayEnd.setHours(17, 0, 0, 0)
+        for (const startHour of preferredHours) {
+          if (suggestions.length >= 3) break
 
-        // If today, start from now (rounded up to next 30 min)
-        let slotStart = dayOffset === 0 ? new Date(Math.max(now.getTime(), dayStart.getTime())) : dayStart
-        if (slotStart < dayStart) slotStart = dayStart
+          const slotStart = new Date(day)
+          slotStart.setHours(startHour, 0, 0, 0)
 
-        // Round to next 30 min
-        const mins = slotStart.getMinutes()
-        if (mins > 0 && mins <= 30) slotStart.setMinutes(30, 0, 0)
-        else if (mins > 30) { slotStart.setHours(slotStart.getHours() + 1, 0, 0, 0) }
+          if (slotStart.getTime() < now.getTime()) {
+            slotStart.setTime(now.getTime())
+            const m = slotStart.getMinutes()
+            if (m > 0 && m <= 30) slotStart.setMinutes(30, 0, 0)
+            else if (m > 30) { slotStart.setHours(slotStart.getHours() + 1, 0, 0, 0) }
+            if (slotStart.getHours() !== startHour) continue
+          }
 
-        while (slotStart.getTime() + blockMinutes * 60000 <= dayEnd.getTime() && suggestions.length < 3) {
           const slotEnd = new Date(slotStart.getTime() + blockMinutes * 60000)
 
-          // Check for conflicts
-          const hasConflict = blocks.some(b => {
-            const bStart = new Date(b.start_time).getTime()
-            const bEnd = new Date(b.end_time).getTime()
-            return slotStart.getTime() < bEnd && slotEnd.getTime() > bStart
-          })
-
-          if (!hasConflict) {
-            // Determine urgency label
+          if (!hasConflict(slotStart.getTime(), slotEnd.getTime())) {
             let fit = 'good'
+            const slotHour = slotStart.getHours()
+            const patternScore = hourScores[slotHour] || 0
+            const maxScore = Math.max(...hourScores, 1)
+
             if (task.deadline) {
               const deadline = new Date(task.deadline)
-              const daysToDeadline = (deadline - slotStart) / (1000 * 60 * 60 * 24)
+              const daysToDeadline = (deadline - slotStart) / 86400000
               if (daysToDeadline < 1) fit = 'urgent'
               else if (daysToDeadline < 3) fit = 'soon'
+            }
+
+            let context = ''
+            if (totalActivity >= 3 && patternScore >= maxScore * 0.6) {
+              context = 'Your peak time'
+            } else if (totalActivity >= 3 && patternScore > 0) {
+              context = 'Active hours'
             }
 
             suggestions.push({
               start_time: slotStart.toISOString(),
               end_time: slotEnd.toISOString(),
               fit,
+              context,
+              pattern_score: totalActivity >= 3 ? Math.round((patternScore / maxScore) * 100) : null,
               day_label: dayOffset === 0 ? 'Today' : dayOffset === 1 ? 'Tomorrow' : day.toLocaleDateString('en-NZ', { weekday: 'long' }),
               time_label: `${slotStart.toLocaleTimeString('en-NZ', { hour: '2-digit', minute: '2-digit' })} – ${slotEnd.toLocaleTimeString('en-NZ', { hour: '2-digit', minute: '2-digit' })}`,
             })
-          }
-
-          // Move to next slot (try after the conflict or next 30 min)
-          if (hasConflict) {
-            const conflictEnd = blocks
-              .filter(b => new Date(b.start_time) < slotEnd && new Date(b.end_time) > slotStart)
-              .reduce((max, b) => Math.max(max, new Date(b.end_time).getTime()), 0)
-            slotStart = new Date(conflictEnd)
-            // Round up to next 30 min
-            const m = slotStart.getMinutes()
-            if (m > 0 && m <= 30) slotStart.setMinutes(30, 0, 0)
-            else if (m > 30) { slotStart.setHours(slotStart.getHours() + 1, 0, 0, 0) }
-          } else {
-            slotStart = slotEnd
           }
         }
       }
@@ -278,6 +349,11 @@ export async function handleSchedule(request, env, auth, path, method) {
         data: {
           task: { id: task.id, title: task.title, estimated_hours: hours, deadline: task.deadline, priority: task.priority },
           suggestions,
+          patterns: totalActivity >= 3 ? {
+            preferred_hours: preferredHours.slice(0, 6).map(h => formatHourLabel(h)),
+            blocked_hours: HOURS.filter(h => personalHours[h] > 0).map(h => formatHourLabel(h)),
+            total_blocks_analyzed: history.length,
+          } : null,
         }
       })
     } catch (err) {
@@ -287,4 +363,10 @@ export async function handleSchedule(request, env, auth, path, method) {
   }
 
   return jsonResponse({ success: false, error: 'Route not found' }, 404)
+}
+
+function formatHourLabel(h) {
+  if (h === 0 || h === 24) return '12am'
+  if (h === 12) return '12pm'
+  return h > 12 ? `${h - 12}pm` : `${h}am`
 }

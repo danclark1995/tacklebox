@@ -10,8 +10,6 @@ import { colours, spacing, typography, radii, transitions } from '@/config/token
 
 const HOURS = Array.from({ length: 24 }, (_, i) => i)
 const HOUR_HEIGHT = 48
-const WORK_START = 9
-const WORK_END = 17
 
 const EVENT_COLORS = {
   slate:  { bg: '#334155', border: '#64748b', text: '#f1f5f9' },
@@ -376,11 +374,19 @@ export default function CalendarPage() {
                     >
                       <div>
                         <div style={{ fontSize: typography.fontSize.sm, fontWeight: typography.fontWeight.medium, color: colours.neutral[900] }}>{s.day_label}</div>
-                        <div style={{ fontSize: typography.fontSize.xs, color: colours.neutral[500] }}>{s.time_label}</div>
+                        <div style={{ fontSize: typography.fontSize.xs, color: colours.neutral[500] }}>
+                          {s.time_label}
+                          {s.context && <span style={{ marginLeft: '6px', color: colours.neutral[600], fontStyle: 'italic' }}>{s.context}</span>}
+                        </div>
                       </div>
-                      <span style={{ fontSize: '10px', fontWeight: 700, padding: '2px 8px', borderRadius: '4px', backgroundColor: s.fit === 'urgent' ? '#7f1d1d' : s.fit === 'soon' ? '#78350f' : colours.neutral[200], color: s.fit === 'urgent' || s.fit === 'soon' ? '#fff' : colours.neutral[900] }}>
-                        {s.fit === 'urgent' ? 'Urgent' : s.fit === 'soon' ? 'Soon' : 'Good fit'}
-                      </span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        {s.pattern_score != null && (
+                          <span style={{ fontSize: '10px', color: colours.neutral[500] }}>{s.pattern_score}%</span>
+                        )}
+                        <span style={{ fontSize: '10px', fontWeight: 700, padding: '2px 8px', borderRadius: '4px', backgroundColor: s.fit === 'urgent' ? '#7f1d1d' : s.fit === 'soon' ? '#78350f' : colours.neutral[200], color: s.fit === 'urgent' || s.fit === 'soon' ? '#fff' : colours.neutral[900] }}>
+                          {s.fit === 'urgent' ? 'Urgent' : s.fit === 'soon' ? 'Soon' : 'Good fit'}
+                        </span>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -432,9 +438,9 @@ export default function CalendarPage() {
           {/* Hour labels */}
           <div>
             {HOURS.map(h => {
-              const isWork = h >= WORK_START && h < WORK_END
+              const isNight = h < 5 || h >= 23
               return (
-                <div key={h} style={{ height: HOUR_HEIGHT, borderBottom: `1px solid ${colours.neutral[100]}`, display: 'flex', alignItems: 'flex-start', justifyContent: 'flex-end', paddingRight: '6px', paddingTop: 2, fontSize: '10px', fontWeight: isWork ? 500 : 400, color: isWork ? colours.neutral[500] : colours.neutral[300], borderRight: `1px solid ${colours.neutral[200]}` }}>
+                <div key={h} style={{ height: HOUR_HEIGHT, borderBottom: `1px solid ${colours.neutral[100]}`, display: 'flex', alignItems: 'flex-start', justifyContent: 'flex-end', paddingRight: '6px', paddingTop: 2, fontSize: '10px', fontWeight: isNight ? 400 : 500, color: isNight ? colours.neutral[300] : colours.neutral[500], borderRight: `1px solid ${colours.neutral[200]}` }}>
                   {formatHour(h)}
                 </div>
               )
@@ -450,12 +456,11 @@ export default function CalendarPage() {
             return (
               <div key={dayIdx} style={{ position: 'relative', borderRight: dayIdx < 6 ? `1px solid ${colours.neutral[200]}` : 'none' }}>
                 {HOURS.map(h => {
-                  const isWork = h >= WORK_START && h < WORK_END
-                  const isNight = h < 6 || h >= 22
-                  const baseBg = isNight ? 'rgba(0,0,0,0.25)' : isWeekend ? colours.neutral[50] : (!isWork ? 'rgba(10,10,10,0.15)' : 'transparent')
+                  const isNight = h < 5 || h >= 23
+                  const baseBg = isNight ? 'rgba(0,0,0,0.2)' : isWeekend ? 'rgba(255,255,255,0.02)' : 'transparent'
                   return (
                     <div key={h} onClick={() => handleCellClick(dayIdx, h)}
-                      style={{ height: HOUR_HEIGHT, borderBottom: `1px solid ${h === WORK_START - 1 || h === WORK_END - 1 ? colours.neutral[200] : colours.neutral[100]}`, cursor: 'pointer', backgroundColor: baseBg, transition: `background-color ${transitions.fast}` }}
+                      style={{ height: HOUR_HEIGHT, borderBottom: `1px solid ${colours.neutral[100]}`, cursor: 'pointer', backgroundColor: baseBg, transition: `background-color ${transitions.fast}` }}
                       onMouseEnter={e => e.currentTarget.style.backgroundColor = colours.neutral[100]}
                       onMouseLeave={e => e.currentTarget.style.backgroundColor = baseBg}
                     />
