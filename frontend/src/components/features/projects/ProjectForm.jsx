@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Input, Textarea, Select, Button } from '@/components/ui'
+import { Input, Textarea, Select, Button, DatePicker } from '@/components/ui'
 import { PROJECT_STATUSES, PROJECT_STATUS_LABELS } from '@/config/constants'
 import { colours, spacing } from '@/config/tokens'
 import useAuth from '@/hooks/useAuth'
@@ -24,6 +24,8 @@ export default function ProjectForm({
     description: '',
     client_id: '',
     status: PROJECT_STATUSES.ACTIVE,
+    deadline: '',
+    brief: '',
   })
 
   const [errors, setErrors] = useState({})
@@ -35,6 +37,8 @@ export default function ProjectForm({
         description: initialData.description || '',
         client_id: initialData.client_id || '',
         status: initialData.status || PROJECT_STATUSES.ACTIVE,
+        deadline: initialData.deadline ? initialData.deadline.split('T')[0] : '',
+        brief: initialData.brief || '',
       })
     }
   }, [initialData])
@@ -186,6 +190,35 @@ export default function ProjectForm({
             {errors.status}
           </span>
         )}
+      </div>
+
+      {/* Deadline */}
+      <DatePicker
+        label="Project Deadline"
+        value={formData.deadline}
+        onChange={(e) => handleChange('deadline', e.target.value)}
+        min={new Date().toISOString().split('T')[0]}
+        disabled={loading}
+      />
+
+      {/* Brief / Notes */}
+      <div>
+        <label style={{
+          display: 'block',
+          fontSize: '14px',
+          fontWeight: 500,
+          color: colours.neutral[700],
+          marginBottom: spacing[2],
+        }}>
+          Project Brief
+        </label>
+        <Textarea
+          value={formData.brief}
+          onChange={(e) => handleChange('brief', e.target.value)}
+          placeholder="Overall vision, reference links, key requirements, mood board descriptions..."
+          rows={6}
+          disabled={loading}
+        />
       </div>
 
       {/* Submit Button */}

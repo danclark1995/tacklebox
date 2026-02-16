@@ -158,7 +158,7 @@ export async function handleProjects(request, env, auth, path, method) {
 
     try {
       const body = await request.json()
-      const { name, description, client_id, status } = body
+      const { name, description, client_id, status, deadline, brief } = body
 
       if (!name) {
         return jsonResponse(
@@ -199,15 +199,17 @@ export async function handleProjects(request, env, auth, path, method) {
       const projectStatus = status || 'active'
 
       await env.DB.prepare(`
-        INSERT INTO projects (id, name, description, client_id, status, created_by)
-        VALUES (?, ?, ?, ?, ?, ?)
+        INSERT INTO projects (id, name, description, client_id, status, created_by, deadline, brief)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
       `).bind(
         projectId,
         name,
         description || null,
         finalClientId,
         projectStatus,
-        auth.user.id
+        auth.user.id,
+        deadline || null,
+        brief || null
       ).run()
 
       const newProject = await env.DB.prepare(`
@@ -286,6 +288,14 @@ export async function handleProjects(request, env, auth, path, method) {
         }
         updates.push('client_id = ?')
         bindings.push(body.client_id)
+      }
+      if (body.deadline !== undefined) {
+        updates.push('deadline = ?')
+        bindings.push(body.deadline || null)
+      }
+      if (body.brief !== undefined) {
+        updates.push('brief = ?')
+        bindings.push(body.brief || null)
       }
 
       if (updates.length === 0) {

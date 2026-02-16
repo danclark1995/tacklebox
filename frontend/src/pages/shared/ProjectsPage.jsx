@@ -99,6 +99,7 @@ export default function ProjectsPage() {
             const total = project.task_count || 0
             const progress = total > 0 ? Math.round((completed / total) * 100) : 0
             const hasDeadline = project.next_deadline && new Date(project.next_deadline) < new Date(Date.now() + 7 * 86400000)
+            const projectDeadline = project.deadline
 
             return (
               <GlowCard
@@ -154,7 +155,13 @@ export default function ProjectsPage() {
                     {hasDeadline && (
                       <span style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: typography.fontSize.xs, color: colours.neutral[700] }}>
                         <AlertTriangle size={12} />
-                        Due {new Date(project.next_deadline).toLocaleDateString('en-NZ', { month: 'short', day: 'numeric' })}
+                        Task due {new Date(project.next_deadline).toLocaleDateString('en-NZ', { month: 'short', day: 'numeric' })}
+                      </span>
+                    )}
+                    {projectDeadline && (
+                      <span style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: typography.fontSize.xs, color: new Date(projectDeadline) < new Date(Date.now() + 7 * 86400000) ? colours.neutral[700] : colours.neutral[500] }}>
+                        <Clock size={12} />
+                        Due {new Date(projectDeadline).toLocaleDateString('en-NZ', { month: 'short', day: 'numeric' })}
                       </span>
                     )}
                   </div>

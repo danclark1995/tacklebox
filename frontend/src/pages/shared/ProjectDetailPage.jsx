@@ -120,6 +120,11 @@ export default function ProjectDetailPage() {
             </div>
             <div style={{ display: 'flex', gap: spacing[4], flexWrap: 'wrap', fontSize: typography.fontSize.sm, color: colours.neutral[500] }}>
               {project.client_name && !isClient && <span>Client: {project.client_name}</span>}
+              {project.deadline && (
+                <span style={{ color: new Date(project.deadline) < new Date(Date.now() + 7 * 86400000) ? colours.neutral[700] : colours.neutral[500] }}>
+                  Deadline: {new Date(project.deadline).toLocaleDateString('en-NZ', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}
+                </span>
+              )}
               <span>Created {new Date(project.created_at).toLocaleDateString('en-NZ', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
             </div>
           </div>
@@ -141,6 +146,18 @@ export default function ProjectDetailPage() {
           <p style={{ fontSize: typography.fontSize.sm, color: colours.neutral[600], lineHeight: 1.6, marginBottom: spacing[4], whiteSpace: 'pre-wrap' }}>
             {project.description}
           </p>
+        )}
+
+        {/* Project Brief */}
+        {project.brief && (
+          <div style={{ marginBottom: spacing[4], padding: spacing[4], backgroundColor: colours.neutral[100], borderRadius: radii.md, borderLeft: `3px solid ${colours.brand?.primary || colours.neutral[500]}` }}>
+            <div style={{ fontSize: typography.fontSize.xs, fontWeight: typography.fontWeight.semibold, color: colours.neutral[500], marginBottom: spacing[2], textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+              Project Brief
+            </div>
+            <p style={{ fontSize: typography.fontSize.sm, color: colours.neutral[700], lineHeight: 1.7, whiteSpace: 'pre-wrap', margin: 0 }}>
+              {project.brief}
+            </p>
+          </div>
         )}
 
         {/* Stats Grid */}
