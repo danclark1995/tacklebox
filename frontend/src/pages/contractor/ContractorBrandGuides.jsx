@@ -9,7 +9,7 @@ import EmptyState from '@/components/ui/EmptyState'
 import Button from '@/components/ui/Button'
 import BrandBooklet from '@/components/features/brand/BrandBooklet'
 import BrandGuidePDFViewer from '@/components/features/brand/BrandGuidePDFViewer'
-import { apiFetch } from '@/services/apiFetch'
+import { getLogos, listAllProfiles } from '@/services/brands'
 import { spacing, colours, typography } from '@/config/tokens'
 
 export default function ContractorBrandGuides() {
@@ -23,8 +23,8 @@ export default function ContractorBrandGuides() {
   useEffect(() => {
     async function load() {
       try {
-        const json = await apiFetch('/brand-profiles')
-        if (json.success) setBrandProfiles(json.data || [])
+        const data = await listAllProfiles()
+        setBrandProfiles(data || [])
       } catch (err) {
         addToast(err.message, 'error')
       } finally {
@@ -37,8 +37,8 @@ export default function ContractorBrandGuides() {
   const handleViewProfile = async (profile) => {
     setSelectedProfile(profile)
     try {
-      const json = await apiFetch(`/brand-profiles/${profile.client_id}/logos`)
-      if (json.success) setLogos(json.data || [])
+      const data = await getLogos(profile.client_id)
+      setLogos(data || [])
     } catch { /* logos may not exist */ }
   }
 

@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Bell, Check, MessageCircle, Star, Clock, Zap, CreditCard, X } from 'lucide-react'
-import { apiFetch } from '@/services/apiFetch'
+import { listNotifications, markRead, markAllRead } from '@/services/notifications'
 import { colours, spacing, typography, shadows } from '@/config/tokens'
 
 const TYPE_ICONS = {
@@ -24,11 +24,9 @@ export default function NotificationBell() {
 
   const fetchNotifications = useCallback(async () => {
     try {
-      const json = await apiFetch('/notifications?limit=20')
-      if (json.success) {
-        setNotifications(json.data.notifications)
-        setUnreadCount(json.data.unread_count)
-      }
+      const data = await listNotifications(20)
+      setNotifications(data.notifications)
+      setUnreadCount(data.unread_count)
     } catch { /* silent */ }
   }, [])
 
@@ -56,7 +54,7 @@ export default function NotificationBell() {
   const handleMarkAllRead = async () => {
     setLoading(true)
     try {
-      await apiFetch('/notifications/read-all', { method: 'PATCH' })
+      await markAllRead()
       setNotifications(prev => prev.map(n => ({ ...n, is_read: 1 })))
       setUnreadCount(0)
     } catch { /* silent */ }
@@ -66,7 +64,7 @@ export default function NotificationBell() {
   const handleClick = async (notif) => {
     if (!notif.is_read) {
       try {
-        await apiFetch(`/notifications/${notif.id}/read`, { method: 'PATCH' })
+        await markRead(notif.id)
         setNotifications(prev => prev.map(n => n.id === notif.id ? { ...n, is_read: 1 } : n))
         setUnreadCount(prev => Math.max(0, prev - 1))
       } catch { /* silent */ }

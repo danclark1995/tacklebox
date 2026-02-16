@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import useAuth from '@/hooks/useAuth'
 import { apiEndpoint } from '@/config/env'
-import { apiFetch } from '@/services/apiFetch'
+import { generateDocument } from '@/services/generate'
+import { listAllProfiles } from '@/services/brands'
 import Button from '@/components/ui/Button'
 import Input from '@/components/ui/Input'
 import Textarea from '@/components/ui/Textarea'
@@ -36,10 +37,10 @@ export default function CreateDocument() {
 
   async function fetchBrandProfiles() {
     try {
-      const data = await apiFetch('/brand-profiles')
-      if (data.success && data.data?.length > 0) {
-        setBrandProfiles(data.data)
-        setSelectedProfile(data.data[0].id)
+      const profiles = await listAllProfiles()
+      if (profiles?.length > 0) {
+        setBrandProfiles(profiles)
+        setSelectedProfile(profiles[0].id)
       }
     } catch {}
   }
@@ -51,21 +52,14 @@ export default function CreateDocument() {
     setResult(null)
 
     try {
-      const data = await apiFetch('/generate/document', {
-        method: 'POST',
-        body: JSON.stringify({
-          brand_profile_id: selectedProfile,
-          document_type: documentType,
-          prompt: prompt.trim(),
-          key_points: keyPoints.trim() || undefined,
-          recipient: recipient.trim() || undefined,
-        }),
+      const result = await generateDocument({
+        brand_profile_id: selectedProfile,
+        document_type: documentType,
+        prompt: prompt.trim(),
+        key_points: keyPoints.trim() || undefined,
+        recipient: recipient.trim() || undefined,
       })
-      if (data.success) {
-        setResult(data.data)
-      } else {
-        setError(data.error || 'Generation failed')
-      }
+      setResult(result)
     } catch (err) {
       setError('Generation failed: ' + err.message)
     } finally {

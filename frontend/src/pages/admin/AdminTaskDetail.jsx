@@ -11,7 +11,13 @@ import GlowCard from '@/components/ui/GlowCard'
 import ConfirmAction from '@/components/ui/ConfirmAction'
 import TaskDetail from '@/components/features/tasks/TaskDetail'
 import AIAssistantPanel from '@/components/features/tasks/AIAssistantPanel'
-import { apiFetch } from '@/services/apiFetch'
+import { getTask, updateTask, deleteTask, updateTaskStatus, getTaskHistory, analyseBrief } from '@/services/tasks'
+import { listUsers } from '@/services/users'
+import { listComments, createComment } from '@/services/comments'
+import { listAttachments, uploadAttachment, deleteAttachment } from '@/services/attachments'
+import { listEntries as listTimeEntries, createEntry as createTimeEntry, updateEntry as updateTimeEntry, deleteEntry as deleteTimeEntry, getTotal as getTimeTotal } from '@/services/timeEntries'
+import { listReviews, createReview } from '@/services/reviews'
+import { getProfile as getBrandProfile } from '@/services/brands'
 import { SCALING_TIERS } from '@/config/constants'
 import { spacing, colours, typography } from '@/config/tokens'
 
@@ -56,16 +62,9 @@ export default function AdminTaskDetail() {
     const newLevel = value === '' ? null : Number(value)
     setComplexityLevel(newLevel)
     try {
-      const json = await apiFetch(`/tasks/${id}`, {
-        method: 'PUT',
-        body: JSON.stringify({ complexity_level: newLevel }),
-      })
-      if (json.success) {
-        setTask(json.data)
-        addToast('Complexity level updated', 'success')
-      } else {
-        addToast(json.error || 'Failed to update', 'error')
-      }
+      const data = await updateTask(id, { complexity_level: newLevel })
+      setTask(data)
+      addToast('Complexity level updated', 'success')
     } catch (err) {
       addToast(err.message, 'error')
     }
@@ -74,34 +73,34 @@ export default function AdminTaskDetail() {
   useEffect(() => {
     async function load() {
       try {
-        const [taskJson, commentsJson, attachmentsJson, usersJson, timeEntriesJson, reviewsJson, totalTimeJson, historyJson] = await Promise.all([
-          apiFetch(`/tasks/${id}`),
-          apiFetch(`/comments?task_id=${id}`),
-          apiFetch(`/attachments?task_id=${id}`),
-          apiFetch('/users?role=contractor'),
-          apiFetch(`/time-entries?task_id=${id}`),
-          apiFetch(`/reviews?task_id=${id}`),
-          apiFetch(`/time-entries/total?task_id=${id}`),
-          apiFetch(`/task-history?task_id=${id}`),
+        const [taskData, commentsData, attachmentsData, usersData, timeEntriesData, reviewsData, totalTimeData, historyData] = await Promise.all([
+          getTask(id).catch(() => null),
+          listComments(id).catch(() => null),
+          listAttachments(id).catch(() => null),
+          listUsers().catch(() => null),
+          listTimeEntries(id).catch(() => null),
+          listReviews(id).catch(() => null),
+          getTimeTotal(id).catch(() => null),
+          getTaskHistory(id).catch(() => null),
         ])
-        if (taskJson.success) {
-          setTask(taskJson.data)
-          setComplexityLevel(taskJson.data?.complexity_level ?? null)
-          if (taskJson.data?.ai_metadata) {
+        if (taskData) {
+          setTask(taskData)
+          setComplexityLevel(taskData?.complexity_level ?? null)
+          if (taskData?.ai_metadata) {
             try {
-              setAiAnalysis(JSON.parse(taskJson.data.ai_metadata))
+              setAiAnalysis(JSON.parse(taskData.ai_metadata))
             } catch {
-              setAiAnalysis(taskJson.data.ai_metadata)
+              setAiAnalysis(taskData.ai_metadata)
             }
           }
         }
-        if (commentsJson.success) setComments(commentsJson.data)
-        if (attachmentsJson.success) setAttachments(attachmentsJson.data)
-        if (usersJson.success) setContractors(usersJson.data)
-        if (timeEntriesJson.success) setTimeEntries(timeEntriesJson.data)
-        if (reviewsJson.success) setReviews(reviewsJson.data)
-        if (totalTimeJson.success) setTotalTimeMinutes(totalTimeJson.data.total_minutes)
-        if (historyJson.success) setHistory(historyJson.data)
+        if (commentsData) setComments(commentsData)
+        if (attachmentsData) setAttachments(attachmentsData)
+        if (usersData) setContractors(usersData)
+        if (timeEntriesData) setTimeEntries(timeEntriesData)
+        if (reviewsData) setReviews(reviewsData)
+        if (totalTimeData) setTotalTimeMinutes(totalTimeData.total_minutes)
+        if (historyData) setHistory(historyData)
       } catch (err) {
         addToast(err.message, 'error')
       } finally {
@@ -117,8 +116,8 @@ export default function AdminTaskDetail() {
     if (task && task.client_id && activeStatuses.includes(task.status)) {
       async function fetchBrand() {
         try {
-          const json = await apiFetch(`/brand-profiles/${task.client_id}`)
-          if (json.success) setBrandProfile(json.data)
+          const data = await getBrandProfile(task.client_id)
+          setBrandProfile(data)
         } catch { /* brand profile may not exist */ }
       }
       fetchBrand()
@@ -132,14 +131,9 @@ export default function AdminTaskDetail() {
   const handleDeleteTask = async () => {
     setDeleting(true)
     try {
-      const json = await apiFetch(`/tasks/${id}`, { method: 'DELETE' })
-      if (json.success) {
-        addToast('Task deleted', 'success')
-        navigate('/admin/tasks')
-      } else {
-        addToast(json.error || 'Failed to delete task', 'error')
-        setConfirmingDelete(false)
-      }
+      const json = await deleteTask(id)
+      addToast('Task deleted', 'success')
+      navigate('/admin/tasks')
     } catch (err) {
       addToast(err.message, 'error')
       setConfirmingDelete(false)
@@ -156,21 +150,10 @@ export default function AdminTaskDetail() {
 
     setSubmitting(true)
     try {
-      const json = await apiFetch(`/tasks/${id}/status`, {
-        method: 'PATCH',
-        body: JSON.stringify({
-          status: 'assigned',
-          contractor_id: selectedContractor
-        }),
-      })
-
-      if (json.success) {
-        setTask({ ...task, status: 'assigned', contractor_id: selectedContractor })
-        setShowAssignModal(false)
-        addToast('Task assigned successfully', 'success')
-      } else {
-        addToast(json.message || 'Failed to assign task', 'error')
-      }
+      const data = await updateTaskStatus(id, 'assigned', { contractor_id: selectedContractor })
+      setTask({ ...task, status: 'assigned', contractor_id: selectedContractor })
+      setShowAssignModal(false)
+      addToast('Task assigned successfully', 'success')
     } catch (err) {
       addToast(err.message, 'error')
     } finally {
@@ -181,20 +164,9 @@ export default function AdminTaskDetail() {
   const handleStatusChange = async (newStatus, additionalData = {}) => {
     setSubmitting(true)
     try {
-      const json = await apiFetch(`/tasks/${id}/status`, {
-        method: 'PATCH',
-        body: JSON.stringify({
-          status: newStatus,
-          ...additionalData
-        }),
-      })
-
-      if (json.success) {
-        setTask({ ...task, status: newStatus })
-        addToast('Task status updated', 'success')
-      } else {
-        addToast(json.message || 'Failed to update status', 'error')
-      }
+      const data = await updateTaskStatus(id, newStatus, additionalData)
+      setTask({ ...task, status: newStatus })
+      addToast('Task status updated', 'success')
     } catch (err) {
       addToast(err.message, 'error')
     } finally {
@@ -215,21 +187,13 @@ export default function AdminTaskDetail() {
 
   const handleAddComment = async (commentData) => {
     try {
-      const json = await apiFetch('/comments', {
-        method: 'POST',
-        body: JSON.stringify({
-          task_id: id,
-          text: commentData.text,
-          visibility: commentData.visibility || 'all'
-        }),
+      const data = await createComment({
+        task_id: id,
+        text: commentData.text,
+        visibility: commentData.visibility || 'all'
       })
-
-      if (json.success) {
-        setComments([...comments, json.data])
-        addToast('Comment added', 'success')
-      } else {
-        addToast(json.message || 'Failed to add comment', 'error')
-      }
+      setComments([...comments, data])
+      addToast('Comment added', 'success')
     } catch (err) {
       addToast(err.message, 'error')
     }
@@ -238,18 +202,10 @@ export default function AdminTaskDetail() {
   const handleAddTimeEntry = async (data) => {
     setSubmitting(true)
     try {
-      const json = await apiFetch('/time-entries', {
-        method: 'POST',
-        body: JSON.stringify({ task_id: id, ...data }),
-      })
-
-      if (json.success) {
-        setTimeEntries([...timeEntries, json.data])
-        setTotalTimeMinutes(totalTimeMinutes + (data.duration_minutes || 0))
-        addToast('Time entry added', 'success')
-      } else {
-        addToast(json.message || 'Failed to add time entry', 'error')
-      }
+      const entry = await createTimeEntry({ task_id: id, ...data })
+      setTimeEntries([...timeEntries, entry])
+      setTotalTimeMinutes(totalTimeMinutes + (data.duration_minutes || 0))
+      addToast('Time entry added', 'success')
     } catch (err) {
       addToast(err.message, 'error')
     } finally {
@@ -260,20 +216,12 @@ export default function AdminTaskDetail() {
   const handleUpdateTimeEntry = async (entryId, data) => {
     setSubmitting(true)
     try {
-      const json = await apiFetch(`/time-entries/${entryId}`, {
-        method: 'PUT',
-        body: JSON.stringify(data),
-      })
-
-      if (json.success) {
-        setTimeEntries(timeEntries.map((e) => (e.id === entryId ? json.data : e)))
-        // Recalculate total
-        const totalJson = await apiFetch(`/time-entries/total?task_id=${id}`)
-        if (totalJson.success) setTotalTimeMinutes(totalJson.data.total_minutes)
-        addToast('Time entry updated', 'success')
-      } else {
-        addToast(json.message || 'Failed to update time entry', 'error')
-      }
+      const updated = await updateTimeEntry(entryId, data)
+      setTimeEntries(timeEntries.map((e) => (e.id === entryId ? updated : e)))
+      // Recalculate total
+      const totalData = await getTimeTotal(id)
+      setTotalTimeMinutes(totalData.total_minutes)
+      addToast('Time entry updated', 'success')
     } catch (err) {
       addToast(err.message, 'error')
     } finally {
@@ -284,16 +232,11 @@ export default function AdminTaskDetail() {
   const handleDeleteTimeEntry = async (entryId) => {
     setSubmitting(true)
     try {
-      const json = await apiFetch(`/time-entries/${entryId}`, { method: 'DELETE' })
-
-      if (json.success) {
-        const removed = timeEntries.find((e) => e.id === entryId)
-        setTimeEntries(timeEntries.filter((e) => e.id !== entryId))
-        if (removed) setTotalTimeMinutes(totalTimeMinutes - (removed.duration_minutes || 0))
-        addToast('Time entry deleted', 'success')
-      } else {
-        addToast(json.message || 'Failed to delete time entry', 'error')
-      }
+      await deleteTimeEntry(entryId)
+      const removed = timeEntries.find((e) => e.id === entryId)
+      setTimeEntries(timeEntries.filter((e) => e.id !== entryId))
+      if (removed) setTotalTimeMinutes(totalTimeMinutes - (removed.duration_minutes || 0))
+      addToast('Time entry deleted', 'success')
     } catch (err) {
       addToast(err.message, 'error')
     } finally {
@@ -304,17 +247,9 @@ export default function AdminTaskDetail() {
   const handleSubmitReview = async (reviewData) => {
     setSubmitting(true)
     try {
-      const json = await apiFetch('/reviews', {
-        method: 'POST',
-        body: JSON.stringify({ task_id: id, ...reviewData }),
-      })
-
-      if (json.success) {
-        setReviews([...reviews, json.data])
-        addToast('Review submitted', 'success')
-      } else {
-        addToast(json.message || 'Failed to submit review', 'error')
-      }
+      const data = await createReview({ task_id: id, ...reviewData })
+      setReviews([...reviews, data])
+      addToast('Review submitted', 'success')
     } catch (err) {
       addToast(err.message, 'error')
     } finally {
@@ -332,17 +267,9 @@ export default function AdminTaskDetail() {
         formData.append('files', file)
       }
 
-      const json = await apiFetch('/attachments', {
-        method: 'POST',
-        body: formData,
-      })
-
-      if (json.success) {
-        setAttachments([...attachments, ...json.data])
-        addToast('Files uploaded successfully', 'success')
-      } else {
-        addToast(json.message || 'Failed to upload files', 'error')
-      }
+      const data = await uploadAttachment(formData)
+      setAttachments([...attachments, ...data])
+      addToast('Files uploaded successfully', 'success')
     } catch (err) {
       addToast(err.message, 'error')
     } finally {
@@ -353,14 +280,9 @@ export default function AdminTaskDetail() {
   const handleDeleteAttachment = async (attachmentId) => {
     setSubmitting(true)
     try {
-      const json = await apiFetch(`/attachments/${attachmentId}`, { method: 'DELETE' })
-
-      if (json.success) {
-        setAttachments(attachments.filter((a) => a.id !== attachmentId))
-        addToast('Attachment deleted', 'success')
-      } else {
-        addToast(json.message || 'Failed to delete attachment', 'error')
-      }
+      await deleteAttachment(attachmentId)
+      setAttachments(attachments.filter((a) => a.id !== attachmentId))
+      addToast('Attachment deleted', 'success')
     } catch (err) {
       addToast(err.message, 'error')
     } finally {
@@ -371,13 +293,9 @@ export default function AdminTaskDetail() {
   const handleAIAnalysis = async () => {
     setAiLoading(true)
     try {
-      const json = await apiFetch(`/ai/analyse-brief/${id}`, { method: 'POST' })
-      if (json.success) {
-        setAiAnalysis(json.data)
-        addToast('AI analysis complete', 'success')
-      } else {
-        addToast(json.error || 'AI analysis failed', 'error')
-      }
+      const data = await analyseBrief(id)
+      setAiAnalysis(data)
+      addToast('AI analysis complete', 'success')
     } catch (err) {
       addToast(err.message, 'error')
     } finally {

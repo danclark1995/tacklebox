@@ -13,7 +13,9 @@ import XPBar from '@/components/features/gamification/XPBar'
 import BadgeGrid from '@/components/features/gamification/BadgeGrid'
 import ToolboxGrid from '@/components/features/ToolboxGrid'
 import RecentNotifications from '@/components/features/notifications/RecentNotifications'
-import { apiFetch } from '@/services/apiFetch'
+import { listTasks, claimTask, getCampfireTasks } from '@/services/tasks'
+import { getContractorXP, getBadges } from '@/services/gamification'
+import { listTools } from '@/services/tools'
 import { colours, spacing, typography, radii, shadows } from '@/config/tokens'
 
 function formatRelativeTime(dateStr) {
@@ -46,7 +48,7 @@ export default function ContractorDashboard() {
   useEffect(() => {
     async function load() {
       try {
-        const json = await apiFetch('/tasks')
+        const json = await listTasks()
         if (json.success) setTasks(json.data)
       } catch (err) {
         addToast(err.message, 'error')
@@ -60,8 +62,8 @@ export default function ContractorDashboard() {
   // Fetch campfire tasks + 30s polling
   const loadCampfire = useCallback(async () => {
     try {
-      const json = await apiFetch('/tasks/campfire')
-      if (json.success) setCampfireTasks(json.data)
+      const data = await getCampfireTasks()
+      setCampfireTasks(data)
     } catch {}
   }, [])
 
@@ -77,13 +79,12 @@ export default function ContractorDashboard() {
 
     async function loadGamification() {
       try {
-        const [xpJson, badgesJson] = await Promise.all([
-          apiFetch(`/gamification/xp/${user.id}`),
-          apiFetch(`/gamification/badges/${user.id}`),
+        const [xpResult, badgesResult] = await Promise.all([
+          getContractorXP(user.id),
+          getBadges(user.id),
         ])
-        if (xpJson.success !== false) setXpData(xpJson.data || xpJson)
-        const badgesArray = badgesJson.data || badgesJson
-        if (Array.isArray(badgesArray)) setBadges(badgesArray)
+        setXpData(xpResult)
+        if (Array.isArray(badgesResult)) setBadges(badgesResult)
       } catch {
         // Gamification data is non-critical — silently ignore errors
       }
@@ -94,8 +95,8 @@ export default function ContractorDashboard() {
   useEffect(() => {
     async function loadToolbox() {
       try {
-        const json = await apiFetch('/tools')
-        if (json.success) setToolboxTools(json.data || [])
+        const toolsData = await listTools()
+        setToolboxTools(toolsData || [])
       } catch {}
     }
     loadToolbox()
@@ -104,7 +105,7 @@ export default function ContractorDashboard() {
   const handleClaim = async (taskId) => {
     setClaimingId(taskId)
     try {
-      const json = await apiFetch(`/tasks/${taskId}/claim`, { method: 'POST' })
+      const json = await claimTask(taskId)
       if (json.success) {
         setFadingOut(taskId)
         setTimeout(() => {
@@ -113,7 +114,7 @@ export default function ContractorDashboard() {
           setConfirmingClaim(null)
           addToast('Task claimed!', 'success')
           // Refresh own tasks
-          apiFetch('/tasks')
+          listTasks()
             .then(r => r.json())
             .then(j => { if (j.success) setTasks(j.data) })
         }, 400)

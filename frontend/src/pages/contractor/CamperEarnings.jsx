@@ -3,7 +3,7 @@ import { DollarSign, ArrowUpRight, ArrowDownRight, Gift, Clock, CheckCircle, XCi
 import useAuth from '@/hooks/useAuth'
 import useToast from '@/hooks/useToast'
 import { GlowCard, PageHeader, Button, Spinner } from '@/components/ui'
-import { apiFetch } from '@/services/apiFetch'
+import { getMyEarnings, requestCashout } from '@/services/earnings'
 import { colours, spacing, typography, radii } from '@/config/tokens'
 
 export default function CamperEarnings() {
@@ -17,7 +17,7 @@ export default function CamperEarnings() {
 
   const fetchEarnings = useCallback(async () => {
     try {
-      const json = await apiFetch('/earnings/me')
+      const json = await getMyEarnings()
       if (json.success) setData(json.data)
     } catch (err) {
       console.error('Fetch earnings error:', err)
@@ -35,18 +35,11 @@ export default function CamperEarnings() {
 
     setSubmitting(true)
     try {
-      const json = await apiFetch('/earnings/cashout', {
-        method: 'POST',
-        body: JSON.stringify({ amount }),
-      })
-      if (json.success) {
-        addToast(`Cashout of $${amount.toFixed(2)} requested`, 'success')
-        setCashoutAmount('')
-        setShowCashout(false)
-        fetchEarnings()
-      } else {
-        addToast(json.error || 'Failed', 'error')
-      }
+      await requestCashout(amount)
+      addToast(`Cashout of $${amount.toFixed(2)} requested`, 'success')
+      setCashoutAmount('')
+      setShowCashout(false)
+      fetchEarnings()
     } catch (err) {
       addToast('Failed to request cashout', 'error')
     } finally {

@@ -8,7 +8,11 @@ import EmberLoader from '@/components/ui/EmberLoader'
 import Select from '@/components/ui/Select'
 import TaskList from '@/components/features/tasks/TaskList'
 import TaskForm from '@/components/features/tasks/TaskForm'
-import { apiFetch } from '@/services/apiFetch'
+import { listTasks, createTask } from '@/services/tasks'
+import { listUsers } from '@/services/users'
+import { listProjects } from '@/services/projects'
+import { listCategories } from '@/services/categories'
+import { listTemplates } from '@/services/templates'
 import { spacing } from '@/config/tokens'
 
 export default function AdminTasks() {
@@ -30,18 +34,18 @@ export default function AdminTasks() {
 
   const loadData = useCallback(async () => {
     try {
-      const [tasksJson, usersJson, projectsJson, categoriesJson, templatesJson] = await Promise.all([
-        apiFetch('/tasks'),
-        apiFetch('/users'),
-        apiFetch('/projects'),
-        apiFetch('/categories'),
-        apiFetch('/templates'),
+      const [tasksData, usersData, projectsData, categoriesData, templatesData] = await Promise.all([
+        listTasks(),
+        listUsers(),
+        listProjects(),
+        listCategories(),
+        listTemplates(),
       ])
-      if (tasksJson.success) setTasks(tasksJson.data)
-      if (usersJson.success) setUsers(usersJson.data)
-      if (projectsJson.success) setProjects(projectsJson.data)
-      if (categoriesJson.success) setCategories(categoriesJson.data)
-      if (templatesJson.success) setTemplates(templatesJson.data)
+      setTasks(tasksData || [])
+      setUsers(usersData || [])
+      setProjects(projectsData || [])
+      setCategories(categoriesData || [])
+      setTemplates(templatesData || [])
     } catch (err) {
       addToast(err.message, 'error')
     } finally {
@@ -60,21 +64,11 @@ export default function AdminTasks() {
     }
     setSubmitting(true)
     try {
-      const json = await apiFetch('/tasks', {
-        method: 'POST',
-        body: JSON.stringify({
-          ...taskData,
-          client_id: selectedClientId,
-        }),
-      })
-      if (json.success) {
-        addToast('Task created successfully', 'success')
-        setShowCreateModal(false)
-        setSelectedClientId('')
-        loadData()
-      } else {
-        addToast(json.error || 'Failed to create task', 'error')
-      }
+      await createTask({ ...taskData, client_id: selectedClientId })
+      addToast('Task created successfully', 'success')
+      setShowCreateModal(false)
+      setSelectedClientId('')
+      loadData()
     } catch (err) {
       addToast(err.message, 'error')
     } finally {

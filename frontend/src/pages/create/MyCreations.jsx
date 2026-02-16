@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import useAuth from '@/hooks/useAuth'
 import { apiEndpoint } from '@/config/env'
-import { apiFetch } from '@/services/apiFetch'
+import { getHistory, deleteGeneration } from '@/services/generate'
 import Button from '@/components/ui/Button'
 import { colours, spacing, typography, radii, shadows, transitions } from '@/config/tokens'
 
@@ -40,7 +40,7 @@ export default function MyCreations() {
     try {
       const params = new URLSearchParams({ page, limit: 12 })
       if (filter) params.set('content_type', filter)
-      const data = await apiFetch(`/generate/history?${params}`)
+      const data = await getHistory(Object.fromEntries(new URLSearchParams(params)))
       if (data.success) {
         setGenerations(data.data || [])
         setPagination(data.pagination || { total: 0, pages: 1 })
@@ -52,7 +52,7 @@ export default function MyCreations() {
   async function handleDelete(id) {
     if (!confirm('Delete this generation?')) return
     try {
-      await apiFetch(`/generate/${id}`, { method: 'DELETE' })
+      await deleteGeneration(id)
       setGenerations(prev => prev.filter(g => g.id !== id))
     } catch {}
   }

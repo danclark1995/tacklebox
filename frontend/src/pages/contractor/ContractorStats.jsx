@@ -8,7 +8,7 @@ import EmberLoader from '@/components/ui/EmberLoader'
 import XPBar from '@/components/features/gamification/XPBar'
 import BadgeGrid from '@/components/features/gamification/BadgeGrid'
 import Leaderboard from '@/components/features/gamification/Leaderboard'
-import { apiFetch } from '@/services/apiFetch'
+import { getContractorXP, getBadges, getLeaderboard, getLevels } from '@/services/gamification'
 import { colours, spacing, typography, radii, shadows } from '@/config/tokens'
 
 export default function ContractorStats() {
@@ -26,17 +26,17 @@ export default function ContractorStats() {
 
     async function loadAll() {
       try {
-        const [xpJson, levelsJson, badgesJson, leaderboardJson] = await Promise.all([
-          apiFetch(`/gamification/xp/${user.id}`),
-          apiFetch('/gamification/levels'),
-          apiFetch(`/gamification/badges/${user.id}`),
-          apiFetch('/gamification/leaderboard'),
+        const [xpData, levelsData, badgesData, leaderboardData] = await Promise.all([
+          getContractorXP(user.id),
+          getLevels(),
+          getBadges(user.id),
+          getLeaderboard(),
         ])
 
-        if (xpJson.success !== false) setXpData(xpJson.data || xpJson)
-        if (Array.isArray(levelsJson.data || levelsJson)) setLevels(levelsJson.data || levelsJson)
-        if (Array.isArray(badgesJson.data || badgesJson)) setBadges(badgesJson.data || badgesJson)
-        if (Array.isArray(leaderboardJson.data || leaderboardJson)) setLeaderboard(leaderboardJson.data || leaderboardJson)
+        setXpData(xpData)
+        if (Array.isArray(levelsData)) setLevels(levelsData)
+        if (Array.isArray(badgesData)) setBadges(badgesData)
+        if (Array.isArray(leaderboardData)) setLeaderboard(leaderboardData)
       } catch (err) {
         addToast(err.message, 'error')
       } finally {

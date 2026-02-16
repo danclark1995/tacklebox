@@ -9,7 +9,7 @@ import ConfirmAction from '@/components/ui/ConfirmAction'
 import EmberLoader from '@/components/ui/EmberLoader'
 import EmptyState from '@/components/ui/EmptyState'
 import TaskList from '@/components/features/tasks/TaskList'
-import { apiFetch } from '@/services/apiFetch'
+import { listTasks, claimTask, getCampfireTasks } from '@/services/tasks'
 import { spacing, colours, typography } from '@/config/tokens'
 
 function formatRelativeTime(dateStr) {
@@ -37,8 +37,8 @@ export default function ContractorTasks() {
   useEffect(() => {
     async function load() {
       try {
-        const json = await apiFetch('/tasks')
-        if (json.success) setTasks(json.data)
+        const data = await listTasks()
+        setTasks(data)
       } catch (err) {
         addToast(err.message, 'error')
       } finally {
@@ -51,8 +51,8 @@ export default function ContractorTasks() {
   // Campfire tasks with 30s polling
   const loadCampfire = useCallback(async () => {
     try {
-      const json = await apiFetch('/tasks/campfire')
-      if (json.success) setCampfireTasks(json.data)
+      const data = await getCampfireTasks()
+      setCampfireTasks(data)
     } catch {}
   }, [])
 
@@ -65,26 +65,23 @@ export default function ContractorTasks() {
   const handleClaim = async (taskId) => {
     setClaimingId(taskId)
     try {
-      const json = await apiFetch(`/tasks/${taskId}/claim`, { method: 'POST' })
-      if (json.success) {
-        setFadingOut(taskId)
-        setTimeout(() => {
-          setCampfireTasks(prev => prev.filter(t => t.id !== taskId))
-          setFadingOut(null)
-          setConfirmingClaim(null)
-          addToast('Task claimed!', 'success')
-          // Refresh own tasks
-          apiFetch('/tasks')
-            .then(r => r.json())
-            .then(j => { if (j.success) setTasks(j.data) })
-        }, 400)
-      } else {
-        addToast(json.error || 'This task was just claimed by someone else', 'error')
+      await claimTask(taskId)
+      setFadingOut(taskId)
+      setTimeout(async () => {
         setCampfireTasks(prev => prev.filter(t => t.id !== taskId))
+        setFadingOut(null)
         setConfirmingClaim(null)
-      }
+        addToast('Task claimed!', 'success')
+        // Refresh own tasks
+        try {
+          const refreshed = await listTasks()
+          setTasks(refreshed)
+        } catch { /* silent */ }
+      }, 400)
     } catch (err) {
-      addToast(err.message, 'error')
+      addToast(err.message || 'This task was just claimed by someone else', 'error')
+      setCampfireTasks(prev => prev.filter(t => t.id !== taskId))
+      setConfirmingClaim(null)
     } finally {
       setClaimingId(null)
     }

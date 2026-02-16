@@ -9,7 +9,8 @@ import Input from '@/components/ui/Input'
 import EmptyState from '@/components/ui/EmptyState'
 import EmberLoader from '@/components/ui/EmberLoader'
 import useToast from '@/hooks/useToast'
-import { apiFetch } from '@/services/apiFetch'
+import { listMessages, updateMessage } from '@/services/support'
+import { listUsers } from '@/services/users'
 import { spacing, typography, colours } from '@/config/tokens'
 import { formatDateTime } from '@/utils/formatters'
 
@@ -27,12 +28,12 @@ export default function AdminSettings() {
   useEffect(() => {
     async function loadAll() {
       try {
-        const [msgJson, usersJson] = await Promise.all([
-          apiFetch('/support'),
-          apiFetch('/users'),
+        const [messagesData, usersData] = await Promise.all([
+          listMessages(),
+          listUsers(),
         ])
-        if (msgJson.success) setMessages(msgJson.data || [])
-        if (usersJson.success) setUsers(usersJson.data || [])
+        setMessages(messagesData || [])
+        setUsers(usersData || [])
       } catch (err) {
         addToast('Failed to load settings data', 'error')
       } finally {
@@ -45,16 +46,9 @@ export default function AdminSettings() {
   const handleResolve = async (id) => {
     setResolving(id)
     try {
-      const json = await apiFetch(`/support/${id}`, {
-        method: 'PUT',
-        body: JSON.stringify({ status: 'resolved' }),
-      })
-      if (json.success) {
-        setMessages(prev => prev.map(m => m.id === id ? { ...m, status: 'resolved', resolved_at: new Date().toISOString() } : m))
-        addToast('Message resolved', 'success')
-      } else {
-        addToast(json.error || 'Failed to resolve', 'error')
-      }
+      const data = await updateMessage(id, { status: 'resolved' })
+      setMessages(prev => prev.map(m => m.id === id ? { ...m, status: 'resolved', resolved_at: new Date().toISOString() } : m))
+      addToast('Message resolved', 'success')
     } catch (err) {
       addToast(err.message, 'error')
     } finally {

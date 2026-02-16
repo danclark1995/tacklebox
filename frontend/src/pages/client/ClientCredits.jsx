@@ -6,7 +6,7 @@ import PageHeader from '@/components/ui/PageHeader'
 import Spinner from '@/components/ui/Spinner'
 import Card from '@/components/ui/Card'
 import Button from '@/components/ui/Button'
-import { apiFetch } from '@/services/apiFetch'
+import { getMyCredits, listPacks, purchasePack } from '@/services/credits'
 import { colours, spacing, typography, shadows } from '@/config/tokens'
 
 export default function ClientCredits() {
@@ -22,8 +22,8 @@ export default function ClientCredits() {
     async function load() {
       try {
         const [creditsJson, packsJson] = await Promise.all([
-          apiFetch('/credits/me'),
-          apiFetch('/credits/packs'),
+          getMyCredits(),
+          listPacks(),
         ])
         if (creditsJson.success) {
           setBalance(creditsJson.data)
@@ -42,21 +42,12 @@ export default function ClientCredits() {
   const handlePurchase = async (pack) => {
     setPurchasing(pack.id)
     try {
-      const json = await apiFetch('/credits/purchase', {
-        method: 'POST',
-        body: JSON.stringify({ pack_id: pack.id }),
-      })
-      if (json.success) {
-        addToast(`${pack.credits.toLocaleString()} credits added!`, 'success')
-        // Refresh
-        const refresh = await apiFetch('/credits/me')
-        if (refresh.success) {
-          setBalance(refresh.data)
-          setTransactions(refresh.data.transactions || [])
-        }
-      } else {
-        addToast(json.error || 'Purchase failed', 'error')
-      }
+      await purchasePack(pack.id)
+      addToast(`${pack.credits.toLocaleString()} credits added!`, 'success')
+      // Refresh
+      const refreshData = await getMyCredits()
+      setBalance(refreshData)
+      setTransactions(refreshData.transactions || [])
     } catch (err) {
       addToast(err.message, 'error')
     } finally {

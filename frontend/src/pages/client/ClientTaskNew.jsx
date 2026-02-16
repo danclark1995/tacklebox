@@ -5,7 +5,10 @@ import useToast from '@/hooks/useToast'
 import PageHeader from '@/components/ui/PageHeader'
 import Spinner from '@/components/ui/Spinner'
 import TaskForm from '@/components/features/tasks/TaskForm'
-import { apiFetch } from '@/services/apiFetch'
+import { createTask } from '@/services/tasks'
+import { listCategories } from '@/services/categories'
+import { listTemplates } from '@/services/templates'
+import { listProjects } from '@/services/projects'
 import { spacing, colours, typography } from '@/config/tokens'
 
 export default function ClientTaskNew() {
@@ -21,14 +24,14 @@ export default function ClientTaskNew() {
   useEffect(() => {
     async function load() {
       try {
-        const [projectsJson, categoriesJson, templatesJson] = await Promise.all([
-          apiFetch('/projects'),
-          apiFetch('/categories'),
-          apiFetch('/templates')
+        const [projectsData, categoriesData, templatesData] = await Promise.all([
+          listProjects(),
+          listCategories(),
+          listTemplates()
         ])
-        if (projectsJson.success) setProjects(projectsJson.data)
-        if (categoriesJson.success) setCategories(categoriesJson.data)
-        if (templatesJson.success) setTemplates(templatesJson.data)
+        setProjects(projectsData || [])
+        setCategories(categoriesData || [])
+        setTemplates(templatesData || [])
       } catch (err) {
         addToast(err.message, 'error')
       } finally {
@@ -41,17 +44,9 @@ export default function ClientTaskNew() {
   const handleSubmit = async (taskData) => {
     setSubmitting(true)
     try {
-      const json = await apiFetch('/tasks', {
-        method: 'POST',
-        body: JSON.stringify(taskData),
-      })
-
-      if (json.success) {
-        addToast('Task submitted! We\'ll get started soon.', 'success')
-        navigate(`/client/tasks/${json.data.id}`)
-      } else {
-        addToast(json.message || 'Failed to create task', 'error')
-      }
+      const newTask = await createTask(taskData)
+      addToast('Task submitted! We\'ll get started soon.', 'success')
+      navigate(`/client/tasks/${newTask.id}`)
     } catch (err) {
       if (err.message?.includes('Insufficient credits')) {
         addToast('Not enough credits — visit the Credits page to purchase more.', 'error')

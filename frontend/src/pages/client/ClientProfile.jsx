@@ -9,7 +9,8 @@ import Modal from '@/components/ui/Modal'
 import Input from '@/components/ui/Input'
 import Textarea from '@/components/ui/Textarea'
 import Avatar from '@/components/ui/Avatar'
-import { apiFetch } from '@/services/apiFetch'
+import { updateProfile } from '@/services/users'
+import { createMessage as createSupportMessage } from '@/services/support'
 import { spacing, colours, typography } from '@/config/tokens'
 
 export default function ClientProfile() {
@@ -23,20 +24,12 @@ export default function ClientProfile() {
   const handleSave = async () => {
     setSaving(true)
     try {
-      const json = await apiFetch(`/users/${user.id}`, {
-        method: 'PUT',
-        body: JSON.stringify({
-          display_name: displayName,
-          company
-        }),
+      await updateProfile(user.id, {
+        display_name: displayName,
+        company
       })
-
-      if (json.success) {
-        addToast('Profile updated successfully', 'success')
-        setIsEditing(false)
-      } else {
-        addToast(json.message || 'Failed to update profile', 'error')
-      }
+      addToast('Profile updated successfully', 'success')
+      setIsEditing(false)
     } catch (err) {
       addToast(err.message, 'error')
     } finally {
@@ -172,17 +165,10 @@ function ContactSupport() {
     if (!subject.trim() || !message.trim()) return
     setSending(true)
     try {
-      const json = await apiFetch('/support', {
-        method: 'POST',
-        body: JSON.stringify({ subject: subject.trim(), message: message.trim() }),
-      })
-      if (json.success) {
-        setSent(true)
-        setSubject('')
-        setMessage('')
-      } else {
-        addToast(json.error || 'Failed to send message', 'error')
-      }
+      await createSupportMessage({ subject: subject.trim(), message: message.trim() })
+      setSent(true)
+      setSubject('')
+      setMessage('')
     } catch (err) {
       addToast(err.message, 'error')
     } finally {

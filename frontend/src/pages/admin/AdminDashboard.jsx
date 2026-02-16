@@ -8,7 +8,10 @@ import StatusBadge from '@/components/ui/StatusBadge'
 import EmberLoader from '@/components/ui/EmberLoader'
 import Leaderboard from '@/components/features/gamification/Leaderboard'
 import RecentNotifications from '@/components/features/notifications/RecentNotifications'
-import { apiFetch } from '@/services/apiFetch'
+import { listTasks } from '@/services/tasks'
+import { listUsers } from '@/services/users'
+import { getLeaderboard } from '@/services/gamification'
+import { getAnalytics as getEarningsAnalytics } from '@/services/earnings'
 import { colours, spacing, typography } from '@/config/tokens'
 
 const STATUS_FILTERS = [
@@ -34,8 +37,8 @@ export default function AdminDashboard() {
     async function load() {
       try {
         const [tasksJson, usersJson] = await Promise.all([
-          apiFetch('/tasks'),
-          apiFetch('/users')
+          listTasks(),
+          listUsers()
         ])
         if (tasksJson.success) setTasks(tasksJson.data)
         if (usersJson.success) setUsers(usersJson.data)
@@ -43,8 +46,8 @@ export default function AdminDashboard() {
         // Fetch leaderboard + earnings (non-critical)
         try {
           const [lbJson, earningsJson] = await Promise.all([
-            apiFetch('/gamification/leaderboard').catch(() => null),
-            apiFetch('/earnings/analytics').catch(() => null),
+            getLeaderboard().catch(() => null),
+            getEarningsAnalytics().catch(() => null),
           ])
           if (lbJson?.success !== false) setLeaderboard(lbJson?.data || lbJson || [])
           if (earningsJson?.success) setEarningsSummary(earningsJson.data?.earnings_summary || null)

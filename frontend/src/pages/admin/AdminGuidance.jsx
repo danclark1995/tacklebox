@@ -3,8 +3,8 @@ import { ChevronDown, ChevronUp, BookOpen, Palette, CheckCircle, Pencil, Save, P
 import useAuth from '@/hooks/useAuth'
 import useToast from '@/hooks/useToast'
 import { GlowCard, Button, Input, Textarea, EmberLoader, PageHeader } from '@/components/ui'
-import { apiFetch } from '@/services/apiFetch'
 import { getContractorXP } from '@/services/gamification'
+import { listSections, updateSection } from '@/services/guidance'
 import { colours, spacing, typography, radii } from '@/config/tokens'
 
 // ── Fallback data if API has no rows yet ─────────────────────────
@@ -73,9 +73,9 @@ export default function AdminGuidance() {
   useEffect(() => {
     async function loadSections() {
       try {
-        const json = await apiFetch('/guidance')
-        if (json.success && json.data?.length > 0) {
-          setSections(json.data)
+        const data = await listSections()
+        if (data?.length > 0) {
+          setSections(data)
         } else {
           // Use fallback data if table doesn't exist yet
           setSections([
@@ -110,18 +110,11 @@ export default function AdminGuidance() {
   const saveSection = async (sectionKey) => {
     setSaving(true)
     try {
-      const json = await apiFetch(`/guidance/${encodeURIComponent(sectionKey)}`, {
-        method: 'PUT',
-        body: JSON.stringify({ content: editDraft }),
-      })
-      if (json.success) {
-        setSections(prev => prev.map(s => s.section_key === sectionKey ? { ...s, content: json.data.content } : s))
-        setEditingKey(null)
-        setEditDraft(null)
-        addToast('Section saved', 'success')
-      } else {
-        addToast(json.error || 'Failed to save', 'error')
-      }
+      const data = await updateSection(sectionKey, { content: editDraft })
+      setSections(prev => prev.map(s => s.section_key === sectionKey ? { ...s, content: data.content } : s))
+      setEditingKey(null)
+      setEditDraft(null)
+      addToast('Section saved', 'success')
     } catch {
       addToast('Failed to save section', 'error')
     } finally {

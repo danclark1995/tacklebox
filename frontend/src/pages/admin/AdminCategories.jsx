@@ -10,9 +10,7 @@ import EmberLoader from '@/components/ui/EmberLoader'
 import DataTable from '@/components/ui/DataTable'
 import Badge from '@/components/ui/Badge'
 import ConfirmAction from '@/components/ui/ConfirmAction'
-import { apiEndpoint } from '@/config/env'
-import { apiFetch } from '@/services/apiFetch'
-import { getAuthHeaders } from '@/services/auth'
+import { listCategories, createCategory, updateCategory, deleteCategory, deactivateCategory } from '@/services/categories'
 import { spacing } from '@/config/tokens'
 
 export default function AdminCategories() {
@@ -36,8 +34,8 @@ export default function AdminCategories() {
 
   const loadCategories = async () => {
     try {
-      const json = await apiFetch('/categories?include_inactive=true')
-      if (json.success) setCategories(json.data)
+      const data = await listCategories({ includeInactive: true })
+      setCategories(data)
     } catch (err) {
       addToast(err.message, 'error')
     } finally {
@@ -75,30 +73,15 @@ export default function AdminCategories() {
 
     setSubmitting(true)
     try {
-      const url = editingCategory
-        ? apiEndpoint(`/categories/${editingCategory.id}`)
-        : apiEndpoint('/categories')
-
-      const method = editingCategory ? 'PUT' : 'POST'
-
-      const res = await fetch(url, {
-        method,
-        headers: {
-          ...getAuthHeaders(),
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(formData)
-      })
-
-      const json = await res.json()
-
-      if (json.success) {
-        addToast(editingCategory ? 'Category updated successfully' : 'Category created successfully', 'success')
-        setShowModal(false)
-        loadCategories()
+      if (editingCategory) {
+        await updateCategory(editingCategory.id, formData)
+        addToast('Category updated successfully', 'success')
       } else {
-        addToast(json.message || 'Failed to save category', 'error')
+        await createCategory(formData)
+        addToast('Category created successfully', 'success')
       }
+      setShowModal(false)
+      loadCategories()
     } catch (err) {
       addToast(err.message, 'error')
     } finally {
@@ -108,13 +91,9 @@ export default function AdminCategories() {
 
   const handleDeleteCategory = async (category) => {
     try {
-      const json = await apiFetch(`/categories/${category.id}`, { method: 'DELETE' })
-      if (json.success) {
-        addToast('Category deleted', 'success')
-        loadCategories()
-      } else {
-        addToast(json.error || 'Failed to delete category', 'error')
-      }
+      await deleteCategory(category.id)
+      addToast('Category deleted', 'success')
+      loadCategories()
     } catch (err) {
       addToast(err.message, 'error')
     }
@@ -122,14 +101,9 @@ export default function AdminCategories() {
 
   const handleDeactivateCategory = async (categoryId) => {
     try {
-      const json = await apiFetch(`/categories/${categoryId}/deactivate`, { method: 'PATCH' })
-
-      if (json.success) {
-        addToast('Category deactivated successfully', 'success')
-        loadCategories()
-      } else {
-        addToast(json.message || 'Failed to deactivate category', 'error')
-      }
+      await deactivateCategory(categoryId)
+      addToast('Category deactivated successfully', 'success')
+      loadCategories()
     } catch (err) {
       addToast(err.message, 'error')
     }

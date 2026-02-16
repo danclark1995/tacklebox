@@ -5,7 +5,8 @@ import useAuth from '@/hooks/useAuth'
 import Avatar from '@/components/ui/Avatar'
 import Button from '@/components/ui/Button'
 import WaveProgressBar from '@/components/ui/WaveProgressBar'
-import { apiFetch } from '@/services/apiFetch'
+import { getMyGamification } from '@/services/gamification'
+import { listMessages } from '@/services/support'
 import { colours, spacing, typography, radii, transitions } from '@/config/tokens'
 import { ROLES } from '@/config/constants'
 
@@ -56,8 +57,8 @@ export default function Sidebar() {
     if (!user?.id || user?.role === 'client') return
     async function loadXP() {
       try {
-        const json = await apiFetch('/gamification/me')
-        if (json.success !== false) setXpData(json.data || json)
+        const data = await getMyGamification()
+        setXpData(data)
       } catch {}
     }
     loadXP()
@@ -67,10 +68,8 @@ export default function Sidebar() {
     if (user?.role !== 'admin') return
     async function loadSupportCount() {
       try {
-        const json = await apiFetch('/support')
-        if (json.success) {
-          setSupportCount((json.data || []).filter(m => m.status === 'open').length)
-        }
+        const messages = await listMessages()
+        setSupportCount((messages || []).filter(m => m.status === 'open').length)
       } catch {}
     }
     loadSupportCount()

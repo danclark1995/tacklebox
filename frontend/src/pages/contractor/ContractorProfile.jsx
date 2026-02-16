@@ -7,7 +7,7 @@ import GlowCard from '@/components/ui/GlowCard'
 import Button from '@/components/ui/Button'
 import Input from '@/components/ui/Input'
 import Avatar from '@/components/ui/Avatar'
-import { apiFetch } from '@/services/apiFetch'
+import { updateProfile } from '@/services/users'
 import { spacing, colours, typography } from '@/config/tokens'
 
 export default function ContractorProfile() {
@@ -34,17 +34,9 @@ export default function ContractorProfile() {
       const body = {}
       body[field] = value
 
-      const json = await apiFetch(`/users/${user.id}`, {
-        method: 'PUT',
-        body: JSON.stringify(body),
-      })
-
-      if (json.success) {
-        setLocalOverrides(prev => ({ ...prev, [field]: value }))
-        addToast('Updated', 'success')
-      } else {
-        addToast(json.error || 'Failed to update', 'error')
-      }
+      await updateProfile(user.id, body)
+      setLocalOverrides(prev => ({ ...prev, [field]: value }))
+      addToast('Updated', 'success')
     } catch (err) {
       addToast(err.message, 'error')
     } finally {

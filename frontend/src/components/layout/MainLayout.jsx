@@ -8,7 +8,7 @@ import useAuth from '@/hooks/useAuth'
 import NotificationBell from '@/components/features/notifications/NotificationBell'
 import { colours, spacing, typography, shadows } from '@/config/tokens'
 import { SEARCH_DEBOUNCE_MS } from '@/config/constants'
-import { apiFetch } from '@/services/apiFetch'
+import { searchAll } from '@/services/tasks'
 
 export default function MainLayout({ children }) {
   const { user } = useAuth()
@@ -32,7 +32,7 @@ export default function MainLayout({ children }) {
     setShowSearchDropdown(true)
 
     try {
-      const json = await apiFetch(`/search?q=${encodeURIComponent(query)}`)
+      const json = await searchAll(query)
       if (json.success) {
         setSearchResults(json.data)
       }

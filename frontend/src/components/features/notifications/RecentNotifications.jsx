@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { Bell, CheckCircle, MessageSquare, Award, Clock, CreditCard, Info } from 'lucide-react'
 import GlowCard from '@/components/ui/GlowCard'
 import Button from '@/components/ui/Button'
-import { apiFetch } from '@/services/apiFetch'
+import { listNotifications, markRead } from '@/services/notifications'
 import { colours, spacing, typography, radii } from '@/config/tokens'
 
 const TYPE_ICONS = {
@@ -33,7 +33,7 @@ export default function RecentNotifications({ limit = 5 }) {
   useEffect(() => {
     async function load() {
       try {
-        const json = await apiFetch(`/notifications?limit=${limit}`)
+        const json = await listNotifications(limit)
         if (json.success) setNotifications(json.data?.notifications || [])
       } catch { /* silent */ }
       finally { setLoading(false) }
@@ -43,7 +43,7 @@ export default function RecentNotifications({ limit = 5 }) {
 
   const handleClick = async (notif) => {
     if (!notif.is_read) {
-      try { await apiFetch(`/notifications/${notif.id}/read`, { method: 'PATCH' }) } catch {}
+      try { await markRead(notif.id) } catch {}
     }
     if (notif.link) navigate(notif.link)
   }

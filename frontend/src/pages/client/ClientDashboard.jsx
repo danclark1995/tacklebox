@@ -10,7 +10,8 @@ import EmptyState from '@/components/ui/EmptyState'
 import TaskProgressTracker from '@/components/ui/TaskProgressTracker'
 import TaskList from '@/components/features/tasks/TaskList'
 import RecentNotifications from '@/components/features/notifications/RecentNotifications'
-import { apiFetch } from '@/services/apiFetch'
+import { listTasks } from '@/services/tasks'
+import { getMyCredits } from '@/services/credits'
 import { colours, spacing, typography } from '@/config/tokens'
 
 export default function ClientDashboard() {
@@ -26,8 +27,8 @@ export default function ClientDashboard() {
     async function load() {
       try {
         const [tasksJson, creditsJson] = await Promise.all([
-          apiFetch('/tasks'),
-          apiFetch('/credits/me').catch(() => null),
+          listTasks(),
+          getMyCredits().catch(() => null),
         ])
         if (tasksJson.success) setTasks(tasksJson.data)
         if (creditsJson?.success) setCredits(creditsJson.data)

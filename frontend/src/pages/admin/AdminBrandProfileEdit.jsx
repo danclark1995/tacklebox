@@ -8,7 +8,8 @@ import Button from '@/components/ui/Button'
 import GlowCard from '@/components/ui/GlowCard'
 import EmberLoader from '@/components/ui/EmberLoader'
 import BrandProfileEditor from '@/components/features/brand/BrandProfileEditor'
-import { apiFetch } from '@/services/apiFetch'
+import { getProfile as getBrandProfile, updateProfile as updateBrandProfile, extractProfile, getLogos, addLogo, deleteLogo, uploadGuidePdf, updateBrandFromProfile } from '@/services/brands'
+import { getMyGamification } from '@/services/gamification'
 import { spacing, colours, typography, radii, transitions } from '@/config/tokens'
 
 export default function AdminBrandProfileEdit() {
@@ -40,8 +41,8 @@ export default function AdminBrandProfileEdit() {
       // Check level from gamification endpoint
       async function checkLevel() {
         try {
-          const json = await apiFetch('/gamification/me')
-          if (json.success && json.data && json.data.current_level >= 7) {
+          const gamData = await getMyGamification()
+          if (gamData && gamData.current_level >= 7) {
             setCanUpload(true)
           }
         } catch { /* leave canUpload false */ }
@@ -52,15 +53,12 @@ export default function AdminBrandProfileEdit() {
 
   const loadData = async () => {
     try {
-      const profileJson = await apiFetch(`/brand-profiles/${clientId}`)
-
-      if (profileJson.success) {
-        setBrandProfile(profileJson.data)
-        try {
-          const logosJson = await apiFetch(`/brand-profiles/${clientId}/logos`)
-          if (logosJson.success) setLogos(logosJson.data || [])
-        } catch { /* logos table may not exist yet */ }
-      }
+      const profileData = await getBrandProfile(clientId)
+      setBrandProfile(profileData)
+      try {
+        const logosData = await getLogos(clientId)
+        setLogos(logosData || [])
+      } catch { /* logos table may not exist yet */ }
     } catch (err) {
       addToast(err.message, 'error')
     } finally {
@@ -71,17 +69,9 @@ export default function AdminBrandProfileEdit() {
   const handleSaveSection = async (sectionData) => {
     setSaving(true)
     try {
-      const json = await apiFetch(`/brand-profiles/${clientId}`, {
-        method: 'PUT',
-        body: JSON.stringify(sectionData),
-      })
-
-      if (json.success) {
-        setBrandProfile(json.data)
-        addToast('Section saved', 'success')
-      } else {
-        addToast(json.error || 'Failed to save', 'error')
-      }
+      const updated = await updateBrandProfile(clientId, sectionData)
+      setBrandProfile(updated)
+      addToast('Section saved', 'success')
     } catch (err) {
       addToast(err.message, 'error')
     } finally {
@@ -92,16 +82,9 @@ export default function AdminBrandProfileEdit() {
   const handleAddLogo = async (logoData) => {
     setSaving(true)
     try {
-      const json = await apiFetch(`/brand-profiles/${clientId}/logos`, {
-        method: 'POST',
-        body: JSON.stringify(logoData),
-      })
-      if (json.success) {
-        setLogos(prev => [json.data, ...prev])
-        addToast('Logo added', 'success')
-      } else {
-        addToast(json.error || 'Failed to add logo', 'error')
-      }
+      const newLogo = await addLogo(clientId, logoData)
+      setLogos(prev => [newLogo, ...prev])
+      addToast('Logo added', 'success')
     } catch (err) {
       addToast(err.message, 'error')
     } finally {
@@ -112,13 +95,9 @@ export default function AdminBrandProfileEdit() {
   const handleDeleteLogo = async (logoId) => {
     setSaving(true)
     try {
-      const json = await apiFetch(`/brand-profiles/${clientId}/logos/${logoId}`, { method: 'DELETE' })
-      if (json.success) {
-        setLogos(prev => prev.filter(l => l.id !== logoId))
-        addToast('Logo deleted', 'success')
-      } else {
-        addToast(json.error || 'Failed to delete logo', 'error')
-      }
+      await deleteLogo(clientId, logoId)
+      setLogos(prev => prev.filter(l => l.id !== logoId))
+      addToast('Logo deleted', 'success')
     } catch (err) {
       addToast(err.message, 'error')
     } finally {
@@ -131,19 +110,9 @@ export default function AdminBrandProfileEdit() {
     try {
       const formData = new FormData()
       formData.append('file', file)
-
-      const json = await apiFetch(`/brand-profiles/${clientId}/extract`, {
-        method: 'POST',
-        body: formData,
-      })
-
-      if (json.success) {
-        addToast('Brand profile extracted from PDF', 'success')
-        return json.data
-      } else {
-        addToast(json.error || 'Extraction failed', 'error')
-        return null
-      }
+      const result = await extractProfile(clientId, formData)
+      addToast('Brand profile extracted from PDF', 'success')
+      return result
     } catch (err) {
       addToast(err.message, 'error')
       return null
@@ -169,19 +138,12 @@ export default function AdminBrandProfileEdit() {
       formData.append('file', file)
 
       setUploadProgress(30)
-      const json = await apiFetch(`/brand-profiles/${clientId}/guide-pdf`, {
-        method: 'POST',
-        body: formData,
-      })
+      const result = await uploadGuidePdf(clientId, formData)
       setUploadProgress(80)
 
-      if (json.success) {
-        setBrandProfile(prev => prev ? { ...prev, brand_guide_path: json.data.brand_guide_path } : prev)
-        setUploadProgress(100)
-        addToast('Brand guide uploaded successfully', 'success')
-      } else {
-        addToast(json.error || 'Failed to upload brand guide', 'error')
-      }
+      setBrandProfile(prev => prev ? { ...prev, brand_guide_path: result.brand_guide_path } : prev)
+      setUploadProgress(100)
+      addToast('Brand guide uploaded successfully', 'success')
     } catch (err) {
       addToast(err.message, 'error')
     } finally {
@@ -195,16 +157,9 @@ export default function AdminBrandProfileEdit() {
   const handleRemoveGuide = async () => {
     setSaving(true)
     try {
-      const json = await apiFetch(`/brand-profiles/${clientId}`, {
-        method: 'PUT',
-        body: JSON.stringify({ brand_guide_path: null }),
-      })
-      if (json.success) {
-        setBrandProfile(prev => prev ? { ...prev, brand_guide_path: null } : prev)
-        addToast('Brand guide removed', 'success')
-      } else {
-        addToast(json.error || 'Failed to remove brand guide', 'error')
-      }
+      await updateBrandProfile(clientId, { brand_guide_path: null })
+      setBrandProfile(prev => prev ? { ...prev, brand_guide_path: null } : prev)
+      addToast('Brand guide removed', 'success')
     } catch (err) {
       addToast(err.message, 'error')
     } finally {

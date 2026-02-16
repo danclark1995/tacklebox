@@ -11,7 +11,7 @@ import Input from '@/components/ui/Input'
 import Select from '@/components/ui/Select'
 import EmberLoader from '@/components/ui/EmberLoader'
 import useToast from '@/hooks/useToast'
-import { apiFetch } from '@/services/apiFetch'
+import { listTools, createTool, updateTool, deleteTool } from '@/services/tools'
 import { spacing, typography, colours } from '@/config/tokens'
 
 const TABS = [
@@ -63,7 +63,7 @@ export default function AdminToolsPage() {
   const loadTools = async () => {
     setLoading(true)
     try {
-      const json = await apiFetch('/tools')
+      const json = await listTools()
       if (json.success) setTools(json.data || [])
     } catch (err) {
       addToast('Failed to load tools', 'error')
@@ -105,21 +105,14 @@ export default function AdminToolsPage() {
       }
 
       const isEdit = !!editingTool
-      const path = isEdit ? `/tools/${editingTool.id}` : '/tools'
-      const method = isEdit ? 'PUT' : 'POST'
-
-      const json = await apiFetch(path, {
-        method,
-        body: JSON.stringify(body),
-      })
-
-      if (json.success) {
-        addToast(isEdit ? 'Tool updated' : 'Tool added', 'success')
-        setShowModal(false)
-        loadTools()
+      if (isEdit) {
+        await updateTool(editingTool.id, body)
       } else {
-        addToast(json.error || 'Failed to save', 'error')
+        await createTool(body)
       }
+      addToast(isEdit ? 'Tool updated' : 'Tool added', 'success')
+      setShowModal(false)
+      loadTools()
     } catch (err) {
       addToast(err.message, 'error')
     } finally {
@@ -133,15 +126,9 @@ export default function AdminToolsPage() {
       return
     }
     try {
-      const json = await apiFetch(`/tools/${tool.id}`, {
-        method: 'DELETE',
-      })
-      if (json.success) {
-        setTools(prev => prev.filter(t => t.id !== tool.id))
-        addToast('Tool removed', 'success')
-      } else {
-        addToast(json.error || 'Failed to delete', 'error')
-      }
+      await deleteTool(tool.id)
+      setTools(prev => prev.filter(t => t.id !== tool.id))
+      addToast('Tool removed', 'success')
     } catch (err) {
       addToast(err.message, 'error')
     } finally {

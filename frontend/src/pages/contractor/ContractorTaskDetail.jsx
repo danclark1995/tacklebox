@@ -10,7 +10,12 @@ import Select from '@/components/ui/Select'
 import TaskDetail from '@/components/features/tasks/TaskDetail'
 import BrandBooklet from '@/components/features/brand/BrandBooklet'
 import AIAssistantPanel from '@/components/features/tasks/AIAssistantPanel'
-import { apiFetch } from '@/services/apiFetch'
+import { getTask, updateTaskStatus, passTask, getTaskHistory } from '@/services/tasks'
+import { listComments, createComment } from '@/services/comments'
+import { listAttachments, uploadAttachment, deleteAttachment } from '@/services/attachments'
+import { listEntries as listTimeEntries, createEntry as createTimeEntry, updateEntry as updateTimeEntry, deleteEntry as deleteTimeEntry, getTotal as getTimeTotal } from '@/services/timeEntries'
+import { listReviews, createReview } from '@/services/reviews'
+import { getProfile as getBrandProfile, getLogos } from '@/services/brands'
 import { spacing, colours, typography } from '@/config/tokens'
 import { COMMENT_VISIBILITY } from '@/config/constants'
 
@@ -41,8 +46,8 @@ export default function ContractorTaskDetail() {
     if (task && task.client_id && activeStatuses.includes(task.status)) {
       async function fetchBrand() {
         try {
-          const json = await apiFetch(`/brand-profiles/${task.client_id}`)
-          if (json.success) setBrandProfile(json.data)
+          const data = await getBrandProfile(task.client_id)
+          setBrandProfile(data)
         } catch { /* brand profile may not exist */ }
       }
       fetchBrand()
@@ -52,22 +57,22 @@ export default function ContractorTaskDetail() {
   useEffect(() => {
     async function load() {
       try {
-        const [taskJson, commentsJson, attachmentsJson, timeEntriesJson, reviewsJson, totalTimeJson, historyJson] = await Promise.all([
-          apiFetch(`/tasks/${id}`),
-          apiFetch(`/comments?task_id=${id}`),
-          apiFetch(`/attachments?task_id=${id}`),
-          apiFetch(`/time-entries?task_id=${id}`),
-          apiFetch(`/reviews?task_id=${id}`),
-          apiFetch(`/time-entries/total?task_id=${id}`),
-          apiFetch(`/task-history?task_id=${id}`),
+        const [taskData, commentsData, attachmentsData, timeEntriesData, reviewsData, totalTimeData, historyData] = await Promise.all([
+          getTask(id).catch(() => null),
+          listComments(id).catch(() => null),
+          listAttachments(id).catch(() => null),
+          listTimeEntries(id).catch(() => null),
+          listReviews(id).catch(() => null),
+          getTimeTotal(id).catch(() => null),
+          getTaskHistory(id).catch(() => null),
         ])
-        if (taskJson.success) setTask(taskJson.data)
-        if (commentsJson.success) setComments(commentsJson.data)
-        if (attachmentsJson.success) setAttachments(attachmentsJson.data)
-        if (timeEntriesJson.success) setTimeEntries(timeEntriesJson.data)
-        if (reviewsJson.success) setReviews(reviewsJson.data)
-        if (totalTimeJson.success) setTotalTimeMinutes(totalTimeJson.data.total_minutes)
-        if (historyJson.success) setHistory(historyJson.data)
+        if (taskData) setTask(taskData)
+        if (commentsData) setComments(commentsData)
+        if (attachmentsData) setAttachments(attachmentsData)
+        if (timeEntriesData) setTimeEntries(timeEntriesData)
+        if (reviewsData) setReviews(reviewsData)
+        if (totalTimeData) setTotalTimeMinutes(totalTimeData.total_minutes)
+        if (historyData) setHistory(historyData)
       } catch (err) {
         addToast(err.message, 'error')
       } finally {
@@ -79,17 +84,9 @@ export default function ContractorTaskDetail() {
 
   const handleStatusChange = async (newStatus) => {
     try {
-      const json = await apiFetch(`/tasks/${id}/status`, {
-        method: 'PATCH',
-        body: JSON.stringify({ status: newStatus }),
-      })
-
-      if (json.success) {
-        setTask({ ...task, status: newStatus })
-        addToast('Task status updated', 'success')
-      } else {
-        addToast(json.message || 'Failed to update status', 'error')
-      }
+      await updateTaskStatus(id, newStatus)
+      setTask({ ...task, status: newStatus })
+      addToast('Task status updated', 'success')
     } catch (err) {
       addToast(err.message, 'error')
     }
@@ -97,21 +94,13 @@ export default function ContractorTaskDetail() {
 
   const handleAddComment = async (commentData) => {
     try {
-      const json = await apiFetch('/comments', {
-        method: 'POST',
-        body: JSON.stringify({
-          task_id: id,
-          content: commentData.content,
-          visibility: commentData.visibility || 'all'
-        }),
+      const data = await createComment({
+        task_id: id,
+        text: commentData.content,
+        visibility: commentData.visibility || 'all'
       })
-
-      if (json.success) {
-        setComments([...comments, json.data])
-        addToast('Comment added', 'success')
-      } else {
-        addToast(json.message || 'Failed to add comment', 'error')
-      }
+      setComments([...comments, data])
+      addToast('Comment added', 'success')
     } catch (err) {
       addToast(err.message, 'error')
     }
@@ -128,17 +117,9 @@ export default function ContractorTaskDetail() {
         formData.append('files', file)
       }
 
-      const json = await apiFetch('/attachments', {
-        method: 'POST',
-        body: formData,
-      })
-
-      if (json.success) {
-        setAttachments([...attachments, ...json.data])
-        addToast('Files uploaded successfully', 'success')
-      } else {
-        addToast(json.message || 'Failed to upload files', 'error')
-      }
+      const data = await uploadAttachment(formData)
+      setAttachments([...attachments, ...data])
+      addToast('Files uploaded successfully', 'success')
     } catch (err) {
       addToast(err.message, 'error')
     } finally {
@@ -149,18 +130,10 @@ export default function ContractorTaskDetail() {
   const handleAddTimeEntry = async (data) => {
     setSubmitting(true)
     try {
-      const json = await apiFetch('/time-entries', {
-        method: 'POST',
-        body: JSON.stringify({ task_id: id, ...data }),
-      })
-
-      if (json.success) {
-        setTimeEntries([...timeEntries, json.data])
-        setTotalTimeMinutes(totalTimeMinutes + (data.duration_minutes || 0))
-        addToast('Time entry added', 'success')
-      } else {
-        addToast(json.message || 'Failed to add time entry', 'error')
-      }
+      const entry = await createTimeEntry({ task_id: id, ...data })
+      setTimeEntries([...timeEntries, entry])
+      setTotalTimeMinutes(totalTimeMinutes + (data.duration_minutes || 0))
+      addToast('Time entry added', 'success')
     } catch (err) {
       addToast(err.message, 'error')
     } finally {
@@ -171,20 +144,11 @@ export default function ContractorTaskDetail() {
   const handleUpdateTimeEntry = async (entryId, data) => {
     setSubmitting(true)
     try {
-      const json = await apiFetch(`/time-entries/${entryId}`, {
-        method: 'PUT',
-        body: JSON.stringify(data),
-      })
-
-      if (json.success) {
-        setTimeEntries(timeEntries.map((e) => (e.id === entryId ? json.data : e)))
-        // Recalculate total
-        const totalJson = await apiFetch(`/time-entries/total?task_id=${id}`)
-        if (totalJson.success) setTotalTimeMinutes(totalJson.data.total_minutes)
-        addToast('Time entry updated', 'success')
-      } else {
-        addToast(json.message || 'Failed to update time entry', 'error')
-      }
+      const updated = await updateTimeEntry(entryId, data)
+      setTimeEntries(timeEntries.map((e) => (e.id === entryId ? updated : e)))
+      const totalData = await getTimeTotal(id)
+      setTotalTimeMinutes(totalData.total_minutes)
+      addToast('Time entry updated', 'success')
     } catch (err) {
       addToast(err.message, 'error')
     } finally {
@@ -195,16 +159,11 @@ export default function ContractorTaskDetail() {
   const handleDeleteTimeEntry = async (entryId) => {
     setSubmitting(true)
     try {
-      const json = await apiFetch(`/time-entries/${entryId}`, { method: 'DELETE' })
-
-      if (json.success) {
-        const removed = timeEntries.find((e) => e.id === entryId)
-        setTimeEntries(timeEntries.filter((e) => e.id !== entryId))
-        if (removed) setTotalTimeMinutes(totalTimeMinutes - (removed.duration_minutes || 0))
-        addToast('Time entry deleted', 'success')
-      } else {
-        addToast(json.message || 'Failed to delete time entry', 'error')
-      }
+      await deleteTimeEntry(entryId)
+      const removed = timeEntries.find((e) => e.id === entryId)
+      setTimeEntries(timeEntries.filter((e) => e.id !== entryId))
+      if (removed) setTotalTimeMinutes(totalTimeMinutes - (removed.duration_minutes || 0))
+      addToast('Time entry deleted', 'success')
     } catch (err) {
       addToast(err.message, 'error')
     } finally {
@@ -215,17 +174,9 @@ export default function ContractorTaskDetail() {
   const handleSubmitReview = async (reviewData) => {
     setSubmitting(true)
     try {
-      const json = await apiFetch('/reviews', {
-        method: 'POST',
-        body: JSON.stringify({ task_id: id, ...reviewData }),
-      })
-
-      if (json.success) {
-        setReviews([...reviews, json.data])
-        addToast('Review submitted', 'success')
-      } else {
-        addToast(json.message || 'Failed to submit review', 'error')
-      }
+      const data = await createReview({ task_id: id, ...reviewData })
+      setReviews([...reviews, data])
+      addToast('Review submitted', 'success')
     } catch (err) {
       addToast(err.message, 'error')
     } finally {
@@ -236,14 +187,9 @@ export default function ContractorTaskDetail() {
   const handleDeleteAttachment = async (attachmentId) => {
     setSubmitting(true)
     try {
-      const json = await apiFetch(`/attachments/${attachmentId}`, { method: 'DELETE' })
-
-      if (json.success) {
-        setAttachments(attachments.filter((a) => a.id !== attachmentId))
-        addToast('Attachment deleted', 'success')
-      } else {
-        addToast(json.message || 'Failed to delete attachment', 'error')
-      }
+      await deleteAttachment(attachmentId)
+      setAttachments(attachments.filter((a) => a.id !== attachmentId))
+      addToast('Attachment deleted', 'success')
     } catch (err) {
       addToast(err.message, 'error')
     } finally {
@@ -258,14 +204,9 @@ export default function ContractorTaskDetail() {
   const handlePass = async () => {
     setPassing(true)
     try {
-      const json = await apiFetch(`/tasks/${id}/pass`, { method: 'POST' })
-      if (json.success) {
-        addToast('Task returned to the campfire', 'success')
-        navigate('/camper/tasks')
-      } else {
-        addToast(json.error || 'Failed to pass on task', 'error')
-        setConfirmingPass(false)
-      }
+      await passTask(id)
+      addToast('Task returned to the campfire', 'success')
+      navigate('/camper/tasks')
     } catch (err) {
       addToast(err.message, 'error')
       setConfirmingPass(false)
@@ -280,14 +221,12 @@ export default function ContractorTaskDetail() {
     setShowBrandProfile(true)
     setLoadingBrandProfile(true)
     try {
-      const json = await apiFetch(`/brand-profiles/${task.client_id}`)
-      if (json.success) {
-        setBrandProfile(json.data)
-        try {
-          const logosJson = await apiFetch(`/brand-profiles/${task.client_id}/logos`)
-          if (logosJson.success) setBrandLogos(logosJson.data || [])
-        } catch { /* logos may not exist yet */ }
-      }
+      const data = await getBrandProfile(task.client_id)
+      setBrandProfile(data)
+      try {
+        const logosData = await getLogos(task.client_id)
+        setBrandLogos(logosData || [])
+      } catch { /* logos may not exist yet */ }
     } catch (err) {
       addToast(err.message, 'error')
     } finally {

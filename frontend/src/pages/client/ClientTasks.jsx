@@ -6,7 +6,7 @@ import Button from '@/components/ui/Button'
 import Select from '@/components/ui/Select'
 import Spinner from '@/components/ui/Spinner'
 import TaskList from '@/components/features/tasks/TaskList'
-import { apiFetch } from '@/services/apiFetch'
+import { listTasks } from '@/services/tasks'
 import { spacing } from '@/config/tokens'
 
 const STATUS_OPTIONS = [
@@ -38,8 +38,8 @@ export default function ClientTasks() {
   useEffect(() => {
     async function load() {
       try {
-        const json = await apiFetch('/tasks')
-        if (json.success) setTasks(json.data)
+        const data = await listTasks()
+        setTasks(data)
       } catch (err) {
         addToast(err.message, 'error')
       } finally {

@@ -7,7 +7,7 @@ import EmptyState from '@/components/ui/EmptyState'
 import BrandBooklet from '@/components/features/brand/BrandBooklet'
 import BrandGuideCard from '@/components/features/brand/BrandGuideCard'
 import BrandGuidePDFViewer from '@/components/features/brand/BrandGuidePDFViewer'
-import { apiFetch } from '@/services/apiFetch'
+import { getProfile as getBrandProfile, getLogos, listGuides } from '@/services/brands'
 import { spacing, colours, typography } from '@/config/tokens'
 
 export default function ClientBrandHub() {
@@ -22,18 +22,18 @@ export default function ClientBrandHub() {
   useEffect(() => {
     async function load() {
       try {
-        const [profileJson, guidesJson] = await Promise.all([
-          apiFetch(`/brand-profiles/${user.id}`),
-          apiFetch(`/brand-guides?client_id=${user.id}`)
+        const [profileData, guidesData] = await Promise.all([
+          getBrandProfile(user.id).catch(() => null),
+          listGuides(user.id).catch(() => null)
         ])
-        if (profileJson.success) {
-          setBrandProfile(profileJson.data)
+        if (profileData) {
+          setBrandProfile(profileData)
           try {
-            const logosJson = await apiFetch(`/brand-profiles/${user.id}/logos`)
-            if (logosJson.success) setLogos(logosJson.data || [])
+            const logosData = await getLogos(user.id)
+            setLogos(logosData || [])
           } catch { /* logos may not exist yet */ }
         }
-        if (guidesJson.success) setBrandGuides(guidesJson.data)
+        if (guidesData) setBrandGuides(guidesData)
       } catch (err) {
         addToast(err.message, 'error')
       } finally {

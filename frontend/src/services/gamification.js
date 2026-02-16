@@ -6,6 +6,12 @@
 
 import { apiFetch } from './apiFetch'
 
+export async function getMyGamification() {
+  const data = await apiFetch('/gamification/me')
+  if (!data.success) throw new Error(data.error || 'Failed to fetch gamification data')
+  return data.data
+}
+
 export async function getContractorXP(userId) {
   const data = await apiFetch(`/gamification/xp/${userId}`)
   if (!data.success) throw new Error(data.error || 'Failed to fetch XP')

@@ -8,7 +8,8 @@ import Dropdown from '@/components/ui/Dropdown'
 import EmberLoader from '@/components/ui/EmberLoader'
 import PromptTips from '@/components/features/PromptTips'
 import { apiEndpoint } from '@/config/env'
-import { apiFetch } from '@/services/apiFetch'
+import { uploadAttachment } from '@/services/attachments'
+import { generateSocial, generateDocument, generatePresentation, generateAd, attachToTask } from '@/services/generate'
 import { colours, spacing, typography, radii, transitions } from '@/config/tokens'
 
 const PLATFORMS = [
@@ -131,36 +132,24 @@ export default function AIAssistantPanel({ task, brandProfile, onAttachmentAdded
     setResult(null)
 
     try {
-      let endpoint, body
+      let data
 
       switch (contentType) {
         case 'social_image':
-          endpoint = '/generate/social'
-          body = { brand_profile_id: brandProfile.id, platform, format, prompt: prompt.trim() }
+          data = await generateSocial({ brand_profile_id: brandProfile.id, platform, format, prompt: prompt.trim() })
           break
         case 'document':
-          endpoint = '/generate/document'
-          body = { brand_profile_id: brandProfile.id, document_type: documentType, prompt: prompt.trim(), key_points: keyPoints.trim() || undefined }
+          data = await generateDocument({ brand_profile_id: brandProfile.id, document_type: documentType, prompt: prompt.trim(), key_points: keyPoints.trim() || undefined })
           break
         case 'presentation':
-          endpoint = '/generate/presentation'
-          body = { brand_profile_id: brandProfile.id, topic: topic.trim(), audience: audience.trim() || undefined, num_slides: numSlides, tone, key_points: keyPoints.trim() || undefined }
+          data = await generatePresentation({ brand_profile_id: brandProfile.id, topic: topic.trim(), audience: audience.trim() || undefined, num_slides: numSlides, tone, key_points: keyPoints.trim() || undefined })
           break
         case 'ad_creative':
-          endpoint = '/generate/ad'
-          body = { brand_profile_id: brandProfile.id, ad_format: adFormat, headline: headline.trim() || undefined, cta_text: ctaText.trim() || undefined, prompt: prompt.trim() || undefined }
+          data = await generateAd({ brand_profile_id: brandProfile.id, ad_format: adFormat, headline: headline.trim() || undefined, cta_text: ctaText.trim() || undefined, prompt: prompt.trim() || undefined })
           break
       }
 
-      const data = await apiFetch(endpoint, {
-        method: 'POST',
-        body: JSON.stringify(body),
-      })
-      if (data.success) {
-        setResult(data.data)
-      } else {
-        setError(data.error || 'Generation failed')
-      }
+      setResult(data)
     } catch (err) {
       setError('Generation failed: ' + err.message)
     } finally {
@@ -172,16 +161,9 @@ export default function AIAssistantPanel({ task, brandProfile, onAttachmentAdded
     if (!result?.id) return
     setAttaching(true)
     try {
-      const data = await apiFetch('/generate/attach-to-task', {
-        method: 'POST',
-        body: JSON.stringify({ generation_id: result.id, task_id: task.id }),
-      })
-      if (data.success) {
-        if (onAttachmentAdded) onAttachmentAdded(data.data)
-        addToast('Generated content attached to task as deliverable', 'success')
-      } else {
-        addToast(data.error || 'Failed to attach', 'error')
-      }
+      const data = await attachToTask(result.id, task.id)
+      if (onAttachmentAdded) onAttachmentAdded(data)
+      addToast('Generated content attached to task as deliverable', 'success')
     } catch (err) {
       addToast(err.message, 'error')
     } finally {

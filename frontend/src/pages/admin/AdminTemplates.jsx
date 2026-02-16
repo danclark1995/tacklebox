@@ -11,7 +11,8 @@ import EmberLoader from '@/components/ui/EmberLoader'
 import DataTable from '@/components/ui/DataTable'
 import Badge from '@/components/ui/Badge'
 import ConfirmAction from '@/components/ui/ConfirmAction'
-import { apiFetch } from '@/services/apiFetch'
+import { listTemplates, createTemplate, updateTemplate, deleteTemplate } from '@/services/templates'
+import { listCategories } from '@/services/categories'
 import { colours, spacing, typography, radii, transitions } from '@/config/tokens'
 
 const PRIORITY_OPTIONS = [
@@ -63,7 +64,7 @@ export default function AdminTemplates() {
 
   const loadCategories = async () => {
     try {
-      const json = await apiFetch('/categories')
+      const json = await listCategories()
       if (json.success) {
         setCategories(json.data || [])
       }
@@ -76,7 +77,7 @@ export default function AdminTemplates() {
     setLoading(true)
     try {
       const categoryParam = filterCategory ? `?category_id=${filterCategory}` : ''
-      const json = await apiFetch(`/templates${categoryParam}`)
+      const json = await listTemplates(filterCategory)
       if (json.success) {
         setTemplates(json.data || [])
       }
@@ -135,12 +136,6 @@ export default function AdminTemplates() {
 
     setSubmitting(true)
     try {
-      const path = editingTemplate
-        ? `/templates/${editingTemplate.id}`
-        : '/templates'
-
-      const method = editingTemplate ? 'PUT' : 'POST'
-
       const payload = {
         name: formData.name,
         category_id: formData.category_id,
@@ -153,21 +148,17 @@ export default function AdminTemplates() {
         min_level: formData.min_level ? Number(formData.min_level) : 1,
       }
 
-      const json = await apiFetch(path, {
-        method,
-        body: JSON.stringify(payload),
-      })
-
-      if (json.success) {
-        addToast(
-          editingTemplate ? 'Template updated successfully' : 'Template created successfully',
-          'success'
-        )
-        setShowModal(false)
-        loadTemplates()
+      if (editingTemplate) {
+        await updateTemplate(editingTemplate.id, payload)
       } else {
-        addToast(json.error || 'Failed to save template', 'error')
+        await createTemplate(payload)
       }
+      addToast(
+        editingTemplate ? 'Template updated successfully' : 'Template created successfully',
+        'success'
+      )
+      setShowModal(false)
+      loadTemplates()
     } catch (err) {
       addToast(err.message, 'error')
     } finally {
@@ -177,13 +168,9 @@ export default function AdminTemplates() {
 
   const handleDeleteTemplate = async (template) => {
     try {
-      const json = await apiFetch(`/templates/${template.id}`, { method: 'DELETE' })
-      if (json.success) {
-        addToast('Template deleted', 'success')
-        loadTemplates()
-      } else {
-        addToast(json.error || 'Failed to delete template', 'error')
-      }
+      await deleteTemplate(template.id)
+      addToast('Template deleted', 'success')
+      loadTemplates()
     } catch (err) {
       addToast(err.message, 'error')
     }
@@ -192,20 +179,12 @@ export default function AdminTemplates() {
   const handleToggleActive = async (template) => {
     const newActive = !template.is_active
     try {
-      const json = await apiFetch(`/templates/${template.id}`, {
-        method: 'PUT',
-        body: JSON.stringify({ is_active: newActive }),
-      })
-
-      if (json.success) {
-        addToast(
-          newActive ? 'Template activated' : 'Template deactivated',
-          'success'
-        )
-        loadTemplates()
-      } else {
-        addToast(json.error || 'Failed to update template', 'error')
-      }
+      await updateTemplate(template.id, { is_active: newActive })
+      addToast(
+        newActive ? 'Template activated' : 'Template deactivated',
+        'success'
+      )
+      loadTemplates()
     } catch (err) {
       addToast(err.message, 'error')
     }

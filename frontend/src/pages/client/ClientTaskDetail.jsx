@@ -3,7 +3,9 @@ import { useParams, Link } from 'react-router-dom'
 import useToast from '@/hooks/useToast'
 import Spinner from '@/components/ui/Spinner'
 import TaskDetail from '@/components/features/tasks/TaskDetail'
-import { apiFetch } from '@/services/apiFetch'
+import { getTask } from '@/services/tasks'
+import { listComments, createComment } from '@/services/comments'
+import { listAttachments } from '@/services/attachments'
 import { spacing, colours, typography } from '@/config/tokens'
 
 export default function ClientTaskDetail() {
@@ -17,14 +19,14 @@ export default function ClientTaskDetail() {
   useEffect(() => {
     async function load() {
       try {
-        const [taskJson, commentsJson, attachmentsJson] = await Promise.all([
-          apiFetch(`/tasks/${id}`),
-          apiFetch(`/comments?task_id=${id}`),
-          apiFetch(`/attachments?task_id=${id}`),
+        const [taskData, commentsData, attachmentsData] = await Promise.all([
+          getTask(id).catch(() => null),
+          listComments(id).catch(() => null),
+          listAttachments(id).catch(() => null),
         ])
-        if (taskJson.success) setTask(taskJson.data)
-        if (commentsJson.success) setComments(commentsJson.data)
-        if (attachmentsJson.success) setAttachments(attachmentsJson.data)
+        if (taskData) setTask(taskData)
+        if (commentsData) setComments(commentsData)
+        if (attachmentsData) setAttachments(attachmentsData)
       } catch (err) {
         addToast(err.message, 'error')
       } finally {
@@ -36,21 +38,13 @@ export default function ClientTaskDetail() {
 
   const handleAddComment = async (commentData) => {
     try {
-      const json = await apiFetch('/comments', {
-        method: 'POST',
-        body: JSON.stringify({
-          task_id: id,
-          text: commentData.content,
-          visibility: 'all'
-        }),
+      const newComment = await createComment({
+        task_id: id,
+        text: commentData.content,
+        visibility: 'all'
       })
-
-      if (json.success) {
-        setComments([...comments, json.data])
-        addToast('Comment added', 'success')
-      } else {
-        addToast(json.message || 'Failed to add comment', 'error')
-      }
+      setComments([...comments, newComment])
+      addToast('Comment added', 'success')
     } catch (err) {
       addToast(err.message, 'error')
     }

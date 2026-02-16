@@ -12,7 +12,7 @@ import CircleProgress from '@/components/ui/CircleProgress'
 import WaveProgressBar from '@/components/ui/WaveProgressBar'
 import FlameIcon from '@/components/ui/FlameIcon'
 import FireStageTimeline from '@/components/features/gamification/FireStageTimeline'
-import { apiFetch } from '@/services/apiFetch'
+import { getContractorXP, getLevels, getBadges, getMyGamification } from '@/services/gamification'
 import { colours, spacing, typography } from '@/config/tokens'
 import { SCALING_TIERS, BADGES as BADGE_DEFS } from '@/config/constants'
 
@@ -43,10 +43,8 @@ export default function AdminJourney() {
   useEffect(() => {
     async function load() {
       try {
-        const json = await apiFetch('/gamification/me')
-        if (json.success) {
-          setData(json.data)
-        }
+        const data = await getMyGamification()
+        setData(data)
       } catch (err) {
         addToast(err.message, 'error')
       } finally {

@@ -7,7 +7,8 @@ import Input from '@/components/ui/Input'
 import Textarea from '@/components/ui/Textarea'
 import Select from '@/components/ui/Select'
 import useToast from '@/hooks/useToast'
-import { apiFetch } from '@/services/apiFetch'
+import { updateProfile as updateBrandProfile, createProfile as createBrandProfile } from '@/services/brands'
+import { createUser } from '@/services/users'
 import { colours, spacing, typography, radii } from '@/config/tokens'
 
 const STEPS = [
@@ -139,23 +140,15 @@ export default function BrandOnboarding() {
       const tempPassword = 'Temp' + Math.random().toString(36).slice(2, 8) + '!'
 
       // 1. Create client user
-      const userJson = await apiFetch('/users', {
-        method: 'POST',
-        body: JSON.stringify({
-          email: data.client_email.trim(),
-          password: tempPassword,
-          role: 'client',
-          display_name: data.client_name.trim(),
-          company: data.company_name.trim(),
-        }),
+      const newUser = await createUser({
+        email: data.client_email.trim(),
+        password: tempPassword,
+        role: 'client',
+        display_name: data.client_name.trim(),
+        company: data.company_name.trim(),
       })
-      if (!userJson.success) {
-        addToast(userJson.error || 'Failed to create client account', 'error')
-        setSubmitting(false)
-        return
-      }
 
-      const clientId = userJson.data.id
+      const clientId = newUser.id
 
       // 2. Create brand profile
       const brandValues = data.brand_values.trim()
@@ -173,29 +166,21 @@ export default function BrandOnboarding() {
           }))
         : null
 
-      const profileJson = await apiFetch('/brand-profiles', {
-        method: 'POST',
-        body: JSON.stringify({
-          client_id: clientId,
-          industry: data.industry || null,
-          tagline: data.tagline || null,
-          mission_statement: data.mission_statement || null,
-          target_audience: data.target_audience || null,
-          strategic_tasks: data.strategic_tasks || null,
-          founder_story: data.founder_story || null,
-          brand_narrative: data.brand_narrative || null,
-          additional_notes: data.milestones || null,
-          voice_tone: data.voice_tone ? `${data.voice_tone}${data.tone_notes ? '. ' + data.tone_notes : ''}` : null,
-          brand_values: brandValues,
-          archetypes: archetypeData,
-          messaging_pillars: pillarData,
-        }),
+      await createBrandProfile({
+        client_id: clientId,
+        industry: data.industry || null,
+        tagline: data.tagline || null,
+        mission_statement: data.mission_statement || null,
+        target_audience: data.target_audience || null,
+        strategic_tasks: data.strategic_tasks || null,
+        founder_story: data.founder_story || null,
+        brand_narrative: data.brand_narrative || null,
+        additional_notes: data.milestones || null,
+        voice_tone: data.voice_tone ? `${data.voice_tone}${data.tone_notes ? '. ' + data.tone_notes : ''}` : null,
+        brand_values: brandValues,
+        archetypes: archetypeData,
+        messaging_pillars: pillarData,
       })
-      if (!profileJson.success) {
-        addToast(profileJson.error || 'Failed to create brand profile', 'error')
-        setSubmitting(false)
-        return
-      }
 
       setResult({
         clientId,

@@ -6,7 +6,11 @@ import PageHeader from '@/components/ui/PageHeader'
 import Select from '@/components/ui/Select'
 import EmberLoader from '@/components/ui/EmberLoader'
 import TaskForm from '@/components/features/tasks/TaskForm'
-import { apiFetch } from '@/services/apiFetch'
+import { createTask } from '@/services/tasks'
+import { listTemplates } from '@/services/templates'
+import { listCategories } from '@/services/categories'
+import { listUsers } from '@/services/users'
+import { listProjects } from '@/services/projects'
 import { spacing, colours, typography } from '@/config/tokens'
 
 export default function AdminTaskNew() {
@@ -24,16 +28,16 @@ export default function AdminTaskNew() {
   useEffect(() => {
     async function load() {
       try {
-        const [projectsJson, categoriesJson, templatesJson, usersJson] = await Promise.all([
-          apiFetch('/projects'),
-          apiFetch('/categories'),
-          apiFetch('/templates'),
-          apiFetch('/users'),
+        const [projectsData, categoriesData, templatesData, usersData] = await Promise.all([
+          listProjects(),
+          listCategories(),
+          listTemplates(),
+          listUsers(),
         ])
-        if (projectsJson.success) setProjects(projectsJson.data)
-        if (categoriesJson.success) setCategories(categoriesJson.data)
-        if (templatesJson.success) setTemplates(templatesJson.data)
-        if (usersJson.success) setClients(usersJson.data.filter(u => u.role === 'client'))
+        setProjects(projectsData || [])
+        setCategories(categoriesData || [])
+        setTemplates(templatesData || [])
+        setClients((usersData || []).filter(u => u.role === 'client'))
       } catch (err) {
         addToast(err.message, 'error')
       } finally {
@@ -50,20 +54,9 @@ export default function AdminTaskNew() {
     }
     setSubmitting(true)
     try {
-      const json = await apiFetch('/tasks', {
-        method: 'POST',
-        body: JSON.stringify({
-          ...taskData,
-          client_id: selectedClientId,
-        }),
-      })
-
-      if (json.success) {
-        addToast('Task created successfully', 'success')
-        navigate('/admin/tasks')
-      } else {
-        addToast(json.error || 'Failed to create task', 'error')
-      }
+      await createTask({ ...taskData, client_id: selectedClientId })
+      addToast('Task created successfully', 'success')
+      navigate('/admin/tasks')
     } catch (err) {
       addToast(err.message, 'error')
     } finally {

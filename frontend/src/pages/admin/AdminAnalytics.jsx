@@ -11,7 +11,8 @@ import {
   getTimeTracking,
   getReviewInsights,
 } from '@/services/analytics'
-import { apiFetch } from '@/services/apiFetch'
+import { getAnalytics as getEarningsAnalytics, awardBonus } from '@/services/earnings'
+import { listUsers } from '@/services/users'
 import { colours, spacing, typography, radii } from '@/config/tokens'
 
 // ── Formatting helpers ────────────────────────────────────────────
@@ -264,12 +265,12 @@ export default function AdminAnalytics() {
 
       // Fetch earnings analytics and campers list
       try {
-        const [earningsJson, usersJson] = await Promise.all([
-          apiFetch('/earnings/analytics'),
-          apiFetch('/users'),
+        const [earningsData, usersData] = await Promise.all([
+          getEarningsAnalytics(),
+          listUsers(),
         ])
-        if (earningsJson.success) setEarningsAnalytics(earningsJson.data)
-        if (usersJson.success) setCampersList(usersJson.data.filter(u => u.role === 'contractor'))
+        setEarningsAnalytics(earningsData)
+        setCampersList((usersData || []).filter(u => u.role === 'contractor'))
       } catch (e) { /* non-critical */ }
     } catch (err) {
       addToast(err.message || 'Failed to load analytics', 'error')
@@ -568,19 +569,12 @@ export default function AdminAnalytics() {
               if (rewardType === 'bonus_cash') body.amount = Number(rewardAmount)
               else body.xp_amount = Number(rewardAmount)
 
-              const json = await apiFetch('/earnings/reward', {
-        method: 'POST',
-        body: JSON.stringify(body),
-      })
-              if (json.success) {
-                addToast('Bonus awarded!', 'success')
-                setRewardUser('')
-                setRewardAmount('')
-                setRewardDescription('')
-                fetchAnalytics()
-              } else {
-                addToast(json.error || 'Failed', 'error')
-              }
+              await awardBonus(body)
+              addToast('Bonus awarded!', 'success')
+              setRewardUser('')
+              setRewardAmount('')
+              setRewardDescription('')
+              fetchAnalytics()
             } catch (err) {
               addToast('Failed to award bonus', 'error')
             } finally {
