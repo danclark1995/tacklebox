@@ -184,11 +184,20 @@ export default function ClientDashboard() {
                 <GlowCard key={task.id} padding="12px" onClick={() => navigate(`/client/tasks/${task.id}`)} style={{ cursor: 'pointer' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <div>
-                      <div style={{ fontSize: typography.fontSize.sm, fontWeight: typography.fontWeight.medium, color: colours.neutral[900] }}>
-                        {task.title}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        {task.complexity_level != null && (
+                          <span style={{ fontSize: '10px', fontWeight: 700, backgroundColor: colours.neutral[200], color: colours.neutral[900], padding: '1px 6px', borderRadius: '4px' }}>
+                            L{task.complexity_level}
+                          </span>
+                        )}
+                        <span style={{ fontSize: typography.fontSize.sm, fontWeight: typography.fontWeight.medium, color: colours.neutral[900] }}>
+                          {task.title}
+                        </span>
                       </div>
-                      <div style={{ fontSize: typography.fontSize.xs, color: colours.neutral[500], marginTop: '2px' }}>
-                        {task.status.replace('_', ' ')}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: typography.fontSize.xs, color: colours.neutral[500], marginTop: '2px' }}>
+                        <span>{task.status.replace('_', ' ')}</span>
+                        {task.estimated_hours && <span>🕐 {task.estimated_hours}h</span>}
+                        {task.total_payout && <span style={{ fontWeight: 600, color: colours.neutral[700] }}>${Number(task.total_payout).toFixed(0)}</span>}
                       </div>
                     </div>
                     <div style={{
@@ -219,8 +228,21 @@ export default function ClientDashboard() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: spacing[3] }}>
             {activeTasks.slice(0, 3).map(task => (
               <GlowCard key={task.id} padding="12px" onClick={() => navigate(`/client/tasks/${task.id}`)} style={{ cursor: 'pointer' }}>
-                <div style={{ fontSize: typography.fontSize.sm, fontWeight: typography.fontWeight.semibold, color: colours.neutral[900], marginBottom: spacing[2] }}>
-                  {task.title}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: spacing[2] }}>
+                  {task.complexity_level != null && (
+                    <span style={{ fontSize: '10px', fontWeight: 700, backgroundColor: colours.neutral[200], color: colours.neutral[900], padding: '1px 6px', borderRadius: '4px' }}>
+                      L{task.complexity_level}
+                    </span>
+                  )}
+                  <span style={{ fontSize: typography.fontSize.sm, fontWeight: typography.fontWeight.semibold, color: colours.neutral[900] }}>
+                    {task.title}
+                  </span>
+                  {task.estimated_hours && (
+                    <span style={{ fontSize: typography.fontSize.xs, color: colours.neutral[500] }}>🕐 {task.estimated_hours}h</span>
+                  )}
+                  {task.total_payout && (
+                    <span style={{ fontSize: typography.fontSize.xs, fontWeight: 600, color: colours.neutral[700] }}>${Number(task.total_payout).toFixed(0)}</span>
+                  )}
                 </div>
                 <TaskProgressTracker status={task.status} />
               </GlowCard>

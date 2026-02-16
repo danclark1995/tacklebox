@@ -321,11 +321,32 @@ export default function ContractorDashboard() {
                   <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
                     {/* Left: title + meta */}
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: '15px', fontWeight: 600, color: colours.neutral[900], whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                        {task.title}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '2px' }}>
+                        {task.complexity_level != null && (
+                          <span style={{
+                            fontSize: '10px', fontWeight: 700,
+                            backgroundColor: colours.neutral[200], color: colours.neutral[900],
+                            padding: '1px 6px', borderRadius: '4px', letterSpacing: '0.5px',
+                          }}>
+                            L{task.complexity_level}
+                          </span>
+                        )}
+                        <span style={{ fontSize: '15px', fontWeight: 600, color: colours.neutral[900], whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          {task.title}
+                        </span>
                       </div>
-                      <div style={{ fontSize: '12px', color: colours.neutral[500], marginTop: '2px' }}>
-                        {[task.category_name, task.client_name].filter(Boolean).join(' \u00b7 ')}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', color: colours.neutral[500], marginTop: '2px' }}>
+                        <span>{[task.category_name, task.client_name].filter(Boolean).join(' \u00b7 ')}</span>
+                        {task.estimated_hours && (
+                          <span style={{ display: 'flex', alignItems: 'center', gap: '2px' }}>
+                            🕐 {task.estimated_hours}h
+                          </span>
+                        )}
+                        {task.total_payout && (
+                          <span style={{ fontWeight: 600, color: colours.neutral[700] }}>
+                            ${Number(task.total_payout).toFixed(0)}
+                          </span>
+                        )}
                       </div>
                     </div>
 
