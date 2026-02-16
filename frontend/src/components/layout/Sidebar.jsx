@@ -296,9 +296,9 @@ export default function Sidebar() {
                 {(xpData.total_xp || 0).toLocaleString()} XP
               </div>
               <WaveProgressBar progress={xpProgress} size="sm" />
-              {user.role === 'contractor' && (
+              {user.role !== 'client' && (
                 <div
-                  onClick={() => navigate('/camper/earnings')}
+                  onClick={() => navigate(user.role === 'admin' ? '/admin' : '/camper/earnings')}
                   style={{
                     display: 'flex', alignItems: 'center', gap: spacing[2],
                     marginTop: spacing[2], padding: `${spacing[2]} ${spacing[3]}`,

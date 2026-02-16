@@ -1,7 +1,8 @@
 import { GlowCard, Badge, StatusBadge, Avatar, TaskProgressTracker } from '@/components/ui'
 import { PRIORITIES, TASK_STATUS_LABELS } from '@/config/constants'
 import { formatDate, getInitials } from '@/utils/formatters'
-import { colours } from '@/config/tokens'
+import { colours, spacing, typography, radii } from '@/config/tokens'
+import { Clock, DollarSign } from 'lucide-react'
 import useAuth from '@/hooks/useAuth'
 
 /**
@@ -47,7 +48,7 @@ export default function TaskCard({ task, onClick }) {
           <Badge variant={priorityVariant}>
             {task.priority?.toUpperCase()}
           </Badge>
-          {!isClient && task.complexity_level != null && (
+          {task.complexity_level != null && (
             <span style={{
               fontSize: '11px',
               padding: '2px 6px',
@@ -73,6 +74,36 @@ export default function TaskCard({ task, onClick }) {
         }}>
           {task.title}
         </h3>
+
+        {/* Task value chips: hours + payout */}
+        {(task.estimated_hours || task.total_payout) && (
+          <div style={{
+            display: 'flex', gap: '8px', marginBottom: '10px', flexWrap: 'wrap',
+          }}>
+            {task.estimated_hours && (
+              <span style={{
+                display: 'inline-flex', alignItems: 'center', gap: '4px',
+                fontSize: '12px', color: colours.neutral[600],
+                padding: '2px 8px', borderRadius: radii.full,
+                backgroundColor: colours.neutral[100],
+              }}>
+                <Clock size={11} />
+                {task.estimated_hours}h
+              </span>
+            )}
+            {task.total_payout && (
+              <span style={{
+                display: 'inline-flex', alignItems: 'center', gap: '4px',
+                fontSize: '12px', color: colours.neutral[600],
+                padding: '2px 8px', borderRadius: radii.full,
+                backgroundColor: colours.neutral[100],
+              }}>
+                <DollarSign size={11} />
+                ${Number(task.total_payout).toFixed(0)}
+              </span>
+            )}
+          </div>
+        )}
 
         {/* Meta information */}
         <div style={{
