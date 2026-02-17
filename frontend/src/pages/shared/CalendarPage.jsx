@@ -126,158 +126,263 @@ function layoutOverlappingEvents(dayEvents) {
   return result // each: { evt, startM, endM, col, totalCols }
 }
 
-/* ━━━━━━━━━━━━━━━━━ EVENT POPOVER ━━━━━━━━━━━━━━━━━ */
-function EventPopover({ event, x, y, onClose, onEdit, onDuplicate, onDelete }) {
+/* ━━━━━━━━━━━━━━━ NOTION-STYLE EVENT DETAIL PANEL ━━━━━━━━━━━━━━━ */
+function EventDetailPanel({ event, onClose, onUpdate, onDuplicate, onDelete }) {
   const ref = useRef(null)
-  useEffect(() => {
-    const handler = (e) => { if (ref.current && !ref.current.contains(e.target)) onClose() }
-    document.addEventListener('mousedown', handler)
-    return () => document.removeEventListener('mousedown', handler)
-  }, [onClose])
+  const isTask = event.event_type === 'task'
+  const isAppt = event.event_type === 'appointment'
+  const cs = EVENT_COLORS[event.color] || EVENT_COLORS.slate
+  const start = toLocal(event.start_time)
+  const end = toLocal(event.end_time)
+  const durationH = Math.round((end - start) / 3600000 * 10) / 10
+
+  // Editable state for non-task events
+  const [editTitle, setEditTitle] = useState(event.title)
+  const [editLocation, setEditLocation] = useState(event.location || '')
+  const [editMeetingLink, setEditMeetingLink] = useState(event.meeting_link || '')
+  const [editDescription, setEditDescription] = useState(event.description || event.notes || '')
+  const [editColor, setEditColor] = useState(event.color || 'slate')
+  const [editStartVal, setEditStartVal] = useState(String(start.getHours() * 60 + start.getMinutes()))
+  const [editEndVal, setEditEndVal] = useState(String(end.getHours() * 60 + end.getMinutes()))
+  const [dirty, setDirty] = useState(false)
+  const [saving, setSaving] = useState(false)
 
   // Keyboard shortcuts
   useEffect(() => {
     const handler = (e) => {
       if (e.key === 'Escape') onClose()
-      if ((e.key === 'Delete' || e.key === 'Backspace') && !e.target.closest('input')) { onDelete(); onClose() }
+      if ((e.key === 'Delete' || e.key === 'Backspace') && !e.target.closest('input, textarea, select')) { onDelete(); onClose() }
       if ((e.metaKey || e.ctrlKey) && e.key === 'd') { e.preventDefault(); onDuplicate() }
+      if ((e.metaKey || e.ctrlKey) && e.key === 's' && dirty) { e.preventDefault(); handleSave() }
     }
     document.addEventListener('keydown', handler)
     return () => document.removeEventListener('keydown', handler)
-  }, [onClose, onDelete, onDuplicate])
+  }, [onClose, onDelete, onDuplicate, dirty])
 
-  const start = toLocal(event.start_time)
-  const end = toLocal(event.end_time)
-  const cs = EVENT_COLORS[event.color] || EVENT_COLORS.slate
-  const isTask = event.event_type === 'task'
-  const isAppt = event.event_type === 'appointment'
-  const durationH = Math.round((end - start) / 3600000 * 10) / 10
+  // Click outside to close
+  useEffect(() => {
+    const handler = (e) => { if (ref.current && !ref.current.contains(e.target) && !e.target.closest('[data-col]')) onClose() }
+    setTimeout(() => document.addEventListener('mousedown', handler), 100)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [onClose])
 
-  // Position: keep within viewport
-  const popW = 400, popH = isTask ? 460 : 320
-  const left = Math.min(x, window.innerWidth - popW - 20)
-  const top = Math.min(Math.max(10, y - 40), window.innerHeight - popH - 20)
+  const markDirty = (setter) => (val) => { setter(val); setDirty(true) }
+
+  const handleSave = async () => {
+    if (isTask || !dirty) return
+    setSaving(true)
+    const { h: sh, m: sm } = timeValToHM(editStartVal)
+    const { h: eh, m: em } = timeValToHM(editEndVal)
+    const newStart = new Date(start); newStart.setHours(sh, sm, 0, 0)
+    const newEnd = new Date(start); newEnd.setHours(eh, em, 0, 0)
+    if (newEnd <= newStart) newEnd.setDate(newEnd.getDate() + 1)
+    await onUpdate({
+      title: editTitle.trim() || event.title,
+      start_time: newStart.toISOString(), end_time: newEnd.toISOString(),
+      location: editLocation || null, meeting_link: editMeetingLink || null,
+      description: editDescription || null, color: editColor,
+    })
+    setDirty(false); setSaving(false)
+  }
+
+  const rowLabel = { width: 100, flexShrink: 0, fontSize: typography.fontSize.xs, color: colours.neutral[500], fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.5px' }
+  const rowVal = { flex: 1, fontSize: typography.fontSize.sm, color: colours.neutral[700] }
+  const inputStyle = {
+    width: '100%', background: 'transparent', border: `1px solid transparent`, borderRadius: radii.md,
+    padding: '4px 8px', fontSize: typography.fontSize.sm, color: colours.neutral[900],
+    outline: 'none', transition: 'border-color 150ms',
+  }
+  const inputFocusStyle = { borderColor: colours.neutral[400] }
 
   return (
     <div ref={ref} style={{
-      position: 'fixed', left, top, zIndex: 100, width: popW,
-      backgroundColor: colours.surface, border: `1px solid ${colours.neutral[300]}`,
-      borderRadius: radii.xl, boxShadow: '0 12px 40px rgba(0,0,0,0.5)',
-      overflow: 'hidden',
+      position: 'fixed', right: 0, top: 0, bottom: 0, width: 420, zIndex: 50,
+      backgroundColor: colours.surface, borderLeft: `1px solid ${colours.neutral[300]}`,
+      boxShadow: '-8px 0 30px rgba(0,0,0,0.3)', display: 'flex', flexDirection: 'column',
+      animation: 'slideInRight 200ms ease-out',
     }}>
-      {/* Header strip */}
-      <div style={{ height: 4, backgroundColor: isTask ? (PRIORITY_BORDER[event.priority] || '#525252') : cs.border }} />
+      <style>{`@keyframes slideInRight { from { transform: translateX(100%); } to { transform: translateX(0); } }`}</style>
 
-      <div style={{ padding: '16px', maxHeight: 440, overflowY: 'auto' }}>
-        {/* Title + close */}
-        <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', marginBottom: '10px' }}>
-          <div style={{ width: 10, height: 10, borderRadius: '50%', backgroundColor: cs.border, flexShrink: 0, marginTop: 5 }} />
-          <span style={{ fontSize: typography.fontSize.lg, fontWeight: typography.fontWeight.semibold, color: colours.neutral[900], flex: 1, lineHeight: 1.3 }}>{event.title}</span>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: colours.neutral[500], padding: 2 }}><X size={16} /></button>
-        </div>
+      {/* Color strip */}
+      <div style={{ height: 4, backgroundColor: isTask ? (PRIORITY_BORDER[event.priority] || '#525252') : cs.border, flexShrink: 0 }} />
 
-        {/* Time + duration */}
-        <div style={{ fontSize: typography.fontSize.sm, color: colours.neutral[600], marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-          <Clock size={14} />
-          <span>{fmtTime(start)} – {fmtTime(end)}</span>
-          <span style={{ color: colours.neutral[400] }}>·</span>
-          <span>{start.toLocaleDateString('en-NZ', { weekday: 'short', month: 'short', day: 'numeric' })}</span>
-          <span style={{ color: colours.neutral[400] }}>·</span>
-          <span style={{ fontWeight: 600 }}>{durationH}h</span>
-        </div>
-
-        {/* Type badges */}
-        <div style={{ display: 'flex', gap: '6px', marginBottom: '12px', flexWrap: 'wrap' }}>
+      {/* Header */}
+      <div style={{ padding: '16px 20px 12px', borderBottom: `1px solid ${colours.neutral[200]}`, flexShrink: 0, display: 'flex', alignItems: 'center', gap: spacing[2] }}>
+        <div style={{ flex: 1, display: 'flex', gap: spacing[2], flexWrap: 'wrap' }}>
           <span style={{ fontSize: '10px', fontWeight: 700, padding: '2px 8px', borderRadius: radii.full, backgroundColor: isTask ? colours.neutral[800] : cs.bg, color: isTask ? colours.neutral[100] : cs.text, border: `1px solid ${isTask ? colours.neutral[600] : cs.border}`, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
             {event.event_type}
           </span>
-          {event.recurrence && <span style={{ fontSize: '10px', fontWeight: 600, padding: '2px 8px', borderRadius: radii.full, backgroundColor: colours.surfaceRaised, color: colours.neutral[600] }}>Repeats {event.recurrence}</span>}
           {isTask && event.complexity_level != null && <span style={{ fontSize: '10px', fontWeight: 700, padding: '2px 8px', borderRadius: radii.full, backgroundColor: colours.neutral[200], color: colours.neutral[900] }}>L{event.complexity_level}</span>}
           {isTask && event.priority && <span style={{ fontSize: '10px', fontWeight: 700, padding: '2px 8px', borderRadius: radii.full, backgroundColor: event.priority === 'urgent' ? '#7f1d1d' : event.priority === 'high' ? '#78350f' : colours.surfaceRaised, color: event.priority === 'urgent' || event.priority === 'high' ? '#fff' : colours.neutral[600], textTransform: 'capitalize' }}>{event.priority}</span>}
+          {event.recurrence && <span style={{ fontSize: '10px', fontWeight: 600, padding: '2px 8px', borderRadius: radii.full, backgroundColor: colours.surfaceRaised, color: colours.neutral[600] }}>↻ {event.recurrence}</span>}
         </div>
+        <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: colours.neutral[500], padding: 4 }}><X size={18} /></button>
+      </div>
 
-        {/* Detail rows */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '12px' }}>
-          {/* Location */}
-          {event.location && (
-            <div style={{ fontSize: typography.fontSize.sm, color: colours.neutral[600], display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <MapPin size={14} style={{ flexShrink: 0, color: colours.neutral[500] }} />
-              <span>{event.location}</span>
+      {/* Scrollable content */}
+      <div style={{ flex: 1, overflowY: 'auto', padding: '20px' }}>
+
+        {/* Title */}
+        {isTask ? (
+          <h2 style={{ fontSize: typography.fontSize.xl, fontWeight: typography.fontWeight.bold, color: colours.neutral[900], margin: '0 0 16px 0', lineHeight: 1.3 }}>{event.title}</h2>
+        ) : (
+          <input value={editTitle} onChange={(e) => markDirty(setEditTitle)(e.target.value)}
+            style={{ ...inputStyle, fontSize: typography.fontSize.xl, fontWeight: typography.fontWeight.bold, padding: '4px 0', marginBottom: 16 }}
+            onFocus={(e) => Object.assign(e.target.style, inputFocusStyle)}
+            onBlur={(e) => { e.target.style.borderColor = 'transparent' }}
+            placeholder="Event title" />
+        )}
+
+        {/* Properties table */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', marginBottom: '20px' }}>
+
+          {/* Time */}
+          <div style={{ display: 'flex', alignItems: 'center', padding: '8px 0', borderBottom: `1px solid ${colours.neutral[200]}` }}>
+            <div style={rowLabel}><Clock size={12} style={{ display: 'inline', verticalAlign: -2, marginRight: 4 }} />Time</div>
+            {isTask ? (
+              <div style={rowVal}>{fmtTime(start)} – {fmtTime(end)} · {start.toLocaleDateString('en-NZ', { weekday: 'short', month: 'short', day: 'numeric' })} · <strong>{durationH}h</strong></div>
+            ) : (
+              <div style={{ flex: 1, display: 'flex', gap: spacing[2], alignItems: 'center' }}>
+                <select value={editStartVal} onChange={(e) => markDirty(setEditStartVal)(e.target.value)} style={{ ...inputStyle, width: 'auto', cursor: 'pointer' }}>
+                  {TIME_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                </select>
+                <span style={{ color: colours.neutral[500] }}>–</span>
+                <select value={editEndVal} onChange={(e) => markDirty(setEditEndVal)(e.target.value)} style={{ ...inputStyle, width: 'auto', cursor: 'pointer' }}>
+                  {TIME_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                </select>
+                <span style={{ fontSize: '12px', color: colours.neutral[500], marginLeft: 4 }}>{durationH}h</span>
+              </div>
+            )}
+          </div>
+
+          {/* Date */}
+          <div style={{ display: 'flex', alignItems: 'center', padding: '8px 0', borderBottom: `1px solid ${colours.neutral[200]}` }}>
+            <div style={rowLabel}><CalendarDays size={12} style={{ display: 'inline', verticalAlign: -2, marginRight: 4 }} />Date</div>
+            <div style={rowVal}>{start.toLocaleDateString('en-NZ', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}</div>
+          </div>
+
+          {/* Location (editable for non-tasks) */}
+          <div style={{ display: 'flex', alignItems: 'center', padding: '8px 0', borderBottom: `1px solid ${colours.neutral[200]}` }}>
+            <div style={rowLabel}><MapPin size={12} style={{ display: 'inline', verticalAlign: -2, marginRight: 4 }} />Location</div>
+            {isTask ? (
+              <div style={rowVal}>{event.location || '—'}</div>
+            ) : (
+              <input value={editLocation} onChange={(e) => markDirty(setEditLocation)(e.target.value)}
+                style={inputStyle} placeholder="Add location..."
+                onFocus={(e) => Object.assign(e.target.style, inputFocusStyle)}
+                onBlur={(e) => { e.target.style.borderColor = 'transparent' }} />
+            )}
+          </div>
+
+          {/* Meeting link (editable for non-tasks) */}
+          <div style={{ display: 'flex', alignItems: 'center', padding: '8px 0', borderBottom: `1px solid ${colours.neutral[200]}` }}>
+            <div style={rowLabel}><Video size={12} style={{ display: 'inline', verticalAlign: -2, marginRight: 4 }} />Meeting</div>
+            {isTask ? (
+              <div style={rowVal}>{event.meeting_link ? <a href={event.meeting_link} target="_blank" rel="noreferrer" style={{ color: '#60a5fa', textDecoration: 'none' }}>{event.meeting_link}</a> : '—'}</div>
+            ) : (
+              <div style={{ flex: 1, display: 'flex', gap: 4, alignItems: 'center' }}>
+                <input value={editMeetingLink} onChange={(e) => markDirty(setEditMeetingLink)(e.target.value)}
+                  style={{ ...inputStyle, flex: 1 }} placeholder="Paste or generate..."
+                  onFocus={(e) => Object.assign(e.target.style, inputFocusStyle)}
+                  onBlur={(e) => { e.target.style.borderColor = 'transparent' }} />
+                {!editMeetingLink && <button onClick={() => markDirty(setEditMeetingLink)(generateMeetLink())} style={{ fontSize: '10px', color: '#60a5fa', background: 'none', border: 'none', cursor: 'pointer', whiteSpace: 'nowrap', padding: '2px 4px' }}>Generate</button>}
+                {editMeetingLink && <>
+                  <a href={editMeetingLink} target="_blank" rel="noreferrer" style={{ color: '#60a5fa', padding: 2 }}><ExternalLink size={12} /></a>
+                  <button onClick={() => navigator.clipboard.writeText(editMeetingLink)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: colours.neutral[500], padding: 2 }}><Link2 size={12} /></button>
+                </>}
+              </div>
+            )}
+          </div>
+
+          {/* Color (non-tasks only) */}
+          {!isTask && (
+            <div style={{ display: 'flex', alignItems: 'center', padding: '8px 0', borderBottom: `1px solid ${colours.neutral[200]}` }}>
+              <div style={rowLabel}>Colour</div>
+              <div style={{ flex: 1, display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                {Object.keys(EVENT_COLORS).map(c => (
+                  <button key={c} onClick={() => markDirty(setEditColor)(c)} style={{
+                    width: 22, height: 22, borderRadius: radii.full, border: editColor === c ? `2px solid ${colours.neutral[900]}` : `2px solid transparent`,
+                    backgroundColor: EVENT_COLORS[c].border, cursor: 'pointer',
+                  }} />
+                ))}
+              </div>
             </div>
           )}
-          {/* Meeting link */}
-          {event.meeting_link && (
-            <div style={{ fontSize: typography.fontSize.sm, display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <Video size={14} style={{ flexShrink: 0, color: colours.neutral[500] }} />
-              <a href={event.meeting_link} target="_blank" rel="noreferrer" style={{ color: '#60a5fa', textDecoration: 'none', fontSize: '12px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>{event.meeting_link}</a>
-              <button onClick={() => { navigator.clipboard.writeText(event.meeting_link) }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: colours.neutral[500], padding: 2 }} title="Copy link"><Link2 size={12} /></button>
-            </div>
-          )}
 
-          {/* Task-specific metadata */}
+          {/* ─── Task-specific properties ─── */}
           {isTask && (
             <>
-              {/* Client + Project + Category */}
-              <div style={{ fontSize: typography.fontSize.sm, color: colours.neutral[600], display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <Layers size={14} style={{ flexShrink: 0, color: colours.neutral[500] }} />
-                <span>{[event.client_name, event.project_name, event.category_name].filter(Boolean).join(' · ')}</span>
+              <div style={{ display: 'flex', alignItems: 'center', padding: '8px 0', borderBottom: `1px solid ${colours.neutral[200]}` }}>
+                <div style={rowLabel}><Layers size={12} style={{ display: 'inline', verticalAlign: -2, marginRight: 4 }} />Project</div>
+                <div style={rowVal}>{[event.client_name, event.project_name, event.category_name].filter(Boolean).join(' · ') || '—'}</div>
               </div>
 
-              {/* Hours + Payout row */}
               {(event.estimated_hours || event.total_payout) && (
-                <div style={{ fontSize: typography.fontSize.sm, color: colours.neutral[600], display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <Clock size={14} style={{ flexShrink: 0, color: colours.neutral[500] }} />
-                  <span>
-                    {event.estimated_hours && `${event.estimated_hours}h estimated`}
-                    {event.estimated_hours && event.total_payout && ' · '}
-                    {event.total_payout && `$${Number(event.total_payout).toFixed(2)} payout`}
-                    {event.estimated_hours && event.total_payout && ` ($${(Number(event.total_payout) / event.estimated_hours).toFixed(0)}/h)`}
-                  </span>
+                <div style={{ display: 'flex', alignItems: 'center', padding: '8px 0', borderBottom: `1px solid ${colours.neutral[200]}` }}>
+                  <div style={rowLabel}>Payout</div>
+                  <div style={rowVal}>
+                    {event.estimated_hours && <span>{event.estimated_hours}h estimated</span>}
+                    {event.total_payout && <span>{event.estimated_hours ? ' · ' : ''}${Number(event.total_payout).toFixed(2)}</span>}
+                    {event.estimated_hours && event.total_payout && <span style={{ color: colours.neutral[500] }}> (${(Number(event.total_payout) / event.estimated_hours).toFixed(0)}/h)</span>}
+                  </div>
                 </div>
               )}
 
-              {/* Deadline */}
               {event.deadline && (
-                <div style={{ fontSize: typography.fontSize.sm, display: 'flex', alignItems: 'center', gap: '8px', color: new Date(event.deadline) < new Date(Date.now() + 3 * 86400000) ? '#f87171' : colours.neutral[600] }}>
-                  <CalendarDays size={14} style={{ flexShrink: 0 }} />
-                  <span>Due {new Date(event.deadline).toLocaleDateString('en-NZ', { weekday: 'short', month: 'short', day: 'numeric' })}</span>
-                  {new Date(event.deadline) < new Date() && <span style={{ fontSize: '10px', fontWeight: 700, padding: '1px 6px', borderRadius: radii.full, backgroundColor: '#7f1d1d', color: '#fff' }}>Overdue</span>}
+                <div style={{ display: 'flex', alignItems: 'center', padding: '8px 0', borderBottom: `1px solid ${colours.neutral[200]}` }}>
+                  <div style={rowLabel}>Deadline</div>
+                  <div style={{ ...rowVal, color: new Date(event.deadline) < new Date(Date.now() + 3 * 86400000) ? '#f87171' : colours.neutral[700] }}>
+                    {new Date(event.deadline).toLocaleDateString('en-NZ', { weekday: 'short', month: 'short', day: 'numeric' })}
+                    {new Date(event.deadline) < new Date() && <span style={{ fontSize: '10px', fontWeight: 700, marginLeft: 6, padding: '1px 6px', borderRadius: radii.full, backgroundColor: '#7f1d1d', color: '#fff' }}>Overdue</span>}
+                  </div>
                 </div>
               )}
 
-              {/* Status */}
               {event.task_status && (
-                <div style={{ fontSize: typography.fontSize.sm, color: colours.neutral[600], display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <Zap size={14} style={{ flexShrink: 0, color: colours.neutral[500] }} />
-                  <span style={{ textTransform: 'capitalize' }}>{event.task_status.replace('_', ' ')}</span>
-                </div>
-              )}
-
-              {/* Description (truncated) */}
-              {event.task_description && (
-                <div style={{ fontSize: typography.fontSize.xs, color: colours.neutral[500], marginTop: '4px', padding: '8px 10px', backgroundColor: colours.surfaceRaised, borderRadius: radii.md, lineHeight: 1.5, maxHeight: 80, overflow: 'hidden', borderLeft: `2px solid ${colours.neutral[300]}` }}>
-                  {event.task_description.length > 200 ? event.task_description.substring(0, 200) + '…' : event.task_description}
+                <div style={{ display: 'flex', alignItems: 'center', padding: '8px 0', borderBottom: `1px solid ${colours.neutral[200]}` }}>
+                  <div style={rowLabel}><Zap size={12} style={{ display: 'inline', verticalAlign: -2, marginRight: 4 }} />Status</div>
+                  <div style={rowVal}><span style={{ textTransform: 'capitalize' }}>{event.task_status.replace('_', ' ')}</span></div>
                 </div>
               )}
             </>
           )}
         </div>
 
-        {/* Divider */}
-        <div style={{ borderTop: `1px solid ${colours.neutral[200]}`, margin: '0 0 12px 0' }} />
+        {/* Description / Notes */}
+        <div style={{ marginBottom: '20px' }}>
+          <div style={{ fontSize: typography.fontSize.xs, color: colours.neutral[500], fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: spacing[2] }}>
+            {isTask ? 'Description' : 'Notes'}
+          </div>
+          {isTask ? (
+            <div style={{ fontSize: typography.fontSize.sm, color: colours.neutral[600], lineHeight: 1.7, padding: '12px 14px', backgroundColor: colours.surfaceRaised, borderRadius: radii.md, borderLeft: `3px solid ${colours.neutral[300]}`, minHeight: 60 }}>
+              {event.task_description || <span style={{ color: colours.neutral[400], fontStyle: 'italic' }}>No description</span>}
+            </div>
+          ) : (
+            <textarea value={editDescription} onChange={(e) => markDirty(setEditDescription)(e.target.value)}
+              rows={4}
+              style={{
+                ...inputStyle, resize: 'vertical', lineHeight: 1.6, minHeight: 80,
+                padding: '10px 12px', backgroundColor: colours.surfaceRaised, borderRadius: radii.md,
+                borderColor: colours.neutral[200], fontFamily: 'inherit',
+              }}
+              onFocus={(e) => Object.assign(e.target.style, { borderColor: colours.neutral[400] })}
+              onBlur={(e) => Object.assign(e.target.style, { borderColor: colours.neutral[200] })}
+              placeholder="Add notes, meeting agenda, details..."
+            />
+          )}
+        </div>
+      </div>
 
-        {/* Actions — using platform Button component */}
-        <div style={{ display: 'flex', gap: spacing[2], flexWrap: 'wrap' }}>
-          {!isTask && <Button variant="secondary" size="sm" onClick={onEdit}><Edit3 size={13} /> Edit</Button>}
+      {/* Bottom actions bar */}
+      <div style={{ padding: '12px 20px', borderTop: `1px solid ${colours.neutral[200]}`, flexShrink: 0, display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: colours.surfaceRaised }}>
+        <div style={{ display: 'flex', gap: spacing[2] }}>
           <Button variant="secondary" size="sm" onClick={onDuplicate}><Copy size={13} /> Duplicate</Button>
           <Button variant="danger" size="sm" onClick={() => { onDelete(); onClose() }}><Trash2 size={13} /> Delete</Button>
         </div>
-
-        {/* Keyboard hints */}
-        <div style={{ marginTop: '8px', fontSize: '10px', color: colours.neutral[400], display: 'flex', gap: '12px' }}>
-          <span>⌘D duplicate</span>
-          <span>⌫ delete</span>
-          <span>Esc close</span>
+        <div style={{ display: 'flex', gap: spacing[2], alignItems: 'center' }}>
+          {dirty && <span style={{ fontSize: '11px', color: colours.neutral[500] }}>Unsaved</span>}
+          {!isTask && dirty && <Button variant="primary" size="sm" onClick={handleSave} disabled={saving}>{saving ? 'Saving...' : 'Save'}</Button>}
+          {!isTask && !dirty && <span style={{ fontSize: '10px', color: colours.neutral[400] }}>⌘D duplicate · ⌫ delete · Esc close</span>}
         </div>
       </div>
     </div>
@@ -743,7 +848,7 @@ export default function CalendarPage() {
   if (loading) return <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', padding: spacing[12], minHeight: '60vh' }}><Spinner size="lg" /></div>
 
   return (
-    <div style={{ padding: spacing[6], maxWidth: 1400, margin: '0 auto' }}>
+    <div style={{ padding: `${spacing[6]} ${spacing[4]}`, maxWidth: 1800, margin: '0 auto', width: '100%', boxSizing: 'border-box' }}>
       {/* ─── Header ─── */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing[5], flexWrap: 'wrap', gap: spacing[3] }}>
         <PageHeader title="Calendar" subtitle={subtitleParts.length ? subtitleParts.join(' · ') : 'No events this week'} />
@@ -1050,12 +1155,18 @@ export default function CalendarPage() {
         onSave={modal?.mode === 'edit' ? handleUpdateEvent : handleCreateEvent}
       />
 
-      {/* ─── Event Popover ─── */}
+      {/* ─── Event Detail Panel ─── */}
       {popover && (
-        <EventPopover
-          event={popover.event} x={popover.x} y={popover.y}
+        <EventDetailPanel
+          event={popover.event}
           onClose={() => { setPopover(null); setFocusedEventId(null) }}
-          onEdit={() => openEdit(popover.event)}
+          onUpdate={async (data) => {
+            const id = popover.event._recurring_parent_id || popover.event.id
+            try {
+              await updateCalendarEvent(id, data)
+              addToast('Updated', 'success'); setPopover(null); setFocusedEventId(null); fetchData()
+            } catch { addToast('Failed to update', 'error') }
+          }}
           onDuplicate={() => openDuplicate(popover.event)}
           onDelete={() => handleDeleteEvent(popover.event)}
         />
