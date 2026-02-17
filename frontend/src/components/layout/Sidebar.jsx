@@ -327,7 +327,7 @@ export default function Sidebar() {
               </div>
               <WaveProgressBar progress={xpProgress} size="sm" />
               <div
-                onClick={() => navigate(user.role === 'admin' ? '/admin' : '/camper/earnings')}
+                onClick={() => navigate(user.role === 'admin' ? '/admin/journey' : '/camper/journey')}
                 style={{
                   display: 'flex', alignItems: 'center', gap: spacing[2],
                   marginTop: spacing[2], padding: `${spacing[2]} ${spacing[3]}`,

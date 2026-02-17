@@ -199,3 +199,62 @@ VALUES (
   330.00,
   '2026-04-01'
 );
+
+-- ── 5. Dylan's own tasks — TackleBox Platform Project ──
+
+-- Create a TackleBox platform project
+INSERT OR IGNORE INTO projects (id, name, description, client_id, status, created_by)
+VALUES ('proj_tacklebox_01', 'TackleBox Platform Build', 'Core platform development — UI/UX, feature builds, infrastructure, and launch preparation.', 'user_dylan_01', 'active', 'user_dylan_01');
+
+-- Task 9: Platform UX Audit + Redesign (12h, L6)
+INSERT OR IGNORE INTO tasks (id, title, description, status, priority, category_id, project_id, client_id, contractor_id, created_by, complexity_level, estimated_hours, total_payout, deadline)
+VALUES (
+  'task_tb_001',
+  'TackleBox platform UX audit and interaction redesign',
+  'Conduct a full UX audit of the TackleBox platform and redesign key interaction flows. Covers: (1) Camper onboarding journey — first login to first task completion, (2) Task lifecycle — from assignment through to review and payout, (3) Calendar scheduling — drag-to-create, smart schedule, event management, (4) Brand page — how clients and campers interact with brand guidelines, (5) Journey/XP progression — how campers track growth and earnings. Deliverables: annotated screen recordings of current pain points, revised wireframes for each flow, interaction spec document with micro-animation notes, and a prioritised backlog of UX improvements. Focus on making every interaction feel intuitive for junior campers (L1-L3) while staying powerful for senior users.',
+  'in_progress',
+  'urgent',
+  'cat_web_design',
+  'proj_tacklebox_01',
+  'user_dylan_01',
+  'user_dylan_01',
+  'user_dylan_01',
+  6,
+  12,
+  0,
+  '2026-03-03'
+);
+
+-- Task 10: Brand Onboarding System Design (8h, L5)
+INSERT OR IGNORE INTO tasks (id, title, description, status, priority, category_id, project_id, client_id, contractor_id, created_by, complexity_level, estimated_hours, total_payout, deadline)
+VALUES (
+  'task_tb_002',
+  'Design brand onboarding and guided tour system',
+  'Design and spec out the guided onboarding experience for new clients and campers joining TackleBox. Client onboarding: brand profile setup wizard (upload logo, define values, set voice/tone, add colour palette), first project creation, first task brief walkthrough. Camper onboarding: welcome screen with camp metaphor, skill self-assessment, first task walkthrough with tooltips, calendar setup guide, XP/level explanation. General: tooltip-based guided tour system that can highlight any UI element, progress tracker (steps completed), contextual help popovers on each page. Deliverables: full flow diagrams, copy for each tooltip/step, component spec for the tour engine, and mockups for key screens.',
+  'assigned',
+  'high',
+  'cat_brand_strategy',
+  'proj_tacklebox_01',
+  'user_dylan_01',
+  'user_dylan_01',
+  'user_dylan_01',
+  5,
+  8,
+  0,
+  '2026-03-07'
+);
+
+-- ── 6. Schedule blocks for Dylan's tasks (spread across 2 weeks) ──
+
+-- Week 1: UX Audit sessions (Feb 18-20, Wed-Fri)
+INSERT OR IGNORE INTO task_schedule (id, task_id, user_id, start_time, end_time, status)
+VALUES
+  ('sched_dy_001', 'task_tb_001', 'user_dylan_01', '2026-02-18T09:00:00.000Z', '2026-02-18T13:00:00.000Z', 'scheduled'),
+  ('sched_dy_002', 'task_tb_001', 'user_dylan_01', '2026-02-19T09:00:00.000Z', '2026-02-19T13:00:00.000Z', 'scheduled'),
+  ('sched_dy_003', 'task_tb_001', 'user_dylan_01', '2026-02-20T09:00:00.000Z', '2026-02-20T13:00:00.000Z', 'scheduled');
+
+-- Week 2: Onboarding design sessions (Feb 23-24, Mon-Tue) + UX wrap-up (Feb 25)
+INSERT OR IGNORE INTO task_schedule (id, task_id, user_id, start_time, end_time, status)
+VALUES
+  ('sched_dy_004', 'task_tb_002', 'user_dylan_01', '2026-02-23T09:00:00.000Z', '2026-02-23T13:00:00.000Z', 'scheduled'),
+  ('sched_dy_005', 'task_tb_002', 'user_dylan_01', '2026-02-24T09:00:00.000Z', '2026-02-24T13:00:00.000Z', 'scheduled');
