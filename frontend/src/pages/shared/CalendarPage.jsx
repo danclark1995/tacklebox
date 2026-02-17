@@ -66,6 +66,66 @@ function yToMinutes(y) { return snapTo15(Math.max(0, Math.min(24 * 60 - 15, (y /
 function minutesToY(mins) { return (mins / 60) * HOUR_HEIGHT }
 function generateMeetLink() { const id = Math.random().toString(36).substring(2, 10); return `https://meet.jit.si/tacklebox-${id}` }
 
+/* ─── Overlap Layout (Google Calendar style columns) ─── */
+function layoutOverlappingEvents(dayEvents) {
+  if (dayEvents.length === 0) return []
+  // Convert to time ranges
+  const items = dayEvents.map(evt => {
+    const s = toLocal(evt.start_time), e = toLocal(evt.end_time)
+    return { evt, startM: s.getHours() * 60 + s.getMinutes(), endM: e.getHours() * 60 + e.getMinutes() }
+  }).sort((a, b) => a.startM - b.startM || a.endM - b.endM)
+
+  // Assign columns: greedy left-to-right
+  const columns = [] // each column = array of items with their endM
+  const result = []
+  for (const item of items) {
+    let placed = false
+    for (let c = 0; c < columns.length; c++) {
+      if (columns[c] <= item.startM) {
+        columns[c] = item.endM
+        result.push({ ...item, col: c })
+        placed = true
+        break
+      }
+    }
+    if (!placed) {
+      result.push({ ...item, col: columns.length })
+      columns.push(item.endM)
+    }
+  }
+
+  // Now determine how many columns each group of overlapping events uses
+  // Group overlapping events: events overlap if they share any column-time range
+  const groups = [] // array of { indices[], maxCol }
+  const assigned = new Set()
+  for (let i = 0; i < result.length; i++) {
+    if (assigned.has(i)) continue
+    const group = [i]
+    assigned.add(i)
+    let groupEnd = result[i].endM
+    // Find all events that overlap with anyone in this group
+    let changed = true
+    while (changed) {
+      changed = false
+      for (let j = 0; j < result.length; j++) {
+        if (assigned.has(j)) continue
+        // Check if j overlaps with any event in the group
+        const overlaps = group.some(gi => result[j].startM < result[gi].endM && result[j].endM > result[gi].startM)
+        if (overlaps) {
+          group.push(j)
+          assigned.add(j)
+          groupEnd = Math.max(groupEnd, result[j].endM)
+          changed = true
+        }
+      }
+    }
+    const maxCol = Math.max(...group.map(gi => result[gi].col)) + 1
+    group.forEach(gi => { result[gi].totalCols = maxCol })
+  }
+
+  return result // each: { evt, startM, endM, col, totalCols }
+}
+
 /* ━━━━━━━━━━━━━━━━━ EVENT POPOVER ━━━━━━━━━━━━━━━━━ */
 function EventPopover({ event, x, y, onClose, onEdit, onDuplicate, onDelete }) {
   const ref = useRef(null)
@@ -96,12 +156,8 @@ function EventPopover({ event, x, y, onClose, onEdit, onDuplicate, onDelete }) {
   const cs = EVENT_COLORS[event.color] || EVENT_COLORS.slate
   const isTask = event.event_type === 'task'
 
-  const btnStyle = {
-    display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 10px',
-    fontSize: '12px', cursor: 'pointer', backgroundColor: 'transparent',
-    border: `1px solid ${colours.neutral[300]}`, borderRadius: radii.md,
-    color: colours.neutral[700], transition: 'all 100ms',
-  }
+  const isAppt = event.event_type === 'appointment'
+  const durationH = Math.round((end - start) / 3600000 * 10) / 10
 
   return (
     <div ref={ref} style={{
@@ -114,61 +170,71 @@ function EventPopover({ event, x, y, onClose, onEdit, onDuplicate, onDelete }) {
       <div style={{ height: 4, backgroundColor: isTask ? (PRIORITY_BORDER[event.priority] || '#525252') : cs.border }} />
 
       <div style={{ padding: '16px' }}>
-        {/* Title + type */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-          <div style={{ width: 10, height: 10, borderRadius: '50%', backgroundColor: cs.border, flexShrink: 0 }} />
-          <span style={{ fontSize: typography.fontSize.base, fontWeight: typography.fontWeight.semibold, color: colours.neutral[900], flex: 1 }}>{event.title}</span>
+        {/* Title + close */}
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', marginBottom: '10px' }}>
+          <div style={{ width: 10, height: 10, borderRadius: '50%', backgroundColor: cs.border, flexShrink: 0, marginTop: 5 }} />
+          <span style={{ fontSize: typography.fontSize.lg, fontWeight: typography.fontWeight.semibold, color: colours.neutral[900], flex: 1, lineHeight: 1.3 }}>{event.title}</span>
           <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: colours.neutral[500], padding: 2 }}><X size={16} /></button>
         </div>
 
         {/* Time + duration */}
-        <div style={{ fontSize: typography.fontSize.sm, color: colours.neutral[600], marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-          <Clock size={13} /> {fmtTime(start)} – {fmtTime(end)} · {start.toLocaleDateString('en-NZ', { weekday: 'short', month: 'short', day: 'numeric' })}
-          <span style={{ color: colours.neutral[500], fontSize: '11px' }}>({Math.round((end - start) / 3600000 * 10) / 10}h)</span>
+        <div style={{ fontSize: typography.fontSize.sm, color: colours.neutral[600], marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <Clock size={14} />
+          <span>{fmtTime(start)} – {fmtTime(end)}</span>
+          <span style={{ color: colours.neutral[400] }}>·</span>
+          <span>{start.toLocaleDateString('en-NZ', { weekday: 'short', month: 'short', day: 'numeric' })}</span>
+          <span style={{ color: colours.neutral[400] }}>·</span>
+          <span style={{ fontWeight: 600 }}>{durationH}h</span>
         </div>
 
-        {/* Type badge */}
-        <div style={{ display: 'flex', gap: '6px', marginBottom: '10px', flexWrap: 'wrap' }}>
+        {/* Type badges */}
+        <div style={{ display: 'flex', gap: '6px', marginBottom: '12px', flexWrap: 'wrap' }}>
           <span style={{ fontSize: '10px', fontWeight: 700, padding: '2px 8px', borderRadius: radii.full, backgroundColor: isTask ? colours.neutral[800] : cs.bg, color: isTask ? colours.neutral[100] : cs.text, border: `1px solid ${isTask ? colours.neutral[600] : cs.border}`, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
             {event.event_type}
           </span>
           {event.recurrence && <span style={{ fontSize: '10px', fontWeight: 600, padding: '2px 8px', borderRadius: radii.full, backgroundColor: colours.surfaceRaised, color: colours.neutral[600] }}>Repeats {event.recurrence}</span>}
           {isTask && event.complexity_level != null && <span style={{ fontSize: '10px', fontWeight: 700, padding: '2px 8px', borderRadius: radii.full, backgroundColor: colours.neutral[200], color: colours.neutral[900] }}>L{event.complexity_level}</span>}
+          {isTask && event.priority && <span style={{ fontSize: '10px', fontWeight: 700, padding: '2px 8px', borderRadius: radii.full, backgroundColor: event.priority === 'urgent' ? '#7f1d1d' : event.priority === 'high' ? '#78350f' : colours.surfaceRaised, color: event.priority === 'urgent' || event.priority === 'high' ? '#fff' : colours.neutral[600], textTransform: 'capitalize' }}>{event.priority}</span>}
         </div>
 
-        {/* Location */}
-        {event.location && (
-          <div style={{ fontSize: typography.fontSize.sm, color: colours.neutral[600], marginBottom: '4px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <MapPin size={13} /> {event.location}
-          </div>
-        )}
-
-        {/* Meeting link */}
-        {event.meeting_link && (
-          <div style={{ fontSize: typography.fontSize.sm, marginBottom: '4px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <Video size={13} style={{ color: colours.neutral[500] }} />
-            <a href={event.meeting_link} target="_blank" rel="noreferrer" style={{ color: '#60a5fa', textDecoration: 'none', fontSize: '12px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>{event.meeting_link}</a>
-            <button onClick={() => { navigator.clipboard.writeText(event.meeting_link) }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: colours.neutral[500], padding: 2 }} title="Copy link"><Link2 size={12} /></button>
-          </div>
-        )}
-
-        {/* Task metadata */}
-        {isTask && (
-          <div style={{ fontSize: typography.fontSize.xs, color: colours.neutral[500], marginBottom: '8px' }}>
-            {[event.client_name, event.category_name].filter(Boolean).join(' · ')}
-            {event.estimated_hours && ` · ${event.estimated_hours}h`}
-            {event.total_payout && ` · $${Number(event.total_payout).toFixed(0)}`}
-          </div>
-        )}
+        {/* Detail rows */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '12px' }}>
+          {event.location && (
+            <div style={{ fontSize: typography.fontSize.sm, color: colours.neutral[600], display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <MapPin size={14} style={{ flexShrink: 0, color: colours.neutral[500] }} />
+              <span>{event.location}</span>
+            </div>
+          )}
+          {event.meeting_link && (
+            <div style={{ fontSize: typography.fontSize.sm, display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Video size={14} style={{ flexShrink: 0, color: colours.neutral[500] }} />
+              <a href={event.meeting_link} target="_blank" rel="noreferrer" style={{ color: '#60a5fa', textDecoration: 'none', fontSize: '12px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>{event.meeting_link}</a>
+              <button onClick={() => { navigator.clipboard.writeText(event.meeting_link) }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: colours.neutral[500], padding: 2 }} title="Copy link"><Link2 size={12} /></button>
+            </div>
+          )}
+          {isTask && (
+            <div style={{ fontSize: typography.fontSize.sm, color: colours.neutral[500], display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Layers size={14} style={{ flexShrink: 0, color: colours.neutral[500] }} />
+              <span>{[event.client_name, event.category_name].filter(Boolean).join(' · ')}{event.estimated_hours && ` · ${event.estimated_hours}h est.`}{event.total_payout && ` · $${Number(event.total_payout).toFixed(0)}`}</span>
+            </div>
+          )}
+        </div>
 
         {/* Divider */}
-        <div style={{ borderTop: `1px solid ${colours.neutral[200]}`, margin: '10px 0' }} />
+        <div style={{ borderTop: `1px solid ${colours.neutral[200]}`, margin: '0 0 12px 0' }} />
 
-        {/* Actions */}
-        <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-          {!isTask && <button style={btnStyle} onClick={onEdit}><Edit3 size={12} /> Edit</button>}
-          <button style={btnStyle} onClick={onDuplicate}><Copy size={12} /> Duplicate <span style={{ fontSize: '10px', color: colours.neutral[500] }}>⌘D</span></button>
-          <button style={{ ...btnStyle, color: '#ef4444', borderColor: 'rgba(239,68,68,0.3)' }} onClick={() => { onDelete(); onClose() }}><Trash2 size={12} /> Delete <span style={{ fontSize: '10px', color: colours.neutral[500] }}>⌫</span></button>
+        {/* Actions — using platform Button component */}
+        <div style={{ display: 'flex', gap: spacing[2], flexWrap: 'wrap' }}>
+          {!isTask && <Button variant="secondary" size="sm" onClick={onEdit}><Edit3 size={13} /> Edit</Button>}
+          <Button variant="secondary" size="sm" onClick={onDuplicate}><Copy size={13} /> Duplicate</Button>
+          <Button variant="danger" size="sm" onClick={() => { onDelete(); onClose() }}><Trash2 size={13} /> Delete</Button>
+        </div>
+
+        {/* Keyboard hints */}
+        <div style={{ marginTop: '8px', fontSize: '10px', color: colours.neutral[400], display: 'flex', gap: '12px' }}>
+          <span>⌘D duplicate</span>
+          <span>⌫ delete</span>
+          <span>Esc close</span>
         </div>
       </div>
     </div>
@@ -303,6 +369,7 @@ export default function CalendarPage() {
   const [showTaskPicker, setShowTaskPicker] = useState(false)
   const [modal, setModal] = useState(null) // { day, startMin, endMin, editData?, mode }
   const [popover, setPopover] = useState(null) // { event, x, y }
+  const [focusedEventId, setFocusedEventId] = useState(null) // expanded event
   const gridRef = useRef(null)
 
   // Interaction states
@@ -335,10 +402,10 @@ export default function CalendarPage() {
     if (!loading && gridRef.current) gridRef.current.scrollTop = Math.max(0, (new Date().getHours() - 2) * HOUR_HEIGHT)
   }, [loading])
 
-  // Close popover on scroll
+  // Close popover + clear focus on scroll
   useEffect(() => {
     if (!popover) return
-    const close = () => setPopover(null)
+    const close = () => { setPopover(null); setFocusedEventId(null) }
     window.addEventListener('scroll', close, true)
     return () => window.removeEventListener('scroll', close, true)
   }, [popover])
@@ -542,7 +609,8 @@ export default function CalendarPage() {
         const pd = pendingDrag.current
         pendingDrag.current = null
         if (pd.type === 'move') {
-          // Click on event → open detail panel
+          // Click on event → open detail panel + focus/expand it
+          setFocusedEventId(prev => prev === pd.evt.id ? null : pd.evt.id)
           setPopover({ event: pd.evt, x: e.clientX, y: e.clientY })
         } else if (pd.type === 'create') {
           // Single click on grid → open create modal at that time
@@ -822,11 +890,9 @@ export default function CalendarPage() {
                   </div>
                 )}
 
-                {/* Event blocks */}
-                {dayEvents.map((evt, idx) => {
+                {/* Event blocks (overlap-aware layout) */}
+                {layoutOverlappingEvents(dayEvents).map(({ evt, startM: sM, endM: eM, col, totalCols }) => {
                   const start = toLocal(evt.start_time); const end = toLocal(evt.end_time)
-                  const sM = start.getHours() * 60 + start.getMinutes()
-                  const eM = end.getHours() * 60 + end.getMinutes()
                   const isTask = evt.event_type === 'task'
                   const isAppt = evt.event_type === 'appointment'
                   const cs = EVENT_COLORS[evt.color] || EVENT_COLORS.slate
@@ -844,15 +910,25 @@ export default function CalendarPage() {
                   const isMoving = dragMove && dragMove.event.id === evt.id
                   if (isMoving) return null
 
+                  // Focus: when clicked, expand to full width
+                  const isFocused = focusedEventId === evt.id
+                  const colWidth = 100 / totalCols
+                  const leftPct = isFocused ? '0%' : `${col * colWidth}%`
+                  const widthPct = isFocused ? '100%' : `${colWidth}%`
+
                   return (
-                    <div key={evt.id + '-' + idx}
+                    <div key={evt.id}
                       onContextMenu={(e) => handleEventContextMenu(e, evt)}
                       onMouseDown={(e) => handleEventMouseDown(e, evt, dayIdx)}
                       style={{
-                        position: 'absolute', top, left: 4, right: 4, height,
+                        position: 'absolute', top, height,
+                        left: `calc(${leftPct} + 2px)`, width: `calc(${widthPct} - 4px)`,
                         backgroundColor: bg, borderRadius: radii.md, padding: '4px 8px', overflow: 'hidden',
-                        borderLeft: `3px solid ${bdr}`, cursor: isDragging ? 'ns-resize' : 'pointer', zIndex: 2,
-                        boxShadow: '0 1px 6px rgba(0,0,0,0.4)', transition: isResizing ? 'none' : 'box-shadow 150ms',
+                        borderLeft: `3px solid ${bdr}`, cursor: isDragging ? 'ns-resize' : 'pointer',
+                        zIndex: isFocused ? 10 : 2,
+                        boxShadow: isFocused ? '0 4px 20px rgba(0,0,0,0.6)' : '0 1px 6px rgba(0,0,0,0.4)',
+                        transition: isResizing ? 'none' : 'left 200ms, width 200ms, box-shadow 150ms, z-index 0ms',
+                        opacity: totalCols > 1 && !isFocused ? 0.92 : 1,
                       }}
                     >
                       <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
@@ -932,7 +1008,7 @@ export default function CalendarPage() {
       {popover && (
         <EventPopover
           event={popover.event} x={popover.x} y={popover.y}
-          onClose={() => setPopover(null)}
+          onClose={() => { setPopover(null); setFocusedEventId(null) }}
           onEdit={() => openEdit(popover.event)}
           onDuplicate={() => openDuplicate(popover.event)}
           onDelete={() => handleDeleteEvent(popover.event)}
