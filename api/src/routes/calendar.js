@@ -244,5 +244,5 @@ export async function handleCalendar(request, env, auth, path, method) {
     }
   }
 
-  return null // Not handled by this router
+  return jsonResponse({ success: false, error: 'Route not found' }, 404)
 }
