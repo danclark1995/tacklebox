@@ -146,18 +146,17 @@ function EventPopover({ event, x, y, onClose, onEdit, onDuplicate, onDelete }) {
     return () => document.removeEventListener('keydown', handler)
   }, [onClose, onDelete, onDuplicate])
 
-  // Position: keep within viewport
-  const popW = 400, popH = isTask ? 460 : 320
-  const left = Math.min(x, window.innerWidth - popW - 20)
-  const top = Math.min(Math.max(10, y - 40), window.innerHeight - popH - 20)
-
   const start = toLocal(event.start_time)
   const end = toLocal(event.end_time)
   const cs = EVENT_COLORS[event.color] || EVENT_COLORS.slate
   const isTask = event.event_type === 'task'
-
   const isAppt = event.event_type === 'appointment'
   const durationH = Math.round((end - start) / 3600000 * 10) / 10
+
+  // Position: keep within viewport
+  const popW = 400, popH = isTask ? 460 : 320
+  const left = Math.min(x, window.innerWidth - popW - 20)
+  const top = Math.min(Math.max(10, y - 40), window.innerHeight - popH - 20)
 
   return (
     <div ref={ref} style={{
