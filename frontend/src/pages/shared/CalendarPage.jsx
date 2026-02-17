@@ -147,9 +147,9 @@ function EventPopover({ event, x, y, onClose, onEdit, onDuplicate, onDelete }) {
   }, [onClose, onDelete, onDuplicate])
 
   // Position: keep within viewport
-  const popW = 380, popH = 320
+  const popW = 400, popH = isTask ? 460 : 320
   const left = Math.min(x, window.innerWidth - popW - 20)
-  const top = Math.min(y, window.innerHeight - popH - 20)
+  const top = Math.min(Math.max(10, y - 40), window.innerHeight - popH - 20)
 
   const start = toLocal(event.start_time)
   const end = toLocal(event.end_time)
@@ -169,7 +169,7 @@ function EventPopover({ event, x, y, onClose, onEdit, onDuplicate, onDelete }) {
       {/* Header strip */}
       <div style={{ height: 4, backgroundColor: isTask ? (PRIORITY_BORDER[event.priority] || '#525252') : cs.border }} />
 
-      <div style={{ padding: '16px' }}>
+      <div style={{ padding: '16px', maxHeight: 440, overflowY: 'auto' }}>
         {/* Title + close */}
         <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', marginBottom: '10px' }}>
           <div style={{ width: 10, height: 10, borderRadius: '50%', backgroundColor: cs.border, flexShrink: 0, marginTop: 5 }} />
@@ -199,12 +199,14 @@ function EventPopover({ event, x, y, onClose, onEdit, onDuplicate, onDelete }) {
 
         {/* Detail rows */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '12px' }}>
+          {/* Location */}
           {event.location && (
             <div style={{ fontSize: typography.fontSize.sm, color: colours.neutral[600], display: 'flex', alignItems: 'center', gap: '8px' }}>
               <MapPin size={14} style={{ flexShrink: 0, color: colours.neutral[500] }} />
               <span>{event.location}</span>
             </div>
           )}
+          {/* Meeting link */}
           {event.meeting_link && (
             <div style={{ fontSize: typography.fontSize.sm, display: 'flex', alignItems: 'center', gap: '8px' }}>
               <Video size={14} style={{ flexShrink: 0, color: colours.neutral[500] }} />
@@ -212,11 +214,53 @@ function EventPopover({ event, x, y, onClose, onEdit, onDuplicate, onDelete }) {
               <button onClick={() => { navigator.clipboard.writeText(event.meeting_link) }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: colours.neutral[500], padding: 2 }} title="Copy link"><Link2 size={12} /></button>
             </div>
           )}
+
+          {/* Task-specific metadata */}
           {isTask && (
-            <div style={{ fontSize: typography.fontSize.sm, color: colours.neutral[500], display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <Layers size={14} style={{ flexShrink: 0, color: colours.neutral[500] }} />
-              <span>{[event.client_name, event.category_name].filter(Boolean).join(' · ')}{event.estimated_hours && ` · ${event.estimated_hours}h est.`}{event.total_payout && ` · $${Number(event.total_payout).toFixed(0)}`}</span>
-            </div>
+            <>
+              {/* Client + Project + Category */}
+              <div style={{ fontSize: typography.fontSize.sm, color: colours.neutral[600], display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Layers size={14} style={{ flexShrink: 0, color: colours.neutral[500] }} />
+                <span>{[event.client_name, event.project_name, event.category_name].filter(Boolean).join(' · ')}</span>
+              </div>
+
+              {/* Hours + Payout row */}
+              {(event.estimated_hours || event.total_payout) && (
+                <div style={{ fontSize: typography.fontSize.sm, color: colours.neutral[600], display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <Clock size={14} style={{ flexShrink: 0, color: colours.neutral[500] }} />
+                  <span>
+                    {event.estimated_hours && `${event.estimated_hours}h estimated`}
+                    {event.estimated_hours && event.total_payout && ' · '}
+                    {event.total_payout && `$${Number(event.total_payout).toFixed(2)} payout`}
+                    {event.estimated_hours && event.total_payout && ` ($${(Number(event.total_payout) / event.estimated_hours).toFixed(0)}/h)`}
+                  </span>
+                </div>
+              )}
+
+              {/* Deadline */}
+              {event.deadline && (
+                <div style={{ fontSize: typography.fontSize.sm, display: 'flex', alignItems: 'center', gap: '8px', color: new Date(event.deadline) < new Date(Date.now() + 3 * 86400000) ? '#f87171' : colours.neutral[600] }}>
+                  <CalendarDays size={14} style={{ flexShrink: 0 }} />
+                  <span>Due {new Date(event.deadline).toLocaleDateString('en-NZ', { weekday: 'short', month: 'short', day: 'numeric' })}</span>
+                  {new Date(event.deadline) < new Date() && <span style={{ fontSize: '10px', fontWeight: 700, padding: '1px 6px', borderRadius: radii.full, backgroundColor: '#7f1d1d', color: '#fff' }}>Overdue</span>}
+                </div>
+              )}
+
+              {/* Status */}
+              {event.task_status && (
+                <div style={{ fontSize: typography.fontSize.sm, color: colours.neutral[600], display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <Zap size={14} style={{ flexShrink: 0, color: colours.neutral[500] }} />
+                  <span style={{ textTransform: 'capitalize' }}>{event.task_status.replace('_', ' ')}</span>
+                </div>
+              )}
+
+              {/* Description (truncated) */}
+              {event.task_description && (
+                <div style={{ fontSize: typography.fontSize.xs, color: colours.neutral[500], marginTop: '4px', padding: '8px 10px', backgroundColor: colours.surfaceRaised, borderRadius: radii.md, lineHeight: 1.5, maxHeight: 80, overflow: 'hidden', borderLeft: `2px solid ${colours.neutral[300]}` }}>
+                  {event.task_description.length > 200 ? event.task_description.substring(0, 200) + '…' : event.task_description}
+                </div>
+              )}
+            </>
           )}
         </div>
 
@@ -933,11 +977,14 @@ export default function CalendarPage() {
                     >
                       <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                         {isAppt && <Phone size={10} style={{ color: txt, opacity: 0.7, flexShrink: 0 }} />}
+                        {isTask && evt.complexity_level != null && <span style={{ fontSize: '9px', fontWeight: 700, backgroundColor: 'rgba(255,255,255,0.15)', color: txt, padding: '1px 4px', borderRadius: '3px', flexShrink: 0 }}>L{evt.complexity_level}</span>}
                         {!isTask && !isAppt && <Moon size={10} style={{ color: txt, opacity: 0.7, flexShrink: 0 }} />}
                         <span style={{ fontSize: '11px', fontWeight: 600, color: txt, lineHeight: 1.2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>{evt.title}</span>
                       </div>
                       {height >= 36 && <div style={{ fontSize: '10px', color: txt, opacity: 0.6, marginTop: 2 }}>{fmtTime(start)} – {isResizing ? fmtMinutes(dragResize.currentMins) : fmtTime(end)}</div>}
-                      {height >= 52 && isTask && <div style={{ fontSize: '10px', color: txt, opacity: 0.5, marginTop: 1 }}>{evt.client_name}{evt.total_payout && ` · $${Number(evt.total_payout).toFixed(0)}`}</div>}
+                      {height >= 52 && isTask && <div style={{ fontSize: '10px', color: txt, opacity: 0.5, marginTop: 1 }}>{[evt.client_name, evt.project_name].filter(Boolean).join(' · ')}{evt.total_payout && ` · $${Number(evt.total_payout).toFixed(0)}`}</div>}
+                      {height >= 68 && isTask && evt.estimated_hours && <div style={{ fontSize: '10px', color: txt, opacity: 0.4, marginTop: 1 }}>{evt.estimated_hours}h est.{evt.deadline && ` · Due ${new Date(evt.deadline).toLocaleDateString('en-NZ', { month: 'short', day: 'numeric' })}`}</div>}
+                      {height >= 84 && isTask && evt.task_description && <div style={{ fontSize: '9px', color: txt, opacity: 0.35, marginTop: 2, lineHeight: 1.3, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>{evt.task_description}</div>}
                       {height >= 52 && isAppt && evt.location && <div style={{ fontSize: '10px', color: txt, opacity: 0.5, marginTop: 1, display: 'flex', alignItems: 'center', gap: '3px' }}><MapPin size={8} />{evt.location}</div>}
                       {height >= 52 && evt.meeting_link && <div style={{ fontSize: '10px', color: '#60a5fa', opacity: 0.8, marginTop: 1, display: 'flex', alignItems: 'center', gap: '3px' }}><Video size={8} /> Meeting</div>}
 

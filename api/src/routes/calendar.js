@@ -30,14 +30,17 @@ export async function handleCalendar(request, env, auth, path, method) {
       let taskQuery = `
         SELECT s.id, s.task_id, s.start_time, s.end_time, s.status, s.notes,
           'task' as event_type, t.title, t.priority, t.estimated_hours, t.total_payout,
-          t.complexity_level, t.deadline,
+          t.complexity_level, t.deadline, t.description as task_description,
+          t.status as task_status,
           cat.name as category_name, c.display_name as client_name,
+          p.name as project_name,
           NULL as color, NULL as location, NULL as meeting_link, NULL as attendees,
           NULL as related_task_id, NULL as recurrence, NULL as description, 0 as all_day
         FROM task_schedule s
         JOIN tasks t ON s.task_id = t.id
         LEFT JOIN task_categories cat ON t.category_id = cat.id
         LEFT JOIN users c ON t.client_id = c.id
+        LEFT JOIN projects p ON t.project_id = p.id
         WHERE s.user_id = ?
       `
       const taskBindings = [userId]
