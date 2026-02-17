@@ -3,6 +3,7 @@ import {
   Compass, BarChart3, Star, Lock,
   Flame, Layers, Zap, HeartHandshake, Sparkles, Fish,
   Tent, TreePine, Trees, Award, FireExtinguisher,
+  DollarSign, TrendingUp, ArrowDownCircle, ArrowUpCircle, Wallet,
 } from 'lucide-react'
 import useAuth from '@/hooks/useAuth'
 import useToast from '@/hooks/useToast'
@@ -13,7 +14,8 @@ import WaveProgressBar from '@/components/ui/WaveProgressBar'
 import FlameIcon from '@/components/ui/FlameIcon'
 import FireStageTimeline from '@/components/features/gamification/FireStageTimeline'
 import { getContractorXP, getLevels, getBadges, getMyGamification } from '@/services/gamification'
-import { colours, spacing, typography } from '@/config/tokens'
+import { getMyEarnings } from '@/services/earnings'
+import { colours, spacing, typography, radii } from '@/config/tokens'
 import { SCALING_TIERS, BADGES as BADGE_DEFS } from '@/config/constants'
 
 const ICON_MAP = {
@@ -38,13 +40,18 @@ export default function AdminJourney() {
   const { user } = useAuth()
   const { addToast } = useToast()
   const [data, setData] = useState(null)
+  const [earnings, setEarnings] = useState(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     async function load() {
       try {
-        const data = await getMyGamification()
-        setData(data)
+        const [gamData, earnData] = await Promise.all([
+          getMyGamification(),
+          getMyEarnings().catch(() => null),
+        ])
+        setData(gamData)
+        setEarnings(earnData)
       } catch (err) {
         addToast(err.message, 'error')
       } finally {
@@ -129,6 +136,155 @@ export default function AdminJourney() {
           <span>{fireStage}</span>
         </div>
       </section>
+
+      {/* Earnings & Balance */}
+      {(() => {
+        const totalEarned = earnings?.total_earnings || data?.total_earnings || 0
+        const availableBalance = earnings?.available_balance || data?.available_balance || 0
+        const cashouts = earnings?.cashouts || []
+        const totalCashedOut = cashouts.filter(c => c.status === 'completed').reduce((sum, c) => sum + (c.amount || 0), 0)
+        const pendingCashouts = cashouts.filter(c => c.status === 'pending').reduce((sum, c) => sum + (c.amount || 0), 0)
+        const earningsHistory = earnings?.earnings || []
+
+        return (
+          <section style={sectionStyle}>
+            <h2 style={sectionTitleStyle}>
+              <Wallet size={18} style={{ marginRight: '8px', verticalAlign: 'middle' }} />
+              Earnings & Balance
+            </h2>
+
+            {/* Balance cards */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: spacing[4], marginBottom: spacing[6] }}>
+              <GlowCard padding="20px" glow="soft">
+                <div style={{ display: 'flex', alignItems: 'center', gap: spacing[3], marginBottom: spacing[2] }}>
+                  <div style={{ width: 36, height: 36, borderRadius: radii.full, backgroundColor: '#065f46', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <DollarSign size={18} color="#34d399" />
+                  </div>
+                  <div style={{ fontSize: typography.fontSize.xs, color: colours.neutral[500], textTransform: 'uppercase', fontWeight: 600, letterSpacing: '0.5px' }}>Available</div>
+                </div>
+                <div style={{ fontSize: '28px', fontWeight: typography.fontWeight.bold, color: '#34d399' }}>
+                  ${availableBalance.toFixed(2)}
+                </div>
+              </GlowCard>
+
+              <GlowCard padding="20px">
+                <div style={{ display: 'flex', alignItems: 'center', gap: spacing[3], marginBottom: spacing[2] }}>
+                  <div style={{ width: 36, height: 36, borderRadius: radii.full, backgroundColor: colours.surfaceRaised, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <TrendingUp size={18} color={colours.neutral[600]} />
+                  </div>
+                  <div style={{ fontSize: typography.fontSize.xs, color: colours.neutral[500], textTransform: 'uppercase', fontWeight: 600, letterSpacing: '0.5px' }}>Total Earned</div>
+                </div>
+                <div style={{ fontSize: '28px', fontWeight: typography.fontWeight.bold, color: colours.neutral[900] }}>
+                  ${totalEarned.toFixed(2)}
+                </div>
+              </GlowCard>
+
+              <GlowCard padding="20px">
+                <div style={{ display: 'flex', alignItems: 'center', gap: spacing[3], marginBottom: spacing[2] }}>
+                  <div style={{ width: 36, height: 36, borderRadius: radii.full, backgroundColor: colours.surfaceRaised, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <ArrowUpCircle size={18} color={colours.neutral[600]} />
+                  </div>
+                  <div style={{ fontSize: typography.fontSize.xs, color: colours.neutral[500], textTransform: 'uppercase', fontWeight: 600, letterSpacing: '0.5px' }}>Cashed Out</div>
+                </div>
+                <div style={{ fontSize: '28px', fontWeight: typography.fontWeight.bold, color: colours.neutral[900] }}>
+                  ${totalCashedOut.toFixed(2)}
+                </div>
+              </GlowCard>
+
+              {pendingCashouts > 0 && (
+                <GlowCard padding="20px">
+                  <div style={{ display: 'flex', alignItems: 'center', gap: spacing[3], marginBottom: spacing[2] }}>
+                    <div style={{ width: 36, height: 36, borderRadius: radii.full, backgroundColor: '#78350f', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <ArrowDownCircle size={18} color="#fbbf24" />
+                    </div>
+                    <div style={{ fontSize: typography.fontSize.xs, color: colours.neutral[500], textTransform: 'uppercase', fontWeight: 600, letterSpacing: '0.5px' }}>Pending</div>
+                  </div>
+                  <div style={{ fontSize: '28px', fontWeight: typography.fontWeight.bold, color: '#fbbf24' }}>
+                    ${pendingCashouts.toFixed(2)}
+                  </div>
+                </GlowCard>
+              )}
+            </div>
+
+            {/* Recent transactions */}
+            {earningsHistory.length > 0 && (
+              <GlowCard padding="0">
+                <div style={{ padding: `${spacing[3]} ${spacing[4]}`, borderBottom: `1px solid ${colours.surfaceRaised}` }}>
+                  <span style={{ fontSize: typography.fontSize.sm, fontWeight: typography.fontWeight.semibold, color: colours.neutral[900] }}>Recent Transactions</span>
+                </div>
+                <div style={{ maxHeight: 240, overflowY: 'auto' }}>
+                  {earningsHistory.slice(0, 10).map((e, i) => (
+                    <div key={e.id || i} style={{
+                      display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                      padding: `${spacing[3]} ${spacing[4]}`,
+                      borderBottom: i < Math.min(earningsHistory.length, 10) - 1 ? `1px solid ${colours.surfaceRaised}` : 'none',
+                    }}>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: typography.fontSize.sm, color: colours.neutral[900], fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {e.task_title || e.description || e.type}
+                        </div>
+                        <div style={{ fontSize: '11px', color: colours.neutral[500], marginTop: 2 }}>
+                          {e.type === 'task_completion' ? 'Task payout' : e.type === 'bonus_cash' ? 'Bonus' : e.type === 'bonus_xp' ? 'XP Bonus' : e.type}
+                          {e.awarded_by_name && ` · from ${e.awarded_by_name}`}
+                          {e.created_at && ` · ${new Date(e.created_at).toLocaleDateString('en-NZ', { month: 'short', day: 'numeric' })}`}
+                        </div>
+                      </div>
+                      <div style={{ textAlign: 'right', flexShrink: 0, marginLeft: spacing[3] }}>
+                        {e.amount > 0 && <div style={{ fontSize: typography.fontSize.sm, fontWeight: typography.fontWeight.bold, color: '#34d399' }}>+${Number(e.amount).toFixed(2)}</div>}
+                        {e.xp_amount > 0 && <div style={{ fontSize: '11px', color: colours.neutral[500] }}>+{e.xp_amount} XP</div>}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </GlowCard>
+            )}
+
+            {/* Cashout history */}
+            {cashouts.length > 0 && (
+              <div style={{ marginTop: spacing[4] }}>
+                <GlowCard padding="0">
+                  <div style={{ padding: `${spacing[3]} ${spacing[4]}`, borderBottom: `1px solid ${colours.surfaceRaised}` }}>
+                    <span style={{ fontSize: typography.fontSize.sm, fontWeight: typography.fontWeight.semibold, color: colours.neutral[900] }}>Cashout History</span>
+                  </div>
+                  {cashouts.slice(0, 5).map((c, i) => (
+                    <div key={c.id || i} style={{
+                      display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                      padding: `${spacing[3]} ${spacing[4]}`,
+                      borderBottom: i < Math.min(cashouts.length, 5) - 1 ? `1px solid ${colours.surfaceRaised}` : 'none',
+                    }}>
+                      <div>
+                        <div style={{ fontSize: typography.fontSize.sm, color: colours.neutral[900], fontWeight: 500 }}>
+                          Cashout request
+                        </div>
+                        <div style={{ fontSize: '11px', color: colours.neutral[500], marginTop: 2 }}>
+                          {c.created_at && new Date(c.created_at).toLocaleDateString('en-NZ', { month: 'short', day: 'numeric', year: 'numeric' })}
+                          {c.processed_at && ` · Processed ${new Date(c.processed_at).toLocaleDateString('en-NZ', { month: 'short', day: 'numeric' })}`}
+                        </div>
+                      </div>
+                      <div style={{ textAlign: 'right' }}>
+                        <div style={{ fontSize: typography.fontSize.sm, fontWeight: typography.fontWeight.bold, color: colours.neutral[900] }}>${Number(c.amount).toFixed(2)}</div>
+                        <span style={{
+                          fontSize: '10px', fontWeight: 700, padding: '2px 8px', borderRadius: radii.full, textTransform: 'uppercase',
+                          backgroundColor: c.status === 'completed' ? '#065f46' : c.status === 'pending' ? '#78350f' : '#7f1d1d',
+                          color: c.status === 'completed' ? '#34d399' : c.status === 'pending' ? '#fbbf24' : '#f87171',
+                        }}>{c.status}</span>
+                      </div>
+                    </div>
+                  ))}
+                </GlowCard>
+              </div>
+            )}
+
+            {/* Empty state */}
+            {earningsHistory.length === 0 && cashouts.length === 0 && (
+              <GlowCard padding="32px" style={{ textAlign: 'center' }}>
+                <DollarSign size={32} style={{ color: colours.neutral[400], marginBottom: spacing[2] }} />
+                <div style={{ fontSize: typography.fontSize.sm, color: colours.neutral[500] }}>No earnings yet. Complete tasks to start building your balance.</div>
+              </GlowCard>
+            )}
+          </section>
+        )
+      })()}
 
       {/* Fire Stages */}
       <section style={sectionStyle}>
