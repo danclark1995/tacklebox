@@ -87,7 +87,7 @@ function EventPopover({ event, x, y, onClose, onEdit, onDuplicate, onDelete }) {
   }, [onClose, onDelete, onDuplicate])
 
   // Position: keep within viewport
-  const popW = 300, popH = 280
+  const popW = 380, popH = 320
   const left = Math.min(x, window.innerWidth - popW - 20)
   const top = Math.min(y, window.innerHeight - popH - 20)
 
@@ -121,9 +121,10 @@ function EventPopover({ event, x, y, onClose, onEdit, onDuplicate, onDelete }) {
           <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: colours.neutral[500], padding: 2 }}><X size={16} /></button>
         </div>
 
-        {/* Time */}
+        {/* Time + duration */}
         <div style={{ fontSize: typography.fontSize.sm, color: colours.neutral[600], marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '6px' }}>
           <Clock size={13} /> {fmtTime(start)} – {fmtTime(end)} · {start.toLocaleDateString('en-NZ', { weekday: 'short', month: 'short', day: 'numeric' })}
+          <span style={{ color: colours.neutral[500], fontSize: '11px' }}>({Math.round((end - start) / 3600000 * 10) / 10}h)</span>
         </div>
 
         {/* Type badge */}
@@ -309,6 +310,8 @@ export default function CalendarPage() {
   const [dragMove, setDragMove] = useState(null) // { event, dayIdx, offsetMins, currentDayIdx, currentMins }
   const [dragResize, setDragResize] = useState(null) // { event, edge, currentMins }
   const interacting = useRef(null) // 'create' | 'move' | 'resize' | null
+  const pendingDrag = useRef(null) // { type, startX, startY, ...data } — holds mousedown until threshold
+  const DRAG_THRESHOLD = 5 // pixels before drag activates
 
   const weekDays = useMemo(() => getWeekDays(currentDate), [currentDate])
   const weekStart = weekDays[0].toISOString()
@@ -425,11 +428,9 @@ export default function CalendarPage() {
 
   /* ─── Pixel → Minutes for column ─── */
   const getMinutesFromY = useCallback((clientY, colEl) => {
-    if (!colEl || !gridRef.current) return 0
-    const gridRect = gridRef.current.getBoundingClientRect()
-    const scrollTop = gridRef.current.scrollTop
-    const colTop = colEl.getBoundingClientRect().top - gridRect.top + scrollTop
-    const relY = clientY - gridRect.top + scrollTop - colTop
+    if (!colEl) return 0
+    const colRect = colEl.getBoundingClientRect()
+    const relY = clientY - colRect.top // getBoundingClientRect already accounts for scroll
     return yToMinutes(relY)
   }, [])
 
@@ -442,44 +443,73 @@ export default function CalendarPage() {
     return Math.max(0, Math.min(6, Math.floor(x / colWidth)))
   }, [])
 
-  /* ─── Drag-to-Create ─── */
+  /* ─── Drag-to-Create (with threshold) ─── */
   const handleGridMouseDown = (e, dayIdx) => {
     if (e.button !== 0) return
-    const col = e.currentTarget
+    const col = e.currentTarget.closest ? e.currentTarget.closest('[data-col]') || e.currentTarget : e.currentTarget
     const mins = getMinutesFromY(e.clientY, col)
-    interacting.current = 'create'
-    setDragCreate({ dayIdx, startMins: mins, currentMins: mins })
+    pendingDrag.current = { type: 'create', startX: e.clientX, startY: e.clientY, dayIdx, mins, col }
     setPopover(null)
     e.preventDefault()
   }
 
-  /* ─── Drag-to-Move ─── */
-  const handleEventMoveStart = (e, evt, dayIdx) => {
+  /* ─── Drag-to-Move (with threshold) ─── */
+  const handleEventMouseDown = (e, evt, dayIdx) => {
     if (e.button !== 0) return
     e.stopPropagation()
     const col = e.currentTarget.closest('[data-col]')
     const mins = getMinutesFromY(e.clientY, col)
     const startMins = toLocal(evt.start_time).getHours() * 60 + toLocal(evt.start_time).getMinutes()
-    interacting.current = 'move'
-    setDragMove({ event: evt, dayIdx, offsetMins: mins - startMins, currentDayIdx: dayIdx, currentMins: startMins })
-    setPopover(null)
+    pendingDrag.current = { type: 'move', startX: e.clientX, startY: e.clientY, evt, dayIdx, offsetMins: mins - startMins, startMins }
     e.preventDefault()
   }
 
-  /* ─── Drag-to-Resize ─── */
-  const handleResizeStart = (e, evt) => {
+  /* ─── Drag-to-Resize (with threshold) ─── */
+  const handleResizeMouseDown = (e, evt) => {
     if (e.button !== 0) return
     e.stopPropagation()
     const endTime = toLocal(evt.end_time)
-    interacting.current = 'resize'
-    setDragResize({ event: evt, edge: 'bottom', currentMins: endTime.getHours() * 60 + endTime.getMinutes() })
-    setPopover(null)
+    pendingDrag.current = { type: 'resize', startX: e.clientX, startY: e.clientY, evt, endMins: endTime.getHours() * 60 + endTime.getMinutes() }
     e.preventDefault()
   }
 
-  /* ─── Global Mouse Handlers ─── */
+  /* ─── Right-click / Click to open detail ─── */
+  const handleEventClick = (e, evt) => {
+    e.stopPropagation()
+    setPopover({ event: evt, x: e.clientX, y: e.clientY })
+  }
+  const handleEventContextMenu = (e, evt) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setPopover({ event: evt, x: e.clientX, y: e.clientY })
+  }
+
+  /* ─── Global Mouse Handlers (threshold-aware) ─── */
   useEffect(() => {
     const handleMouseMove = (e) => {
+      // Check pending drag threshold
+      if (pendingDrag.current && !interacting.current) {
+        const dx = e.clientX - pendingDrag.current.startX
+        const dy = e.clientY - pendingDrag.current.startY
+        if (Math.sqrt(dx * dx + dy * dy) >= DRAG_THRESHOLD) {
+          const pd = pendingDrag.current
+          if (pd.type === 'create') {
+            interacting.current = 'create'
+            setDragCreate({ dayIdx: pd.dayIdx, startMins: pd.mins, currentMins: pd.mins })
+          } else if (pd.type === 'move') {
+            interacting.current = 'move'
+            setDragMove({ event: pd.evt, dayIdx: pd.dayIdx, offsetMins: pd.offsetMins, currentDayIdx: pd.dayIdx, currentMins: pd.startMins })
+            setPopover(null)
+          } else if (pd.type === 'resize') {
+            interacting.current = 'resize'
+            setDragResize({ event: pd.evt, edge: 'bottom', currentMins: pd.endMins })
+            setPopover(null)
+          }
+          pendingDrag.current = null
+        }
+      }
+
+      // Active drag updates
       if (interacting.current === 'create' && dragCreate) {
         const col = gridRef.current?.querySelector(`[data-col="${dragCreate.dayIdx}"]`)
         if (col) { const mins = getMinutesFromY(e.clientY, col); setDragCreate(prev => prev ? { ...prev, currentMins: mins } : null) }
@@ -506,7 +536,22 @@ export default function CalendarPage() {
       }
     }
 
-    const handleMouseUp = () => {
+    const handleMouseUp = (e) => {
+      // If pending drag never reached threshold = it was a click
+      if (pendingDrag.current && !interacting.current) {
+        const pd = pendingDrag.current
+        pendingDrag.current = null
+        if (pd.type === 'move') {
+          // Click on event → open detail panel
+          setPopover({ event: pd.evt, x: e.clientX, y: e.clientY })
+        } else if (pd.type === 'create') {
+          // Single click on grid → open create modal at that time
+          setModal({ day: weekDays[pd.dayIdx], startMin: pd.mins, endMin: pd.mins + 60, mode: 'create' })
+          setShowTaskPicker(false)
+        }
+        return
+      }
+
       if (interacting.current === 'create' && dragCreate) {
         const minM = Math.min(dragCreate.startMins, dragCreate.currentMins)
         const maxM = Math.max(dragCreate.startMins, dragCreate.currentMins) + 15
@@ -525,6 +570,7 @@ export default function CalendarPage() {
         setDragResize(null)
       }
       interacting.current = null
+      pendingDrag.current = null
     }
 
     window.addEventListener('mousemove', handleMouseMove)
@@ -549,11 +595,37 @@ export default function CalendarPage() {
   const taskBlockCount = events.filter(e => e.event_type === 'task').length
   const personalCount = events.filter(e => e.event_type === 'personal').length
   const appointmentCount = events.filter(e => e.event_type === 'appointment').length
-  const subtitleParts = [
-    taskBlockCount && `${taskBlockCount} task block${taskBlockCount > 1 ? 's' : ''}`,
-    personalCount && `${personalCount} personal`,
-    appointmentCount && `${appointmentCount} appointment${appointmentCount > 1 ? 's' : ''}`,
-  ].filter(Boolean)
+
+  // Weekly hours breakdown by type
+  const hoursByType = useMemo(() => {
+    const buckets = {}
+    events.forEach(evt => {
+      const start = toLocal(evt.start_time)
+      const end = toLocal(evt.end_time)
+      const hours = Math.round((end - start) / 3600000 * 10) / 10
+      if (hours <= 0) return
+      let label
+      if (evt.event_type === 'task') {
+        label = evt.client_name || evt.category_name || 'Tasks'
+      } else if (evt.event_type === 'appointment') {
+        label = 'Meetings'
+      } else {
+        // Group personal events by title keyword
+        const t = (evt.title || '').toLowerCase()
+        if (t.includes('gym') || t.includes('workout') || t.includes('exercise') || t.includes('run') || t.includes('fitness')) label = 'Fitness'
+        else if (t.includes('lunch') || t.includes('breakfast') || t.includes('dinner') || t.includes('meal')) label = 'Meals'
+        else if (t.includes('focus') || t.includes('deep work')) label = 'Focus time'
+        else label = 'Personal'
+      }
+      buckets[label] = (buckets[label] || 0) + hours
+    })
+    return Object.entries(buckets).sort((a, b) => b[1] - a[1])
+  }, [events])
+
+  const totalHours = hoursByType.reduce((sum, [, h]) => sum + h, 0)
+  const subtitleParts = hoursByType.length > 0
+    ? hoursByType.slice(0, 4).map(([label, h]) => `${h}h ${label}`).concat(totalHours > 0 ? [`${Math.round(totalHours * 10) / 10}h total`] : [])
+    : []
 
   const isDragging = interacting.current != null || dragCreate || dragMove || dragResize
 
@@ -696,15 +768,14 @@ export default function CalendarPage() {
             const isDayToday = isSameDay(day, today)
 
             return (
-              <div key={dayIdx} data-col={dayIdx} style={{ position: 'relative', borderRight: dayIdx < 6 ? `1px solid ${colours.neutral[300]}` : 'none', cursor: isDragging ? 'ns-resize' : 'default' }}
-                onMouseDown={(e) => { if (e.target === e.currentTarget || e.target.dataset.gridcell) handleGridMouseDown(e, dayIdx) }}>
+              <div key={dayIdx} data-col={dayIdx} style={{ position: 'relative', borderRight: dayIdx < 6 ? `1px solid ${colours.neutral[300]}` : 'none', cursor: isDragging ? 'ns-resize' : 'default' }}>
 
                 {/* Hour grid lines + clickable cells */}
                 {HOURS.map(h => {
                   const isNight = h < 5 || h >= 23
                   return (
                     <div key={h} data-gridcell="true"
-                      onMouseDown={(e) => handleGridMouseDown(e, dayIdx)}
+                      onMouseDown={(e) => { if (e.button === 0) { e.preventDefault(); handleGridMouseDown(e, dayIdx) } }}
                       style={{ height: HOUR_HEIGHT, borderBottom: `1px solid ${colours.neutral[200]}`, backgroundColor: isNight ? 'rgba(0,0,0,0.15)' : isDayToday ? 'rgba(255,255,255,0.015)' : 'transparent' }}
                     />
                   )
@@ -775,12 +846,12 @@ export default function CalendarPage() {
 
                   return (
                     <div key={evt.id + '-' + idx}
-                      onClick={(e) => { if (!isDragging) { e.stopPropagation(); setPopover({ event: evt, x: e.clientX, y: e.clientY }) } }}
-                      onMouseDown={(e) => handleEventMoveStart(e, evt, dayIdx)}
+                      onContextMenu={(e) => handleEventContextMenu(e, evt)}
+                      onMouseDown={(e) => handleEventMouseDown(e, evt, dayIdx)}
                       style={{
                         position: 'absolute', top, left: 4, right: 4, height,
                         backgroundColor: bg, borderRadius: radii.md, padding: '4px 8px', overflow: 'hidden',
-                        borderLeft: `3px solid ${bdr}`, cursor: isDragging ? 'ns-resize' : 'grab', zIndex: 2,
+                        borderLeft: `3px solid ${bdr}`, cursor: isDragging ? 'ns-resize' : 'pointer', zIndex: 2,
                         boxShadow: '0 1px 6px rgba(0,0,0,0.4)', transition: isResizing ? 'none' : 'box-shadow 150ms',
                       }}
                     >
@@ -796,7 +867,7 @@ export default function CalendarPage() {
 
                       {/* Resize handle (bottom edge) */}
                       <div
-                        onMouseDown={(e) => handleResizeStart(e, evt)}
+                        onMouseDown={(e) => handleResizeMouseDown(e, evt)}
                         style={{
                           position: 'absolute', bottom: 0, left: 0, right: 0, height: 8,
                           cursor: 'ns-resize', display: 'flex', justifyContent: 'center', alignItems: 'center',
