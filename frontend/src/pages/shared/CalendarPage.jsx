@@ -1,24 +1,24 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
-import { ChevronLeft, ChevronRight, Clock, Plus, X, Zap, Layers, Moon, Phone, MapPin, CalendarDays, Copy, Trash2 } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Clock, Plus, X, Zap, Layers, Moon, Phone, MapPin, CalendarDays, Copy, Trash2, ExternalLink, Video, Edit3, Link2, GripVertical } from 'lucide-react'
 import useAuth from '@/hooks/useAuth'
 import useToast from '@/hooks/useToast'
 import { GlowCard, PageHeader, Button, Spinner, Modal, Input, Select, Tabs, EmptyState } from '@/components/ui'
-import { getCalendarData, createCalendarEvent, deleteCalendarEvent } from '@/services/calendar'
-import { createBlock, deleteBlock, getSuggestions } from '@/services/schedule'
+import { getCalendarData, createCalendarEvent, updateCalendarEvent, deleteCalendarEvent } from '@/services/calendar'
+import { createBlock, updateBlock, deleteBlock, getSuggestions } from '@/services/schedule'
 import { listTasks } from '@/services/tasks'
 import { colours, spacing, typography, radii, transitions } from '@/config/tokens'
 
 /* ─── Constants ─── */
 const HOURS = Array.from({ length: 24 }, (_, i) => i)
 const HOUR_HEIGHT = 52
+const QUARTER = HOUR_HEIGHT / 4 // 13px per 15min
 const GRID_HEIGHT = 680
 
-// Generate combined time options: "12:00 am", "12:15 am", ... "11:45 pm"
 const TIME_OPTIONS = (() => {
   const opts = []
   for (let h = 0; h < 24; h++) {
     for (const m of [0, 15, 30, 45]) {
-      const val = h * 60 + m // minutes since midnight
+      const val = h * 60 + m
       const hr = h === 0 ? 12 : h > 12 ? h - 12 : h
       const ampm = h < 12 ? 'am' : 'pm'
       opts.push({ value: String(val), label: `${hr}:${String(m).padStart(2, '0')} ${ampm}` })
@@ -50,28 +50,24 @@ const PRIORITY_BORDER = { urgent: '#e5e5e5', high: '#a3a3a3', medium: '#737373',
 
 /* ─── Helpers ─── */
 function getWeekDays(date) {
-  const d = new Date(date)
-  const day = d.getDay()
+  const d = new Date(date); const day = d.getDay()
   const diff = d.getDate() - day + (day === 0 ? -6 : 1)
-  const monday = new Date(d)
-  monday.setDate(diff)
-  monday.setHours(0, 0, 0, 0)
-  return Array.from({ length: 7 }, (_, i) => {
-    const nd = new Date(monday)
-    nd.setDate(monday.getDate() + i)
-    return nd
-  })
+  const mon = new Date(d); mon.setDate(diff); mon.setHours(0, 0, 0, 0)
+  return Array.from({ length: 7 }, (_, i) => { const nd = new Date(mon); nd.setDate(mon.getDate() + i); return nd })
 }
-
 function toLocal(iso) { return new Date(iso) }
 function isSameDay(a, b) { return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate() }
 function fmtHour(h) { if (h === 0 || h === 24) return '12 am'; if (h === 12) return '12 pm'; return h > 12 ? `${h - 12} pm` : `${h} am` }
-function fmtTime(date) { return date.toLocaleTimeString('en-NZ', { hour: '2-digit', minute: '2-digit', hour12: true }) }
-function minsToTimeVal(h, m) { return String(h * 60 + (m || 0)) }
+function fmtMinutes(totalMins) { const h = Math.floor(totalMins / 60); const m = totalMins % 60; const hr = h === 0 ? 12 : h > 12 ? h - 12 : h; const ampm = h < 12 ? 'am' : 'pm'; return `${hr}:${String(m).padStart(2, '0')} ${ampm}` }
+function fmtTime(date) { const h = date.getHours(); const m = date.getMinutes(); return fmtMinutes(h * 60 + m) }
 function timeValToHM(val) { const v = +val; return { h: Math.floor(v / 60), m: v % 60 } }
+function snapTo15(mins) { return Math.round(mins / 15) * 15 }
+function yToMinutes(y) { return snapTo15(Math.max(0, Math.min(24 * 60 - 15, (y / HOUR_HEIGHT) * 60))) }
+function minutesToY(mins) { return (mins / 60) * HOUR_HEIGHT }
+function generateMeetLink() { const id = Math.random().toString(36).substring(2, 10); return `https://meet.jit.si/tacklebox-${id}` }
 
-/* ━━━━━━━━━━━━━━━━━ EVENT CONTEXT MENU ━━━━━━━━━━━━━━━━━ */
-function EventMenu({ x, y, onDuplicate, onDelete, onClose }) {
+/* ━━━━━━━━━━━━━━━━━ EVENT POPOVER ━━━━━━━━━━━━━━━━━ */
+function EventPopover({ event, x, y, onClose, onEdit, onDuplicate, onDelete }) {
   const ref = useRef(null)
   useEffect(() => {
     const handler = (e) => { if (ref.current && !ref.current.contains(e.target)) onClose() }
@@ -79,36 +75,107 @@ function EventMenu({ x, y, onDuplicate, onDelete, onClose }) {
     return () => document.removeEventListener('mousedown', handler)
   }, [onClose])
 
-  const itemStyle = {
-    display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 14px',
-    fontSize: '13px', cursor: 'pointer', color: colours.neutral[700],
-    transition: `background-color 100ms ease`, backgroundColor: 'transparent', border: 'none', width: '100%', textAlign: 'left',
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handler = (e) => {
+      if (e.key === 'Escape') onClose()
+      if ((e.key === 'Delete' || e.key === 'Backspace') && !e.target.closest('input')) { onDelete(); onClose() }
+      if ((e.metaKey || e.ctrlKey) && e.key === 'd') { e.preventDefault(); onDuplicate() }
+    }
+    document.addEventListener('keydown', handler)
+    return () => document.removeEventListener('keydown', handler)
+  }, [onClose, onDelete, onDuplicate])
+
+  // Position: keep within viewport
+  const popW = 300, popH = 280
+  const left = Math.min(x, window.innerWidth - popW - 20)
+  const top = Math.min(y, window.innerHeight - popH - 20)
+
+  const start = toLocal(event.start_time)
+  const end = toLocal(event.end_time)
+  const cs = EVENT_COLORS[event.color] || EVENT_COLORS.slate
+  const isTask = event.event_type === 'task'
+
+  const btnStyle = {
+    display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 10px',
+    fontSize: '12px', cursor: 'pointer', backgroundColor: 'transparent',
+    border: `1px solid ${colours.neutral[300]}`, borderRadius: radii.md,
+    color: colours.neutral[700], transition: 'all 100ms',
   }
 
   return (
     <div ref={ref} style={{
-      position: 'fixed', left: x, top: y, zIndex: 100,
+      position: 'fixed', left, top, zIndex: 100, width: popW,
       backgroundColor: colours.surface, border: `1px solid ${colours.neutral[300]}`,
-      borderRadius: radii.lg, boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
-      overflow: 'hidden', minWidth: 160,
+      borderRadius: radii.xl, boxShadow: '0 12px 40px rgba(0,0,0,0.5)',
+      overflow: 'hidden',
     }}>
-      <button style={itemStyle} onClick={onDuplicate}
-        onMouseEnter={e => e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.06)'}
-        onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}>
-        <Copy size={14} /> Duplicate
-      </button>
-      <div style={{ borderTop: `1px solid ${colours.neutral[200]}` }} />
-      <button style={{ ...itemStyle, color: '#ef4444' }} onClick={onDelete}
-        onMouseEnter={e => e.currentTarget.style.backgroundColor = 'rgba(239,68,68,0.08)'}
-        onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}>
-        <Trash2 size={14} /> Delete
-      </button>
+      {/* Header strip */}
+      <div style={{ height: 4, backgroundColor: isTask ? (PRIORITY_BORDER[event.priority] || '#525252') : cs.border }} />
+
+      <div style={{ padding: '16px' }}>
+        {/* Title + type */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+          <div style={{ width: 10, height: 10, borderRadius: '50%', backgroundColor: cs.border, flexShrink: 0 }} />
+          <span style={{ fontSize: typography.fontSize.base, fontWeight: typography.fontWeight.semibold, color: colours.neutral[900], flex: 1 }}>{event.title}</span>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: colours.neutral[500], padding: 2 }}><X size={16} /></button>
+        </div>
+
+        {/* Time */}
+        <div style={{ fontSize: typography.fontSize.sm, color: colours.neutral[600], marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <Clock size={13} /> {fmtTime(start)} – {fmtTime(end)} · {start.toLocaleDateString('en-NZ', { weekday: 'short', month: 'short', day: 'numeric' })}
+        </div>
+
+        {/* Type badge */}
+        <div style={{ display: 'flex', gap: '6px', marginBottom: '10px', flexWrap: 'wrap' }}>
+          <span style={{ fontSize: '10px', fontWeight: 700, padding: '2px 8px', borderRadius: radii.full, backgroundColor: isTask ? colours.neutral[800] : cs.bg, color: isTask ? colours.neutral[100] : cs.text, border: `1px solid ${isTask ? colours.neutral[600] : cs.border}`, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+            {event.event_type}
+          </span>
+          {event.recurrence && <span style={{ fontSize: '10px', fontWeight: 600, padding: '2px 8px', borderRadius: radii.full, backgroundColor: colours.surfaceRaised, color: colours.neutral[600] }}>Repeats {event.recurrence}</span>}
+          {isTask && event.complexity_level != null && <span style={{ fontSize: '10px', fontWeight: 700, padding: '2px 8px', borderRadius: radii.full, backgroundColor: colours.neutral[200], color: colours.neutral[900] }}>L{event.complexity_level}</span>}
+        </div>
+
+        {/* Location */}
+        {event.location && (
+          <div style={{ fontSize: typography.fontSize.sm, color: colours.neutral[600], marginBottom: '4px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <MapPin size={13} /> {event.location}
+          </div>
+        )}
+
+        {/* Meeting link */}
+        {event.meeting_link && (
+          <div style={{ fontSize: typography.fontSize.sm, marginBottom: '4px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <Video size={13} style={{ color: colours.neutral[500] }} />
+            <a href={event.meeting_link} target="_blank" rel="noreferrer" style={{ color: '#60a5fa', textDecoration: 'none', fontSize: '12px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>{event.meeting_link}</a>
+            <button onClick={() => { navigator.clipboard.writeText(event.meeting_link) }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: colours.neutral[500], padding: 2 }} title="Copy link"><Link2 size={12} /></button>
+          </div>
+        )}
+
+        {/* Task metadata */}
+        {isTask && (
+          <div style={{ fontSize: typography.fontSize.xs, color: colours.neutral[500], marginBottom: '8px' }}>
+            {[event.client_name, event.category_name].filter(Boolean).join(' · ')}
+            {event.estimated_hours && ` · ${event.estimated_hours}h`}
+            {event.total_payout && ` · $${Number(event.total_payout).toFixed(0)}`}
+          </div>
+        )}
+
+        {/* Divider */}
+        <div style={{ borderTop: `1px solid ${colours.neutral[200]}`, margin: '10px 0' }} />
+
+        {/* Actions */}
+        <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+          {!isTask && <button style={btnStyle} onClick={onEdit}><Edit3 size={12} /> Edit</button>}
+          <button style={btnStyle} onClick={onDuplicate}><Copy size={12} /> Duplicate <span style={{ fontSize: '10px', color: colours.neutral[500] }}>⌘D</span></button>
+          <button style={{ ...btnStyle, color: '#ef4444', borderColor: 'rgba(239,68,68,0.3)' }} onClick={() => { onDelete(); onClose() }}><Trash2 size={12} /> Delete <span style={{ fontSize: '10px', color: colours.neutral[500] }}>⌫</span></button>
+        </div>
+      </div>
     </div>
   )
 }
 
-/* ━━━━━━━━━━━━━━━━━ CREATE EVENT MODAL ━━━━━━━━━━━━━━━━━ */
-function CreateEventModal({ isOpen, day, startMin, endMin, onClose, onCreate, editData }) {
+/* ━━━━━━━━━━━━━━━━━ CREATE/EDIT EVENT MODAL ━━━━━━━━━━━━━━━━━ */
+function EventModal({ isOpen, day, startMin, endMin, onClose, onSave, editData, mode }) {
   const [eventType, setEventType] = useState(editData?.event_type || 'personal')
   const [title, setTitle] = useState(editData?.title || '')
   const [startVal, setStartVal] = useState(String(startMin))
@@ -140,7 +207,7 @@ function CreateEventModal({ isOpen, day, startMin, endMin, onClose, onCreate, ed
     const start = new Date(day); start.setHours(sh, sm, 0, 0)
     const end = new Date(day); end.setHours(eh, em, 0, 0)
     if (end <= start) end.setDate(end.getDate() + 1)
-    await onCreate({
+    await onSave({
       event_type: eventType, title: title.trim(),
       start_time: start.toISOString(), end_time: end.toISOString(),
       color: eventType === 'appointment' ? 'blue' : color,
@@ -150,8 +217,11 @@ function CreateEventModal({ isOpen, day, startMin, endMin, onClose, onCreate, ed
     setSaving(false)
   }
 
+  const modalTitle = mode === 'edit' ? 'Edit Event' : mode === 'duplicate' ? 'Duplicate Event' : 'New Event'
+  const saveLabel = mode === 'edit' ? 'Save Changes' : mode === 'duplicate' ? 'Duplicate' : 'Create Event'
+
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title={editData ? 'Duplicate Event' : 'New Event'} size="sm">
+    <Modal isOpen={isOpen} onClose={onClose} title={modalTitle} size="sm">
       <Tabs tabs={[{ key: 'personal', label: 'Personal' }, { key: 'appointment', label: 'Appointment' }]} activeTab={eventType} onChange={setEventType} />
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: spacing[4], marginTop: spacing[4] }}>
@@ -161,12 +231,8 @@ function CreateEventModal({ isOpen, day, startMin, endMin, onClose, onCreate, ed
 
         {/* Time — two clean selects */}
         <div style={{ display: 'flex', gap: spacing[4] }}>
-          <div style={{ flex: 1 }}>
-            <Select label="Start" value={startVal} onChange={e => setStartVal(e.target.value)} options={TIME_OPTIONS} />
-          </div>
-          <div style={{ flex: 1 }}>
-            <Select label="End" value={endVal} onChange={e => setEndVal(e.target.value)} options={TIME_OPTIONS} />
-          </div>
+          <div style={{ flex: 1 }}><Select label="Start" value={startVal} onChange={e => setStartVal(e.target.value)} options={TIME_OPTIONS} /></div>
+          <div style={{ flex: 1 }}><Select label="End" value={endVal} onChange={e => setEndVal(e.target.value)} options={TIME_OPTIONS} /></div>
         </div>
 
         {eventType === 'personal' && (
@@ -175,7 +241,7 @@ function CreateEventModal({ isOpen, day, startMin, endMin, onClose, onCreate, ed
             <div style={{ display: 'flex', gap: spacing[2], flexWrap: 'wrap' }}>
               {Object.keys(EVENT_COLORS).map(c => (
                 <button key={c} onClick={() => setColor(c)} style={{
-                  width: 30, height: 30, borderRadius: radii.full,
+                  width: 28, height: 28, borderRadius: radii.full,
                   border: color === c ? `2px solid ${colours.neutral[900]}` : `2px solid transparent`,
                   backgroundColor: EVENT_COLORS[c].border, cursor: 'pointer',
                   boxShadow: color === c ? `0 0 0 2px ${EVENT_COLORS[c].bg}, 0 0 8px ${EVENT_COLORS[c].border}40` : 'none',
@@ -188,7 +254,24 @@ function CreateEventModal({ isOpen, day, startMin, endMin, onClose, onCreate, ed
         {eventType === 'appointment' && (
           <>
             <Input label="Location" value={location} onChange={e => setLocation(e.target.value)} placeholder="Office, Zoom, etc." size="md" icon={<MapPin size={16} />} />
-            <Input label="Meeting Link" value={meetingLink} onChange={e => setMeetingLink(e.target.value)} placeholder="https://..." size="md" />
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: spacing[1] }}>
+                <label style={{ fontSize: typography.fontSize.sm, fontWeight: typography.fontWeight.medium, color: colours.neutral[500] }}>Meeting Link</label>
+                <button onClick={() => setMeetingLink(generateMeetLink())} style={{
+                  fontSize: '11px', color: '#60a5fa', background: 'none', border: 'none', cursor: 'pointer', padding: 0,
+                  display: 'flex', alignItems: 'center', gap: '4px',
+                }}>
+                  <Video size={12} /> Generate free link
+                </button>
+              </div>
+              <Input value={meetingLink} onChange={e => setMeetingLink(e.target.value)} placeholder="https://meet.google.com/..." size="md" icon={<Link2 size={16} />} />
+              {meetingLink && (
+                <div style={{ display: 'flex', gap: spacing[2], marginTop: spacing[1] }}>
+                  <a href={meetingLink} target="_blank" rel="noreferrer" style={{ fontSize: '11px', color: '#60a5fa', display: 'flex', alignItems: 'center', gap: '3px' }}><ExternalLink size={10} /> Open</a>
+                  <button onClick={() => navigator.clipboard.writeText(meetingLink)} style={{ fontSize: '11px', color: colours.neutral[500], background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '3px' }}><Copy size={10} /> Copy</button>
+                </div>
+              )}
+            </div>
           </>
         )}
 
@@ -198,7 +281,7 @@ function CreateEventModal({ isOpen, day, startMin, endMin, onClose, onCreate, ed
       <div style={{ display: 'flex', gap: spacing[3], marginTop: spacing[6], justifyContent: 'flex-end' }}>
         <Button variant="ghost" onClick={onClose}>Cancel</Button>
         <Button variant="primary" onClick={handleSave} disabled={!title.trim() || saving}>
-          {saving ? 'Saving...' : editData ? 'Duplicate' : 'Create Event'}
+          {saving ? 'Saving...' : saveLabel}
         </Button>
       </div>
     </Modal>
@@ -217,13 +300,15 @@ export default function CalendarPage() {
   const [suggestions, setSuggestions] = useState([])
   const [loadingSuggestions, setLoadingSuggestions] = useState(false)
   const [showTaskPicker, setShowTaskPicker] = useState(false)
-  const [createModal, setCreateModal] = useState(null) // { day, startMin, endMin, editData? }
-  const [contextMenu, setContextMenu] = useState(null) // { x, y, event }
+  const [modal, setModal] = useState(null) // { day, startMin, endMin, editData?, mode }
+  const [popover, setPopover] = useState(null) // { event, x, y }
   const gridRef = useRef(null)
 
-  // Drag state
-  const [dragState, setDragState] = useState(null) // { dayIdx, startRow, currentRow }
-  const isDragging = useRef(false)
+  // Interaction states
+  const [dragCreate, setDragCreate] = useState(null) // { dayIdx, startMins, currentMins }
+  const [dragMove, setDragMove] = useState(null) // { event, dayIdx, offsetMins, currentDayIdx, currentMins }
+  const [dragResize, setDragResize] = useState(null) // { event, edge, currentMins }
+  const interacting = useRef(null) // 'create' | 'move' | 'resize' | null
 
   const weekDays = useMemo(() => getWeekDays(currentDate), [currentDate])
   const weekStart = weekDays[0].toISOString()
@@ -243,21 +328,19 @@ export default function CalendarPage() {
   }, [weekStart, weekEnd, user])
 
   useEffect(() => { fetchData() }, [fetchData])
-
   useEffect(() => {
-    if (!loading && gridRef.current) {
-      gridRef.current.scrollTop = Math.max(0, (new Date().getHours() - 2) * HOUR_HEIGHT)
-    }
+    if (!loading && gridRef.current) gridRef.current.scrollTop = Math.max(0, (new Date().getHours() - 2) * HOUR_HEIGHT)
   }, [loading])
 
-  // Close context menu on scroll/click
+  // Close popover on scroll
   useEffect(() => {
-    if (!contextMenu) return
-    const close = () => setContextMenu(null)
+    if (!popover) return
+    const close = () => setPopover(null)
     window.addEventListener('scroll', close, true)
     return () => window.removeEventListener('scroll', close, true)
-  }, [contextMenu])
+  }, [popover])
 
+  /* ─── API Handlers ─── */
   const fetchSuggestions = async (taskId) => {
     setLoadingSuggestions(true)
     try { const data = await getSuggestions(taskId); setSuggestions(data.suggestions || []) }
@@ -276,7 +359,7 @@ export default function CalendarPage() {
     try {
       if (evt.event_type === 'task') await deleteBlock(evt.id)
       else await deleteCalendarEvent(evt._recurring_parent_id || evt.id)
-      addToast('Removed', 'success'); fetchData()
+      addToast('Removed', 'success'); setPopover(null); fetchData()
     } catch { addToast('Failed to remove', 'error') }
   }
 
@@ -284,54 +367,172 @@ export default function CalendarPage() {
     try {
       await createCalendarEvent(eventData)
       addToast(`${eventData.event_type === 'appointment' ? 'Appointment' : 'Block'} created`, 'success')
-      setCreateModal(null); fetchData()
+      setModal(null); fetchData()
     } catch { addToast('Failed to create', 'error') }
   }
 
-  const handleDuplicateEvent = (evt) => {
-    setContextMenu(null)
+  const handleUpdateEvent = async (eventData) => {
+    if (!modal?.editData?.id) return
+    try {
+      const id = modal.editData._recurring_parent_id || modal.editData.id
+      await updateCalendarEvent(id, eventData)
+      addToast('Updated', 'success'); setModal(null); fetchData()
+    } catch { addToast('Failed to update', 'error') }
+  }
+
+  const handleMoveEvent = async (evt, newDayIdx, newStartMins) => {
+    const oldStart = toLocal(evt.start_time)
+    const oldEnd = toLocal(evt.end_time)
+    const durationMins = (oldEnd - oldStart) / 60000
+    const newDay = weekDays[newDayIdx]
+    const newStart = new Date(newDay); newStart.setHours(0, newStartMins, 0, 0)
+    const newEnd = new Date(newStart.getTime() + durationMins * 60000)
+    try {
+      if (evt.event_type === 'task') await updateBlock(evt.id, { start_time: newStart.toISOString(), end_time: newEnd.toISOString() })
+      else await updateCalendarEvent(evt._recurring_parent_id || evt.id, { start_time: newStart.toISOString(), end_time: newEnd.toISOString() })
+      addToast('Moved', 'success'); fetchData()
+    } catch { addToast('Failed to move', 'error') }
+  }
+
+  const handleResizeEvent = async (evt, newEndMins) => {
     const start = toLocal(evt.start_time)
-    const end = toLocal(evt.end_time)
-    setCreateModal({
-      day: start, startMin: start.getHours() * 60 + start.getMinutes(), endMin: end.getHours() * 60 + end.getMinutes(),
+    const newEnd = new Date(start); newEnd.setHours(0, newEndMins, 0, 0)
+    if (newEnd <= start) return
+    try {
+      if (evt.event_type === 'task') await updateBlock(evt.id, { end_time: newEnd.toISOString() })
+      else await updateCalendarEvent(evt._recurring_parent_id || evt.id, { end_time: newEnd.toISOString() })
+      addToast('Resized', 'success'); fetchData()
+    } catch { addToast('Failed to resize', 'error') }
+  }
+
+  const openDuplicate = (evt) => {
+    setPopover(null)
+    const start = toLocal(evt.start_time); const end = toLocal(evt.end_time)
+    setModal({
+      day: start, startMin: start.getHours() * 60 + start.getMinutes(), endMin: end.getHours() * 60 + end.getMinutes(), mode: 'duplicate',
       editData: { title: evt.title + ' (copy)', event_type: evt.event_type, color: evt.color, location: evt.location, meeting_link: evt.meeting_link, recurrence: evt.recurrence },
     })
   }
 
-  // ─── Drag-to-create ───
-  const getRowFromY = (clientY, colEl) => {
-    const rect = colEl.getBoundingClientRect()
-    const y = clientY - rect.top + (gridRef.current?.scrollTop || 0) - (colEl.offsetTop - (colEl.parentElement?.children[0]?.offsetHeight || 0))
-    return Math.max(0, Math.min(23, Math.floor(clientY / 1))) // simplified
+  const openEdit = (evt) => {
+    setPopover(null)
+    const start = toLocal(evt.start_time); const end = toLocal(evt.end_time)
+    setModal({
+      day: start, startMin: start.getHours() * 60 + start.getMinutes(), endMin: end.getHours() * 60 + end.getMinutes(), mode: 'edit',
+      editData: { id: evt.id, _recurring_parent_id: evt._recurring_parent_id, title: evt.title, event_type: evt.event_type, color: evt.color, location: evt.location, meeting_link: evt.meeting_link, recurrence: evt.recurrence },
+    })
   }
 
-  const handleDragStart = (dayIdx, hour) => {
-    isDragging.current = true
-    setDragState({ dayIdx, startRow: hour, currentRow: hour })
+  /* ─── Pixel → Minutes for column ─── */
+  const getMinutesFromY = useCallback((clientY, colEl) => {
+    if (!colEl || !gridRef.current) return 0
+    const gridRect = gridRef.current.getBoundingClientRect()
+    const scrollTop = gridRef.current.scrollTop
+    const colTop = colEl.getBoundingClientRect().top - gridRect.top + scrollTop
+    const relY = clientY - gridRect.top + scrollTop - colTop
+    return yToMinutes(relY)
+  }, [])
+
+  const getDayIdxFromX = useCallback((clientX) => {
+    if (!gridRef.current) return 0
+    const gridRect = gridRef.current.getBoundingClientRect()
+    const labelWidth = 54
+    const colWidth = (gridRect.width - labelWidth) / 7
+    const x = clientX - gridRect.left - labelWidth
+    return Math.max(0, Math.min(6, Math.floor(x / colWidth)))
+  }, [])
+
+  /* ─── Drag-to-Create ─── */
+  const handleGridMouseDown = (e, dayIdx) => {
+    if (e.button !== 0) return
+    const col = e.currentTarget
+    const mins = getMinutesFromY(e.clientY, col)
+    interacting.current = 'create'
+    setDragCreate({ dayIdx, startMins: mins, currentMins: mins })
+    setPopover(null)
+    e.preventDefault()
   }
 
-  const handleDragMove = (hour) => {
-    if (!isDragging.current || !dragState) return
-    setDragState(prev => prev ? { ...prev, currentRow: hour } : null)
+  /* ─── Drag-to-Move ─── */
+  const handleEventMoveStart = (e, evt, dayIdx) => {
+    if (e.button !== 0) return
+    e.stopPropagation()
+    const col = e.currentTarget.closest('[data-col]')
+    const mins = getMinutesFromY(e.clientY, col)
+    const startMins = toLocal(evt.start_time).getHours() * 60 + toLocal(evt.start_time).getMinutes()
+    interacting.current = 'move'
+    setDragMove({ event: evt, dayIdx, offsetMins: mins - startMins, currentDayIdx: dayIdx, currentMins: startMins })
+    setPopover(null)
+    e.preventDefault()
   }
 
-  const handleDragEnd = () => {
-    if (!isDragging.current || !dragState) { isDragging.current = false; setDragState(null); return }
-    isDragging.current = false
-    const minRow = Math.min(dragState.startRow, dragState.currentRow)
-    const maxRow = Math.max(dragState.startRow, dragState.currentRow) + 1
-    setCreateModal({ day: weekDays[dragState.dayIdx], startMin: minRow * 60, endMin: maxRow * 60 })
-    setDragState(null)
-    setShowTaskPicker(false)
+  /* ─── Drag-to-Resize ─── */
+  const handleResizeStart = (e, evt) => {
+    if (e.button !== 0) return
+    e.stopPropagation()
+    const endTime = toLocal(evt.end_time)
+    interacting.current = 'resize'
+    setDragResize({ event: evt, edge: 'bottom', currentMins: endTime.getHours() * 60 + endTime.getMinutes() })
+    setPopover(null)
+    e.preventDefault()
   }
 
-  // Global mouseup to end drag
+  /* ─── Global Mouse Handlers ─── */
   useEffect(() => {
-    const up = () => { if (isDragging.current) handleDragEnd() }
-    window.addEventListener('mouseup', up)
-    return () => window.removeEventListener('mouseup', up)
-  }, [dragState])
+    const handleMouseMove = (e) => {
+      if (interacting.current === 'create' && dragCreate) {
+        const col = gridRef.current?.querySelector(`[data-col="${dragCreate.dayIdx}"]`)
+        if (col) { const mins = getMinutesFromY(e.clientY, col); setDragCreate(prev => prev ? { ...prev, currentMins: mins } : null) }
+      }
+      if (interacting.current === 'move' && dragMove) {
+        const dayIdx = getDayIdxFromX(e.clientX)
+        const col = gridRef.current?.querySelector(`[data-col="${dayIdx}"]`)
+        if (col) {
+          const mins = getMinutesFromY(e.clientY, col)
+          const startMins = snapTo15(mins - dragMove.offsetMins)
+          setDragMove(prev => prev ? { ...prev, currentDayIdx: dayIdx, currentMins: Math.max(0, startMins) } : null)
+        }
+      }
+      if (interacting.current === 'resize' && dragResize) {
+        const evt = dragResize.event
+        const start = toLocal(evt.start_time)
+        const dayIdx = weekDays.findIndex(d => isSameDay(d, start))
+        const col = gridRef.current?.querySelector(`[data-col="${dayIdx}"]`)
+        if (col) {
+          const mins = getMinutesFromY(e.clientY, col)
+          const startMins = start.getHours() * 60 + start.getMinutes()
+          setDragResize(prev => prev ? { ...prev, currentMins: Math.max(startMins + 15, mins) } : null)
+        }
+      }
+    }
 
+    const handleMouseUp = () => {
+      if (interacting.current === 'create' && dragCreate) {
+        const minM = Math.min(dragCreate.startMins, dragCreate.currentMins)
+        const maxM = Math.max(dragCreate.startMins, dragCreate.currentMins) + 15
+        if (maxM - minM >= 15) {
+          setModal({ day: weekDays[dragCreate.dayIdx], startMin: minM, endMin: maxM, mode: 'create' })
+          setShowTaskPicker(false)
+        }
+        setDragCreate(null)
+      }
+      if (interacting.current === 'move' && dragMove) {
+        handleMoveEvent(dragMove.event, dragMove.currentDayIdx, dragMove.currentMins)
+        setDragMove(null)
+      }
+      if (interacting.current === 'resize' && dragResize) {
+        handleResizeEvent(dragResize.event, dragResize.currentMins)
+        setDragResize(null)
+      }
+      interacting.current = null
+    }
+
+    window.addEventListener('mousemove', handleMouseMove)
+    window.addEventListener('mouseup', handleMouseUp)
+    return () => { window.removeEventListener('mousemove', handleMouseMove); window.removeEventListener('mouseup', handleMouseUp) }
+  }, [dragCreate, dragMove, dragResize])
+
+  /* ─── Derived State ─── */
   const scheduledTaskIds = new Set(events.filter(e => e.event_type === 'task').map(e => e.task_id))
   const unscheduled = tasks.filter(t => !scheduledTaskIds.has(t.id))
 
@@ -354,6 +555,8 @@ export default function CalendarPage() {
     appointmentCount && `${appointmentCount} appointment${appointmentCount > 1 ? 's' : ''}`,
   ].filter(Boolean)
 
+  const isDragging = interacting.current != null || dragCreate || dragMove || dragResize
+
   if (loading) return <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', padding: spacing[12], minHeight: '60vh' }}><Spinner size="lg" /></div>
 
   return (
@@ -363,10 +566,10 @@ export default function CalendarPage() {
         <PageHeader title="Calendar" subtitle={subtitleParts.length ? subtitleParts.join(' · ') : 'No events this week'} />
         <div style={{ display: 'flex', gap: spacing[2], alignItems: 'center' }}>
           {!isThisWeek && <Button variant="ghost" size="sm" onClick={goToday}>Today</Button>}
-          <Button variant="secondary" size="sm" onClick={() => { const h = Math.min(today.getHours() + 1, 23); setCreateModal({ day: today, startMin: h * 60, endMin: (h + 1) * 60 }) }}>
+          <Button variant="secondary" size="sm" onClick={() => { const h = Math.min(today.getHours() + 1, 23); setModal({ day: today, startMin: h * 60, endMin: (h + 1) * 60, mode: 'create' }) }}>
             <Plus size={14} /> Event
           </Button>
-          <Button variant="primary" size="sm" onClick={() => { setShowTaskPicker(!showTaskPicker); setCreateModal(null) }}>
+          <Button variant="primary" size="sm" onClick={() => { setShowTaskPicker(!showTaskPicker); setModal(null) }}>
             <Zap size={14} /> Smart Schedule
           </Button>
         </div>
@@ -384,13 +587,11 @@ export default function CalendarPage() {
           </div>
           {!selectedTask ? (
             <>
-              <p style={{ fontSize: typography.fontSize.sm, color: colours.neutral[500], marginBottom: spacing[4], marginTop: 0 }}>
-                Pick a task and we'll suggest the best time slots based on your schedule and deadlines.
-              </p>
+              <p style={{ fontSize: typography.fontSize.sm, color: colours.neutral[500], marginBottom: spacing[4], marginTop: 0 }}>Pick a task and we'll suggest the best time slots.</p>
               {tasks.length === 0 ? (
-                <EmptyState icon={<CalendarDays size={40} style={{ color: colours.neutral[400] }} />} title="No active tasks" description="You don't have any tasks assigned yet. Once you're assigned work, you can schedule it here." />
+                <EmptyState icon={<CalendarDays size={40} style={{ color: colours.neutral[400] }} />} title="No active tasks" description="You don't have any tasks assigned yet." />
               ) : unscheduled.length === 0 ? (
-                <EmptyState icon={<Zap size={40} style={{ color: colours.neutral[400] }} />} title="All caught up" description="Every assigned task already has a time block. Nice work!" />
+                <EmptyState icon={<Zap size={40} style={{ color: colours.neutral[400] }} />} title="All caught up" description="Every assigned task already has a time block." />
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: spacing[2] }}>
                   {unscheduled.map(t => (
@@ -456,7 +657,7 @@ export default function CalendarPage() {
       </div>
 
       {/* ─── Calendar Grid ─── */}
-      <GlowCard style={{ padding: 0, overflow: 'hidden', userSelect: 'none' }}>
+      <GlowCard style={{ padding: 0, overflow: 'hidden', userSelect: isDragging ? 'none' : 'auto' }}>
         {/* Day Headers */}
         <div style={{ display: 'grid', gridTemplateColumns: '54px repeat(7, 1fr)', borderBottom: `1px solid ${colours.neutral[300]}`, position: 'sticky', top: 0, zIndex: 5, backgroundColor: colours.surfaceRaised }}>
           <div style={{ padding: spacing[2], borderRight: `1px solid ${colours.neutral[300]}` }} />
@@ -495,24 +696,53 @@ export default function CalendarPage() {
             const isDayToday = isSameDay(day, today)
 
             return (
-              <div key={dayIdx} style={{ position: 'relative', borderRight: dayIdx < 6 ? `1px solid ${colours.neutral[300]}` : 'none' }}>
-                {/* Hour cells — drag-to-create */}
+              <div key={dayIdx} data-col={dayIdx} style={{ position: 'relative', borderRight: dayIdx < 6 ? `1px solid ${colours.neutral[300]}` : 'none', cursor: isDragging ? 'ns-resize' : 'default' }}
+                onMouseDown={(e) => { if (e.target === e.currentTarget || e.target.dataset.gridcell) handleGridMouseDown(e, dayIdx) }}>
+
+                {/* Hour grid lines + clickable cells */}
                 {HOURS.map(h => {
                   const isNight = h < 5 || h >= 23
-                  const isDragHighlight = dragState && dragState.dayIdx === dayIdx && h >= Math.min(dragState.startRow, dragState.currentRow) && h <= Math.max(dragState.startRow, dragState.currentRow)
                   return (
-                    <div key={h}
-                      onMouseDown={(e) => { if (e.button === 0) { e.preventDefault(); handleDragStart(dayIdx, h) } }}
-                      onMouseEnter={() => { if (isDragging.current) handleDragMove(h) }}
-                      style={{
-                        height: HOUR_HEIGHT, borderBottom: `1px solid ${colours.neutral[200]}`, cursor: 'crosshair',
-                        backgroundColor: isDragHighlight ? 'rgba(59,130,246,0.15)' : isNight ? 'rgba(0,0,0,0.15)' : isDayToday ? 'rgba(255,255,255,0.015)' : 'transparent',
-                        transition: isDragging.current ? 'none' : 'background-color 100ms ease',
-                      }}
-                      onMouseEnter2={e => { if (!isDragging.current) e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.05)' }}
+                    <div key={h} data-gridcell="true"
+                      onMouseDown={(e) => handleGridMouseDown(e, dayIdx)}
+                      style={{ height: HOUR_HEIGHT, borderBottom: `1px solid ${colours.neutral[200]}`, backgroundColor: isNight ? 'rgba(0,0,0,0.15)' : isDayToday ? 'rgba(255,255,255,0.015)' : 'transparent' }}
                     />
                   )
                 })}
+
+                {/* Drag-to-create preview */}
+                {dragCreate && dragCreate.dayIdx === dayIdx && (() => {
+                  const minM = Math.min(dragCreate.startMins, dragCreate.currentMins)
+                  const maxM = Math.max(dragCreate.startMins, dragCreate.currentMins) + 15
+                  return (
+                    <div style={{
+                      position: 'absolute', left: 4, right: 4, pointerEvents: 'none', zIndex: 3,
+                      top: minutesToY(minM), height: minutesToY(maxM) - minutesToY(minM),
+                      backgroundColor: 'rgba(59,130,246,0.18)', border: '2px dashed rgba(59,130,246,0.5)', borderRadius: radii.md,
+                    }}>
+                      <div style={{ padding: '3px 8px', fontSize: '11px', color: '#93c5fd', fontWeight: 600 }}>{fmtMinutes(minM)} – {fmtMinutes(maxM)}</div>
+                    </div>
+                  )
+                })()}
+
+                {/* Drag-to-move ghost */}
+                {dragMove && dragMove.currentDayIdx === dayIdx && (() => {
+                  const evt = dragMove.event
+                  const oldStart = toLocal(evt.start_time); const oldEnd = toLocal(evt.end_time)
+                  const durationMins = (oldEnd - oldStart) / 60000
+                  const cs = EVENT_COLORS[evt.color] || EVENT_COLORS.slate
+                  return (
+                    <div style={{
+                      position: 'absolute', left: 4, right: 4, pointerEvents: 'none', zIndex: 6,
+                      top: minutesToY(dragMove.currentMins), height: minutesToY(durationMins),
+                      backgroundColor: cs.bg, borderLeft: `3px solid ${cs.border}`, borderRadius: radii.md,
+                      opacity: 0.7, boxShadow: '0 4px 16px rgba(0,0,0,0.4)',
+                    }}>
+                      <div style={{ padding: '4px 8px', fontSize: '11px', fontWeight: 600, color: cs.text }}>{evt.title}</div>
+                      <div style={{ padding: '0 8px', fontSize: '10px', color: cs.text, opacity: 0.7 }}>{fmtMinutes(dragMove.currentMins)} – {fmtMinutes(dragMove.currentMins + durationMins)}</div>
+                    </div>
+                  )
+                })()}
 
                 {/* Now indicator */}
                 {isDayToday && (
@@ -521,29 +751,11 @@ export default function CalendarPage() {
                   </div>
                 )}
 
-                {/* Drag preview */}
-                {dragState && dragState.dayIdx === dayIdx && (
-                  <div style={{
-                    position: 'absolute', left: 4, right: 4, pointerEvents: 'none', zIndex: 3,
-                    top: Math.min(dragState.startRow, dragState.currentRow) * HOUR_HEIGHT,
-                    height: (Math.abs(dragState.currentRow - dragState.startRow) + 1) * HOUR_HEIGHT,
-                    backgroundColor: 'rgba(59,130,246,0.2)', border: '2px dashed rgba(59,130,246,0.6)',
-                    borderRadius: radii.md,
-                  }}>
-                    <div style={{ padding: '4px 8px', fontSize: '11px', color: '#93c5fd', fontWeight: 600 }}>
-                      {fmtHour(Math.min(dragState.startRow, dragState.currentRow))} – {fmtHour(Math.max(dragState.startRow, dragState.currentRow) + 1)}
-                    </div>
-                  </div>
-                )}
-
                 {/* Event blocks */}
                 {dayEvents.map((evt, idx) => {
-                  const start = toLocal(evt.start_time)
-                  const end = toLocal(evt.end_time)
-                  const sH = start.getHours() + start.getMinutes() / 60
-                  const eH = end.getHours() + end.getMinutes() / 60
-                  const top = sH * HOUR_HEIGHT
-                  const height = Math.max((eH - sH) * HOUR_HEIGHT, 22)
+                  const start = toLocal(evt.start_time); const end = toLocal(evt.end_time)
+                  const sM = start.getHours() * 60 + start.getMinutes()
+                  const eM = end.getHours() * 60 + end.getMinutes()
                   const isTask = evt.event_type === 'task'
                   const isAppt = evt.event_type === 'appointment'
                   const cs = EVENT_COLORS[evt.color] || EVENT_COLORS.slate
@@ -551,25 +763,48 @@ export default function CalendarPage() {
                   const bdr = isTask ? (PRIORITY_BORDER[evt.priority] || '#525252') : (isAppt ? EVENT_COLORS.blue.border : cs.border)
                   const txt = isTask ? colours.neutral[100] : cs.text
 
+                  // During resize, show updated height
+                  const isResizing = dragResize && (dragResize.event.id === evt.id)
+                  const displayEM = isResizing ? dragResize.currentMins : eM
+                  const top = minutesToY(sM)
+                  const height = Math.max(minutesToY(displayEM - sM), QUARTER)
+
+                  // During move, hide original
+                  const isMoving = dragMove && dragMove.event.id === evt.id
+                  if (isMoving) return null
+
                   return (
                     <div key={evt.id + '-' + idx}
-                      onContextMenu={(e) => { e.preventDefault(); setContextMenu({ x: e.clientX, y: e.clientY, event: evt }) }}
+                      onClick={(e) => { if (!isDragging) { e.stopPropagation(); setPopover({ event: evt, x: e.clientX, y: e.clientY }) } }}
+                      onMouseDown={(e) => handleEventMoveStart(e, evt, dayIdx)}
                       style={{
                         position: 'absolute', top, left: 4, right: 4, height,
                         backgroundColor: bg, borderRadius: radii.md, padding: '4px 8px', overflow: 'hidden',
-                        borderLeft: `3px solid ${bdr}`, cursor: 'context-menu', zIndex: 2,
-                        boxShadow: '0 1px 6px rgba(0,0,0,0.4)',
+                        borderLeft: `3px solid ${bdr}`, cursor: isDragging ? 'ns-resize' : 'grab', zIndex: 2,
+                        boxShadow: '0 1px 6px rgba(0,0,0,0.4)', transition: isResizing ? 'none' : 'box-shadow 150ms',
                       }}
-                      title={`${evt.title}\n${fmtTime(start)} – ${fmtTime(end)}${evt.location ? '\n\ud83d\udccd ' + evt.location : ''}\nRight-click for options`}
                     >
                       <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                         {isAppt && <Phone size={10} style={{ color: txt, opacity: 0.7, flexShrink: 0 }} />}
                         {!isTask && !isAppt && <Moon size={10} style={{ color: txt, opacity: 0.7, flexShrink: 0 }} />}
                         <span style={{ fontSize: '11px', fontWeight: 600, color: txt, lineHeight: 1.2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>{evt.title}</span>
                       </div>
-                      {height >= 36 && <div style={{ fontSize: '10px', color: txt, opacity: 0.6, marginTop: 2 }}>{fmtTime(start)} – {fmtTime(end)}</div>}
+                      {height >= 36 && <div style={{ fontSize: '10px', color: txt, opacity: 0.6, marginTop: 2 }}>{fmtTime(start)} – {isResizing ? fmtMinutes(dragResize.currentMins) : fmtTime(end)}</div>}
                       {height >= 52 && isTask && <div style={{ fontSize: '10px', color: txt, opacity: 0.5, marginTop: 1 }}>{evt.client_name}{evt.total_payout && ` · $${Number(evt.total_payout).toFixed(0)}`}</div>}
                       {height >= 52 && isAppt && evt.location && <div style={{ fontSize: '10px', color: txt, opacity: 0.5, marginTop: 1, display: 'flex', alignItems: 'center', gap: '3px' }}><MapPin size={8} />{evt.location}</div>}
+                      {height >= 52 && evt.meeting_link && <div style={{ fontSize: '10px', color: '#60a5fa', opacity: 0.8, marginTop: 1, display: 'flex', alignItems: 'center', gap: '3px' }}><Video size={8} /> Meeting</div>}
+
+                      {/* Resize handle (bottom edge) */}
+                      <div
+                        onMouseDown={(e) => handleResizeStart(e, evt)}
+                        style={{
+                          position: 'absolute', bottom: 0, left: 0, right: 0, height: 8,
+                          cursor: 'ns-resize', display: 'flex', justifyContent: 'center', alignItems: 'center',
+                          borderRadius: `0 0 ${radii.md} ${radii.md}`,
+                        }}
+                      >
+                        <div style={{ width: 20, height: 3, borderRadius: 2, backgroundColor: txt, opacity: 0.2 }} />
+                      </div>
                     </div>
                   )
                 })}
@@ -606,28 +841,30 @@ export default function CalendarPage() {
       {/* Empty state */}
       {tasks.length === 0 && events.length === 0 && (
         <GlowCard style={{ marginTop: spacing[4] }}>
-          <EmptyState icon={<CalendarDays size={48} style={{ color: colours.neutral[400] }} />} title="Your calendar is empty" description="Drag across a time range to create an event, or use + Event to add one." action={{ label: '+ New Event', onClick: () => { const h = Math.min(today.getHours() + 1, 23); setCreateModal({ day: today, startMin: h * 60, endMin: (h + 1) * 60 }) } }} />
+          <EmptyState icon={<CalendarDays size={48} style={{ color: colours.neutral[400] }} />} title="Your calendar is empty" description="Drag across a time range to create an event, or use + Event to add one." action={{ label: '+ New Event', onClick: () => { const h = Math.min(today.getHours() + 1, 23); setModal({ day: today, startMin: h * 60, endMin: (h + 1) * 60, mode: 'create' }) } }} />
         </GlowCard>
       )}
 
-      {/* ─── Create / Duplicate Modal ─── */}
-      <CreateEventModal
-        isOpen={!!createModal}
-        day={createModal?.day || today}
-        startMin={createModal?.startMin ?? 540}
-        endMin={createModal?.endMin ?? 600}
-        editData={createModal?.editData}
-        onClose={() => setCreateModal(null)}
-        onCreate={handleCreateEvent}
+      {/* ─── Event Modal ─── */}
+      <EventModal
+        isOpen={!!modal}
+        day={modal?.day || today}
+        startMin={modal?.startMin ?? 540}
+        endMin={modal?.endMin ?? 600}
+        editData={modal?.editData}
+        mode={modal?.mode || 'create'}
+        onClose={() => setModal(null)}
+        onSave={modal?.mode === 'edit' ? handleUpdateEvent : handleCreateEvent}
       />
 
-      {/* ─── Context Menu ─── */}
-      {contextMenu && (
-        <EventMenu
-          x={contextMenu.x} y={contextMenu.y}
-          onDuplicate={() => handleDuplicateEvent(contextMenu.event)}
-          onDelete={() => { handleDeleteEvent(contextMenu.event); setContextMenu(null) }}
-          onClose={() => setContextMenu(null)}
+      {/* ─── Event Popover ─── */}
+      {popover && (
+        <EventPopover
+          event={popover.event} x={popover.x} y={popover.y}
+          onClose={() => setPopover(null)}
+          onEdit={() => openEdit(popover.event)}
+          onDuplicate={() => openDuplicate(popover.event)}
+          onDelete={() => handleDeleteEvent(popover.event)}
         />
       )}
     </div>
